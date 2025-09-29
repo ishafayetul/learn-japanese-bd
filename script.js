@@ -1,25 +1,23 @@
 /* === DOM helpers MUST be first === */
-function $(id){ return document.getElementById(id); }
-function setText(id, txt){ const el = $(id); if (el) el.textContent = String(txt ?? ""); }
-function setHTML(id, html){ const el = $(id); if (el) el.innerHTML = html; }
-/* === DOM helpers (installed once) === */
+/* === DOM helpers (single install) === */
 (() => {
-  if (!(' $ ' in window) || typeof window.$ !== 'function') {
-    window.$ = function _domGetById(id){ return document.getElementById(id); };
+  if (typeof window.$ !== 'function') {
+    window.$ = function(id){ return document.getElementById(id); };
   }
-  if (!('setText' in window)) {
+  if (typeof window.setText !== 'function') {
     window.setText = function(id, txt){
       const el = document.getElementById(id);
       if (el) el.textContent = String(txt ?? '');
     };
   }
-  if (!('setHTML' in window)) {
+  if (typeof window.setHTML !== 'function') {
     window.setHTML = function(id, html){
       const el = document.getElementById(id);
       if (el) el.innerHTML = html;
     };
   }
 })();
+
 
 ///////////////////////
 // Global App State //
