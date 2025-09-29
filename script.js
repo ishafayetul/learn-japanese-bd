@@ -160,7 +160,7 @@ function ttsSpeak(text) {
 function playWordAudioByIndex(deckIndex) {
   const word = currentDeck[deckIndex];
   if (!word) return;
-
+  
   const canUseFiles = !!(audioManifestLoaded && currentAudioFolder);
   if (canUseFiles) {
     const nn = pad2(deckIndex + 1); // 1-based index
@@ -436,36 +436,36 @@ function showSection(id) {
 window.showSection = showSection;
 
 // ---------------- DECKS (Vocab) ----------------
+// Vocab decks (単語デッキ)
 async function loadDeckManifest() {
   try {
-    statusLine("deck-status", "Loading decks…");
-    // UPDATED PATH per new file structure
-    const res = await fetch("load_vocab_decks/deck_manifest.json");
-    if (!res.ok) throw new Error(`HTTP ${res.status} for load_vocab_decks/deck_manifest.json`);
-    const text = await res.text();
-    if (text.trim().startsWith("<")) throw new Error("Manifest is HTML (check path/case for load_vocab_decks/manifest.json)");
-
-    /** @type {string[]} */
-    const deckList = JSON.parse(text);
-    deckList.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const base = "load_vocab_decks/";
+    const res  = await fetch(base + "deck_manifest.json");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const list = await res.json(); // e.g., ["N5-L1.csv", "Time.csv", ...]
+    if (!Array.isArray(list) || list.length === 0) throw new Error("Empty deck_manifest.json");
 
     allDecks = {};
-    for (const file of deckList) {
-      const name = file.replace(".csv", "");
-      const url = `load_vocab_decks/${file}`;
+    let okCount = 0;
+
+    for (const file of list) {
+      const url = file.match(/^https?:\/\//) ? file : (base + file);
       statusLine("deck-status", `Loading ${file}…`);
-      const deck = await fetchAndParseCSV(url);
-      allDecks[name] = deck;
+      const deckRows = await fetchAndParseCSV(url); // uses your robust parser
+      allDecks[file.replace(/\.csv$/i, "")] = deckRows;
+      okCount += 1;
     }
 
-    renderDeckButtons();
-    renderDeckMultiSelect(); // NEW
-    statusLine("deck-status", `Loaded ${Object.keys(allDecks).length} deck(s).`);
+    renderDeckButtons?.();         // keep your existing UI hook
+    renderDeckMultiSelect?.();     // for Mixed (ミックス)
+    statusLine("deck-status", `Loaded ${okCount} vocab deck(s).`);
+    console.debug("[decks] loaded keys:", Object.keys(allDecks));
   } catch (err) {
     console.error("Failed to load decks:", err);
     statusLine("deck-status", `Failed to load decks: ${err.message}`);
   }
 }
+
 
 let writeType = 'en->hira';
 
@@ -586,61 +586,99 @@ async function fetchAndParseCSV(url) {
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   const text = (await res.text()).replace(/^\uFEFF/, "");
   const table = parseCSV(text);
-  // Replace your "looksLikeHeader" + mapping block with this helper, then call it.
-function mapCsvRows(table) {
-  const looksLikeHeader = (row) => {
-    if (!row || row.length < 2) return false;
-    const h = row.map(x => String(x || "").toLowerCase().trim());
-    return h.includes("kanji") || h.includes("hiragana") || h.includes("english") ||
-           h.includes("romaji") || h.includes("meaning");
+
+  const toKey = s => String(s || "").toLowerCase().trim();
+
+  const hasHeader = (row) => {
+    if (!row || row.length === 0) return false;
+    const h = row.map(toKey);
+    const set = new Set(h);
+    // recognize new + old schemas
+    return (
+      set.has("kanji") || set.has("hiragana") || set.has("english") ||
+      set.has("english_meaning") || set.has("meaning") ||
+      set.has("romaji") || set.has("front") || set.has("back") ||
+      set.has("word") || set.has("question") || set.has("answer")
+    );
   };
 
-  const rowsOnly = (table.length && looksLikeHeader(table[0])) ? table.slice(1) : table;
+  const isKana  = (s) => /[ぁ-んァ-ンー]/.test(s || "");
+  const isKanji = (s) => /[一-龠々]/.test(s || "");
+  const isAscii = (s) => !!s && /^[\x00-\x7F]+$/.test(s);
 
-  // normalize to { kanji, hiragana, meaning, front, back, romaji } for compatibility
-  const norm = rowsOnly.map(cols => {
-    const a = (cols[0] || "").trim();
-    const b = (cols[1] || "").trim();
-    const c = (cols[2] || "").trim();
+  const mapByHeader = (hdr, cols) => {
+    const keyIdx = (keys) => {
+      const i = hdr.findIndex(h => keys.some(k => k.test(h)));
+      return i >= 0 ? i : -1;
+    };
+    const idxKanji = keyIdx([/kanji|漢字/]);
+    const idxHira  = keyIdx([/hiragana|ひらがな|reading|yomi/]);
+    const idxEng   = keyIdx([/english|meaning|english_meaning|gloss/]);
+    const idxRoma  = keyIdx([/romaji|roumaji|roma/]);
+    const idxFront = keyIdx([/front|word|question/]);
+    const idxBack  = keyIdx([/back|answer/]);
 
-    // Try to auto-detect:
-    // New schema (kanji, hiragana, english_meaning)
-    const plausibleNew = /[ぁ-んァ-ンー]/.test(b) && /[a-z]/i.test(c);
-    // Old schema variants we used before:
-    //   [jp, meaning, romaji]  OR  [meaning, jp, romaji]
-    const looksOld1 = /[ぁ-んァ-ン一-龠々]/.test(a) && /[a-z]/i.test(b);
-    const looksOld2 = /[a-z]/i.test(a) && /[ぁ-んァ-ン一-龠々]/.test(b);
+    const col = (i) => (i >= 0 && cols[i]) ? String(cols[i]).trim() : "";
 
-    let kanji="", hiragana="", meaning="", romaji="";
+    let kanji   = col(idxKanji);
+    let hira    = col(idxHira);
+    let meaning = col(idxEng);
+    let romaji  = col(idxRoma);
 
-    if (plausibleNew) {
-      kanji = a; hiragana = b; meaning = c; romaji = "";
-    } else if (looksOld1) {
-      // a=jp (kanji or hira), b=english, c=romaji?
-      // try to split jp into kanji/hira heuristically
-      if (/[一-龠々]/.test(a)) { kanji = a; } else { hiragana = a; }
-      meaning = b; romaji = c;
-    } else if (looksOld2) {
-      // a=english, b=jp
-      meaning = a;
-      if (/[一-龠々]/.test(b)) { kanji = b; } else { hiragana = b; }
-      romaji = c;
-    } else {
-      // fallback: keep whatever present
-      kanji = a; hiragana = b; meaning = c;
+    // old “front/back” support
+    if (!kanji && !hira && (idxFront >= 0)) {
+      const f = col(idxFront);
+      if (isKanji(f)) kanji = f;
+      else if (isKana(f)) hira = f;
+    }
+    if (!meaning && (idxBack >= 0)) meaning = col(idxBack);
+
+    const front = hira || kanji || col(idxFront) || "";
+    const back  = meaning || col(idxBack) || "";
+
+    return { kanji, hiragana: hira, meaning, romaji, front, back };
+  };
+
+  const rowsOnly = (table.length && hasHeader(table[0])) ? table.slice(1) : table;
+  const header   = (table.length && hasHeader(table[0])) ? table[0].map(toKey) : null;
+
+  const out = rowsOnly.map((cols) => {
+    // Header-driven mapping
+    if (header) return mapByHeader(header, cols);
+
+    // Heuristic mapping (no header)
+    const a = String(cols[0] || "").trim();
+    const b = String(cols[1] || "").trim();
+    const c = String(cols[2] || "").trim();
+    const cand = [a, b, c].filter(Boolean);
+
+    let kanji = "", hira = "", meaning = "", romaji = "";
+
+    // find kana & kanji first
+    for (const v of cand) {
+      if (!hira && isKana(v) && !isKanji(v)) { hira = v; continue; }
+      if (!kanji && isKanji(v)) { kanji = v; continue; }
+    }
+    // likely English meaning
+    for (const v of cand) {
+      if (!meaning && v !== kanji && v !== hira && isAscii(v)) { meaning = v; continue; }
+    }
+    // leftover ASCII → romaji fallback
+    for (const v of cand) {
+      if (v !== kanji && v !== hira && v !== meaning && isAscii(v)) { romaji = v; }
     }
 
-    // derive front/back (compat) -> default to JP→EN flows
-    const front = hiragana || kanji || "";
-    const back  = meaning || "";
-    return { kanji, hiragana, meaning, romaji, front, back };
-  }).filter(r => (r.front && r.back));
+    const front = hira || kanji || a || "";
+    const back  = meaning || ""; // don’t force meaning; allow kana/kanji-only rows
+    return { kanji, hiragana: hira, meaning, romaji, front, back };
+  })
+  // Keep rows that have at least *something* to study:
+  .filter(r => !!(r.front || r.hiragana || r.kanji));
 
-  return norm;
+  console.debug(`[deck] ${url} → ${out.length} rows`);
+  return out;
 }
 
-  
-}
 
 function renderDeckButtons() {
   const container = $("deck-buttons");
@@ -1116,63 +1154,75 @@ window.clearMistakes = clearMistakes;
 
 
 // ---------------- GRAMMAR (PDF links) ----------------
+// Grammar (文法) lesson loader
 async function loadGrammarManifest() {
   try {
-    statusLine("grammar-status", "Loading grammar lessons…");
+    const base = "grammar/";
+    const res  = await fetch(base + "grammar_manifest.json");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const list = await res.json(); // e.g., ["L1.csv","L2.csv"] or objects
 
-    // UPDATED PATH per new file structure
-    const r = await fetch("grammar/grammar_manifest.json");
-    if (!r.ok) throw new Error(`HTTP ${r.status} for grammar/grammar_manifest.json`);
-    const t = await r.text();
-    if (t.trim().startsWith("<")) throw new Error("Got HTML instead of JSON");
-    const list = JSON.parse(t);
+    // Normalize to filenames
+    const files = list.map(item => {
+      if (typeof item === "string") return item;
+      if (item && typeof item.file === "string") return item.file;
+      return "";
+    }).filter(Boolean);
 
-    const container = $("grammar-list");
-    if (!container) return;
-    container.innerHTML = "";
+    let loaded = 0;
+    window.allGrammarLessons = {}; // if you keep them in a map
 
-    list.forEach((file) => {
-      const btn = document.createElement("button");
-      btn.textContent = file.replace(".pdf", "");
-      btn.onclick = () => window.open(`grammar/${file}`, "_blank");
-      container.appendChild(btn);
-    });
+    for (const file of files) {
+      const url = file.match(/^https?:\/\//) ? file : (base + file);
+      statusLine("grammar-status", `Loading ${file}…`);
+      // If you have a dedicated grammar parser, call it here.
+      // Otherwise reuse CSV parser to get rows and handle in your grammar UI.
+      const rows = await fetchAndParseCSV(url);
+      allGrammarLessons[file.replace(/\.csv$/i, "")] = rows;
+      loaded++;
+    }
 
-    statusLine("grammar-status", `Loaded ${list.length} grammar file(s).`);
+    statusLine("grammar-status", `Loaded ${loaded} grammar file(s).`);
+    renderGrammarButtons?.(Object.keys(allGrammarLessons));
   } catch (err) {
-    console.error("Failed to load grammar manifest:", err);
+    console.error("Failed to load grammar:", err);
     statusLine("grammar-status", `Failed to load grammar: ${err.message}`);
   }
 }
 
+
 // ---------------- PRACTICE GRAMMAR (type the answer) ----------------
 async function loadGrammarPracticeManifest() {
-  const statusId = "pg-status";
   try {
-    const statusEl = $(statusId);
-    if (statusEl) statusEl.textContent = "Loading practice grammar sets…";
-    const res = await fetch("practice-grammar/manifest.csv");
-    if (!res.ok) throw new Error(`HTTP ${res.status} for practice-grammar/manifest.csv`);
+    const base = "practice-grammar/";
+    const res  = await fetch(base + "manifest.csv");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = (await res.text()).replace(/^\uFEFF/, "");
-    const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    pgState.files = lines;
+    const table = parseCSV(text);
 
-    const container = $("pg-file-buttons");
-    if (container) {
-      container.innerHTML = "";
-      lines.forEach(file => {
-        const btn = document.createElement("button");
-        btn.textContent = file.replace(/\.csv$/i, "");
-        btn.onclick = () => pgStartSet(file);
-        container.appendChild(btn);
-      });
+    // Assume first column holds filenames; drop header if it looks like one
+    const looksHeader = (row) => row && row[0] && /file|path|lesson/i.test(String(row[0]));
+    const body = table.length && looksHeader(table[0]) ? table.slice(1) : table;
+
+    const files = body.map(r => String((r && r[0]) || "").trim()).filter(Boolean);
+    if (files.length === 0) throw new Error("practice-grammar/manifest.csv is empty");
+
+    window.practiceGrammarFiles = files.map(f => f.match(/^https?:\/\//) ? f : (base + f));
+
+    statusLine("grammar-status", `Practice-Grammar manifest OK (${files.length} file(s)).`);
+    // If your app autoloads these, iterate and fetch here; otherwise keep only the list.
+    // Example autoload:
+    /*
+    window.allPracticeGrammar = {};
+    for (const url of practiceGrammarFiles) {
+      const name = url.split("/").pop().replace(/\.csv$/i,"");
+      const rows = await fetchAndParseCSV(url);
+      allPracticeGrammar[name] = rows;
     }
-    renderPgMultiList(); // NEW
-    if (statusEl) statusEl.textContent = `Loaded ${lines.length} set(s). Choose one to start.`;
+    */
   } catch (err) {
-    console.warn("Practice grammar manifest failed:", err);
-    const statusEl = $(statusId);
-    if (statusEl) statusEl.textContent = `Failed to load practice sets: ${err.message}`;
+    console.error("Failed to load practice-grammar manifest:", err);
+    statusLine("grammar-status", `Practice-Grammar load failed: ${err.message}`);
   }
 }
 
@@ -2546,3 +2596,8 @@ window.makeNext = function () {
   }
 };
 
+document.addEventListener("DOMContentLoaded", () => {
+  loadDeckManifest();
+  loadGrammarManifest();
+  loadPracticeGrammarManifest();
+});
