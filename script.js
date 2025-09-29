@@ -437,29 +437,32 @@ window.showSection = showSection;
 
 // ---------------- DECKS (Vocab) ----------------
 // Vocab decks (単語デッキ)
+
 async function loadDeckManifest() {
   try {
-    const base = "load_vocab_decks/";
-    const res  = await fetch(base + "deck_manifest.json");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const list = await res.json(); // e.g., ["N5-L1.csv", "Time.csv", ...]
-    if (!Array.isArray(list) || list.length === 0) throw new Error("Empty deck_manifest.json");
+    statusLine("deck-status", "Loading decks…");
+    const res  = await fetch("load_vocab_decks/deck_manifest.json");
+    if (!res.ok) throw new Error(`HTTP ${res.status} for load_vocab_decks/deck_manifest.json`);
+    const text = await res.text();
+    if (text.trim().startsWith("<")) throw new Error("Manifest returned HTML (check folder name/case).");
+
+    /** @type {string[]} */
+    const deckList = JSON.parse(text);
+    deckList.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
     allDecks = {};
-    let okCount = 0;
-
-    for (const file of list) {
-      const url = file.match(/^https?:\/\//) ? file : (base + file);
+    for (const file of deckList) {
+      const name = file.replace(/\.csv$/i, "");
+      const url = `load_vocab_decks/${file}`;
       statusLine("deck-status", `Loading ${file}…`);
-      const deckRows = await fetchAndParseCSV(url); // uses your robust parser
-      allDecks[file.replace(/\.csv$/i, "")] = deckRows;
-      okCount += 1;
+      const rows = await fetchAndParseCSV(url);
+      console.debug(`[deck] ${file}: ${rows.length} rows`);
+      allDecks[name] = rows;
     }
 
-    renderDeckButtons?.();         // keep your existing UI hook
-    renderDeckMultiSelect?.();     // for Mixed (ミックス)
-    statusLine("deck-status", `Loaded ${okCount} vocab deck(s).`);
-    console.debug("[decks] loaded keys:", Object.keys(allDecks));
+    renderDeckButtons?.();
+    renderDeckMultiSelect?.();
+    statusLine("deck-status", `Loaded ${Object.keys(allDecks).length} deck(s).`);
   } catch (err) {
     console.error("Failed to load decks:", err);
     statusLine("deck-status", `Failed to load decks: ${err.message}`);
@@ -559,9 +562,7 @@ function writeShowDetails() {
 
 function parseCSV(text){
   const rows = [];
-  let row = [];
-  let cur = '';
-  let inQuotes = false;
+  let row = [], cur = '', inQuotes = false;
   for (let i = 0; i < text.length; i++){
     const ch = text[i];
     if (inQuotes){
@@ -581,6 +582,8 @@ function parseCSV(text){
   return rows.filter(r => r.some(c => c && c.length));
 }
 
+
+
 async function fetchAndParseCSV(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
@@ -593,7 +596,6 @@ async function fetchAndParseCSV(url) {
     if (!row || row.length === 0) return false;
     const h = row.map(toKey);
     const set = new Set(h);
-    // recognize new + old schemas
     return (
       set.has("kanji") || set.has("hiragana") || set.has("english") ||
       set.has("english_meaning") || set.has("meaning") ||
@@ -625,7 +627,7 @@ async function fetchAndParseCSV(url) {
     let meaning = col(idxEng);
     let romaji  = col(idxRoma);
 
-    // old “front/back” support
+    // legacy front/back mapping
     if (!kanji && !hira && (idxFront >= 0)) {
       const f = col(idxFront);
       if (isKanji(f)) kanji = f;
@@ -643,10 +645,9 @@ async function fetchAndParseCSV(url) {
   const header   = (table.length && hasHeader(table[0])) ? table[0].map(toKey) : null;
 
   const out = rowsOnly.map((cols) => {
-    // Header-driven mapping
     if (header) return mapByHeader(header, cols);
 
-    // Heuristic mapping (no header)
+    // Heuristics for no-header CSV
     const a = String(cols[0] || "").trim();
     const b = String(cols[1] || "").trim();
     const c = String(cols[2] || "").trim();
@@ -654,26 +655,22 @@ async function fetchAndParseCSV(url) {
 
     let kanji = "", hira = "", meaning = "", romaji = "";
 
-    // find kana & kanji first
     for (const v of cand) {
       if (!hira && isKana(v) && !isKanji(v)) { hira = v; continue; }
       if (!kanji && isKanji(v)) { kanji = v; continue; }
     }
-    // likely English meaning
     for (const v of cand) {
       if (!meaning && v !== kanji && v !== hira && isAscii(v)) { meaning = v; continue; }
     }
-    // leftover ASCII → romaji fallback
     for (const v of cand) {
       if (v !== kanji && v !== hira && v !== meaning && isAscii(v)) { romaji = v; }
     }
 
     const front = hira || kanji || a || "";
-    const back  = meaning || ""; // don’t force meaning; allow kana/kanji-only rows
+    const back  = meaning || ""; // allow kana/kanji-only rows
     return { kanji, hiragana: hira, meaning, romaji, front, back };
   })
-  // Keep rows that have at least *something* to study:
-  .filter(r => !!(r.front || r.hiragana || r.kanji));
+  .filter(r => !!(r.front || r.hiragana || r.kanji)); // keep useful rows
 
   console.debug(`[deck] ${url} → ${out.length} rows`);
   return out;
