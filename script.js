@@ -1,16 +1,25 @@
-/* =========================================================
-   Japanese Vocab App — fixed + simplified core
-   (MCQ + Write + Learn + Marked Words + Mistakes + Grammar)
-
-   What’s fixed:
-   1) Kanji-required modes skip rows with Kanji = "—" or empty
-   2) Option colors change correctly (green/red)
-   3) “Mark Word” works and updates Marked/Mistakes views
-   4) Progress works (local + Firebase if present)
-   5) Marked Words & Mistakes mirror Vocab modes
-   6) Grammar / Practice Grammar lists actually load
-   7) ESC (エスケープ) to skip in Practice & Writing
-   ========================================================= */
+/* === DOM helpers MUST be first === */
+function $(id){ return document.getElementById(id); }
+function setText(id, txt){ const el = $(id); if (el) el.textContent = String(txt ?? ""); }
+function setHTML(id, html){ const el = $(id); if (el) el.innerHTML = html; }
+/* === DOM helpers (installed once) === */
+(() => {
+  if (!(' $ ' in window) || typeof window.$ !== 'function') {
+    window.$ = function _domGetById(id){ return document.getElementById(id); };
+  }
+  if (!('setText' in window)) {
+    window.setText = function(id, txt){
+      const el = document.getElementById(id);
+      if (el) el.textContent = String(txt ?? '');
+    };
+  }
+  if (!('setHTML' in window)) {
+    window.setHTML = function(id, html){
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    };
+  }
+})();
 
 ///////////////////////
 // Global App State //
@@ -57,10 +66,7 @@ let audioFolders = new Set();
 
 // IME helper
 let __writeIMEComposing = false;
-/* === DOM helpers MUST be first === */
-function $(id){ return document.getElementById(id); }
-function setText(id, txt){ const el = $(id); if (el) el.textContent = String(txt ?? ""); }
-function setHTML(id, html){ const el = $(id); if (el) el.innerHTML = html; }
+
 
 ////////////////////////
 // Tiny DOM utilities //
