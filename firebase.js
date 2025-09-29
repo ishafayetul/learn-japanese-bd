@@ -270,7 +270,7 @@ onAuthStateChanged(auth, async (user) => {
       if (todoList) subscribeTodayTasks(user.uid);
       if (todaysLbList) subscribeTodaysLeaderboard();
       if (overallLbList) subscribeOverallLeaderboard();
-
+      subscribeWeeklyLeaderboard();
       // Auto-commit any pending session left locally
       try { await __fb_commitLocalPendingSession(); } catch (e) {
         console.warn('[pending-session] commit skipped:', e?.message || e);
@@ -495,6 +495,32 @@ function subscribeTodaysLeaderboard() {
   }, (err) => console.error('[today LB] snapshot error:', err));
 }
 
+function subscribeWeeklyLeaderboard() {
+  const list = document.getElementById('weekly-leaderboard-list');
+  if (!list) return;
+
+  const wk = weekKey();
+  const qy = query(collection(db, 'weeklyLeaderboard', wk, 'users'), orderBy('score', 'desc'), limit(50));
+  onSnapshot(qy, (ss) => {
+    list.innerHTML = '';
+    let rank = 1;
+    ss.forEach(docSnap => {
+      const u = docSnap.data() || {};
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <div class="lb-row">
+          <span class="lb-rank">#${rank++}</span>
+          <span class="lb-name">${u.displayName || 'Anonymous'}</span>
+          <span class="lb-part">JP→EN: <b>${u.jpEnCorrect || 0}</b></span>
+          <span class="lb-part">EN→JP: <b>${u.enJpCorrect || 0}</b></span>
+          <span class="lb-part">Grammar: <b>${u.grammarCorrect || 0}</b></span>
+          <span class="lb-score">${u.score || 0} pts</span>
+        </div>`;
+      list.appendChild(li);
+    });
+  }, (err) => console.error('[weekly LB] snapshot error:', err));
+}
+
 /* ------------------------------------------------------------------
    Commit a buffered session (single write burst)
    Accepts vocab (JP→EN / EN→JP) and grammar sessions.
@@ -507,6 +533,22 @@ function subscribeTodaysLeaderboard() {
  *   jpEnCorrect?: number, enJpCorrect?: number, grammarCorrect?: number
  * }} payload
  */
+// Helper: ISO week key (YYYY-WW)
+function weekKey(d = new Date()) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  // Thursday of this week
+  const day = (t.getUTCDay() + 6) % 7; // Mon=0..Sun=6
+  t.setUTCDate(t.getUTCDate() - day + 3);
+  const wk1 = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  const week = 1 + Math.round(((t - wk1) / 86400000 - 3 + ((wk1.getUTCDay() + 6) % 7)) / 7);
+  const y = t.getUTCFullYear();
+  return `${y}-${String(week).padStart(2,'0')}`;
+}
+
+/**
+ * Accepts ANY vocab/grammar session. Score = payload.correct.
+ * Also mirrors to weeklyLeaderboard/{YYYY-WW}/users/{uid}.
+ */
 window.__fb_commitSession = async function (payload) {
   const user = auth.currentUser;
   if (!user) throw new Error('Not signed in');
@@ -515,59 +557,74 @@ window.__fb_commitSession = async function (payload) {
     deckName = 'Unknown Deck',
     mode = 'jp-en',
     correct = 0, wrong = 0, skipped = 0, total = 0,
-    jpEnCorrect = 0, enJpCorrect = 0, grammarCorrect = 0
+    // legacy + new counters (optional)
+    jpEnCorrect = 0, enJpCorrect = 0, grammarCorrect = 0,
+    hiraEnCorrect = 0, enHiraCorrect = 0, kanjiHiraCorrect = 0, hiraKanjiCorrect = 0,
+    hiraMeanKanjiCorrect = 0, k2hmCorrect = 0,
+    writeEnHiraCorrect = 0, writeKanjiHiraCorrect = 0
   } = payload || {};
 
   const dkey = localDateKey();
+  const wkey = weekKey();
+
   const uref = doc(db, 'users', user.uid);
   const dailyRef = doc(db, 'users', user.uid, 'daily', dkey);
   const lbDaily  = doc(db, 'dailyLeaderboard', dkey, 'users', user.uid);
+  const lbWeekly = doc(db, 'weeklyLeaderboard', wkey, 'users', user.uid);
   const attemptsCol = collection(db, 'users', user.uid, 'attempts');
 
   // ensure displayName
   const usnap = await getDoc(uref);
   const displayName = usnap.exists() ? (usnap.data().displayName || 'Anonymous') : 'Anonymous';
 
-  // ensure daily & lb docs exist
   await Promise.all([
     setDoc(dailyRef, { date: dkey, uid: user.uid, displayName }, { merge: true }),
     setDoc(lbDaily,  { uid: user.uid, displayName }, { merge: true }),
+    setDoc(lbWeekly, { uid: user.uid, displayName, week: wkey }, { merge: true }),
   ]);
 
-  // batch everything
   const batch = writeBatch(db);
 
-  // Attempt record (keep the mode; useful for history)
+  // write attempt record (keep mode & counts)
   const attemptDoc = doc(attemptsCol);
   batch.set(attemptDoc, {
     deckName, mode, correct, wrong, skipped, total,
+    counts: {
+      jpEnCorrect, enJpCorrect, grammarCorrect,
+      hiraEnCorrect, enHiraCorrect, kanjiHiraCorrect, hiraKanjiCorrect,
+      hiraMeanKanjiCorrect, k2hmCorrect, writeEnHiraCorrect, writeKanjiHiraCorrect
+    },
     createdAt: Date.now(), createdAtServer: serverTimestamp()
   });
 
-  // Increments for daily + leaderboard mirrors
-  // Score: 1 point per correct answer across all three modes
-  const scoreInc = (jpEnCorrect || 0) + (enJpCorrect || 0) + (grammarCorrect || 0);
+  // Score is generic: 1 point per correct (works for all modes)
+  const scoreInc = correct || 0;
 
-  const incsDaily = {
+  const incsGeneric = {
     updatedAt: serverTimestamp(),
+    // legacy aggregates (kept so your existing LB UI keeps working)
     jpEnCorrect: increment(jpEnCorrect || 0),
     enJpCorrect: increment(enJpCorrect || 0),
     grammarCorrect: increment(grammarCorrect || 0),
-    score: increment(scoreInc)
-  };
-  const incsLB = {
-    updatedAt: serverTimestamp(),
-    jpEnCorrect: increment(jpEnCorrect || 0),
-    enJpCorrect: increment(enJpCorrect || 0),
-    grammarCorrect: increment(grammarCorrect || 0),
+    // new aggregates (safe if zero):
+    hiraEnCorrect: increment(hiraEnCorrect || 0),
+    enHiraCorrect: increment(enHiraCorrect || 0),
+    kanjiHiraCorrect: increment(kanjiHiraCorrect || 0),
+    hiraKanjiCorrect: increment(hiraKanjiCorrect || 0),
+    hiraMeanKanjiCorrect: increment(hiraMeanKanjiCorrect || 0),
+    k2hmCorrect: increment(k2hmCorrect || 0),
+    writeEnHiraCorrect: increment(writeEnHiraCorrect || 0),
+    writeKanjiHiraCorrect: increment(writeKanjiHiraCorrect || 0),
     score: increment(scoreInc)
   };
 
-  batch.set(dailyRef, incsDaily, { merge: true });
-  batch.set(lbDaily,  incsLB,    { merge: true });
+  batch.set(dailyRef, incsGeneric, { merge: true });
+  batch.set(lbDaily,  incsGeneric, { merge: true });
+  batch.set(lbWeekly, incsGeneric, { merge: true });
 
   await batch.commit();
 };
+
 
 /* ------------------------------------------------------------------
    Commit any locally pending session after sign-in

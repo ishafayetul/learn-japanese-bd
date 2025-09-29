@@ -467,176 +467,95 @@ async function loadDeckManifest() {
   }
 }
 
-window.startWriteWords = function () {
-  if (!currentDeck.length) return alert("Pick a deck first!");
+let writeType = 'en->hira';
 
-  // Reset top counters for this session
-  mode = "write";
-  sessionBuf.mode = "write";    // keep mode label, but count towards enJpCorrect
+function startWriteWords(type = 'en->hira') {
+  writeType = type; // 'en->hira' | 'kanji->hira'
+  if (!currentDeck.length) return alert("Pick a deck first.");
   currentIndex = 0;
   score = { correct: 0, wrong: 0, skipped: 0 };
-
-  // Build an order and shuffle for randomness
-  writeState.order = [...currentDeck.keys()];
-  shuffleArray(writeState.order);
-  writeState.i = 0;
-  writeState.answered = false;
-
+  sessionBuf = {
+    deckName: currentDeckName, mode: 'write',
+    correct: 0, wrong: 0, skipped: 0, total: 0,
+    jpEnCorrect: 0, enJpCorrect: 0, grammarCorrect: 0,
+    writeEnHiraCorrect: 0, writeKanjiHiraCorrect: 0
+  };
+  persistSession();
   showSection("write");
-  writeRender();
-  writeUpdateProgress();
-  updateScore();
-};
+  renderWriteCard();
+  updateDeckProgress();
+}
+window.startWriteWords = startWriteWords;
 
-function writeRender() {
-  const idx = writeState.order[writeState.i];
-  const item = currentDeck[idx];
+function normalizeKana(s) {
+  if (!s) return "";
+  // trim + collapse spaces
+  s = s.replace(/\s+/g,'').trim();
+  // normalize prolonged sound mark and small kana equivalences loosely
+  // (keep it simple; IME will produce correct hiragana in practice)
+  return s;
+}
 
+function writeExpected(w) {
+  return (w.hiragana || "").trim();
+}
+
+function writePrompt(w) {
+  if (writeType === 'en->hira') return w.meaning || w.back || "";
+  return w.kanji || w.front || "";
+}
+
+function renderWriteCard() {
+  const w = currentDeck[currentIndex];
+  if (!w) return;
   const card = $("write-card");
-  if (card) {
-    card.className = "flashcard";
-    card.innerHTML = item ? `
-      <div class="learn-word-row">
-        <div class="learn-word">${item.back || "(no meaning)"}</div>
-        <button class="icon-btn" aria-label="Play pronunciation"
-                onclick="(function(){ const idx = writeState.order[writeState.i]; playWordAudioByIndex(idx); })()"
-                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); const idx = writeState.order[writeState.i]; playWordAudioByIndex(idx);}">🔊</button>
-      </div>
-    ` : "(finished)";
-
-  }
-
-  // script.js (inside writeRender, after setting up the card and resetting input)
-  const markBtn = $("write-mark-btn");
-  if (markBtn) {
-    const key = item ? item.front + "|" + item.back : "";
-    markBtn.disabled = false;
-    markBtn.classList.toggle("hidden", key && !!markedMap[key]);
-  }
-
-  const input = $("write-input");
-  if (input) {
-    input.value = "";
-    input.disabled = false;
-    input.focus();
-  }
-
-  const submitBtn = $("write-submit");
-  if (submitBtn) submitBtn.disabled = false;
-
-  const fb = $("write-feedback");
-  if (fb) fb.innerHTML = "";
-
-  writeState.answered = false;
+  card.innerHTML = `
+    <div class="learn-word">${writePrompt(w)}</div>
+    <div class="muted">${writeType==='en->hira' ? "Type the HIRAGANA" : "Type the HIRAGANA reading"}</div>
+  `;
+  setValue("write-input", "");
+  setText("write-feedback", "");
 }
 
-function writeUpdateProgress() {
-  const total = currentDeck.length || 0;
-  const done = Math.min(writeState.i, total);
-  const p = percent(done, total);
-  const bar = $("write-progress-bar");
-  const txt = $("write-progress-text");
-  if (bar) bar.style.width = `${p}%`;
-  if (txt) txt.textContent = `${done} / ${total} (${p}%)`;
-}
+function writeSubmit() {
+  const w = currentDeck[currentIndex];
+  if (!w) return;
+  const user = normalizeKana(getValue("write-input"));
+  const ans  = normalizeKana(writeExpected(w));
 
-window.writeSubmit = function () {
-  const idx = writeState.order[writeState.i];
-  const item = currentDeck[idx];
-  if (!item || writeState.answered) return;
-
-  const input = $("write-input");
-  const fb = $("write-feedback");
-  const userAnsRaw = input ? input.value : "";
-
-  const ok = normalizeAnswer(userAnsRaw) === normalizeAnswer(item.front);
-
-  // Feedback with diff on wrong
-  if (fb) {
-    const userDiffHtml = highlightDiff(userAnsRaw, item.front);
-    fb.innerHTML = ok
-      ? `✅ Correct!<br><b>Answer:</b> ${escapeHtml(item.front)}<br><b>Your answer:</b> ${escapeHtml(userAnsRaw)}`
-      : `❌ Wrong.<br><b>Answer:</b> ${escapeHtml(item.front)}<br><b>Your answer:</b> ${userDiffHtml}`;
-  }
-
-  // Update score + session buffer
-  const key = item.front + "|" + item.back;
+  const ok = (user === ans);
   if (ok) {
-    score.correct++;
-    sessionBuf.correct++;
-    sessionBuf.total++;
-    // Count towards EN -> JP category
-    sessionBuf.enJpCorrect++;
-    masteryMap[key] = (masteryMap[key] || 0) + 1;
-    if (masteryMap[key] >= 5) {
-      mistakes = mistakes.filter(m => m.front !== item.front || m.back !== item.back);
-    }
+    score.correct++; sessionBuf.correct++; sessionBuf.total++;
+    if (writeType === 'en->hira') sessionBuf.writeEnHiraCorrect++;
+    else sessionBuf.writeKanjiHiraCorrect++;
+    setText("write-feedback", "✅ Correct!");
   } else {
-    score.wrong++;
-    sessionBuf.wrong++;
-    sessionBuf.total++;
-    masteryMap[key] = 0;
-    mistakes.push(item);
+    score.wrong++; sessionBuf.wrong++; sessionBuf.total++;
+    setText("write-feedback", `❌ ${user || "(blank)"} → ${ans}`);
   }
-
-  localStorage.setItem("mistakes", JSON.stringify(mistakes));
-  localStorage.setItem("masteryMap", JSON.stringify(masteryMap));
-  renderMistakesUI(); // NEW
   persistSession();
   updateScore();
+}
 
-  // lock until Next
-  if (input) input.disabled = true;
-  const submitBtn = $("write-submit");
-  if (submitBtn) submitBtn.disabled = true;
-  writeState.answered = true;
-};
+function writeSkip() {
+  score.skipped++; sessionBuf.skipped++; sessionBuf.total++;
+  persistSession(); updateScore(); writeNext();
+}
+function writeNext() {
+  currentIndex = Math.min(currentIndex + 1, currentDeck.length - 1);
+  renderWriteCard(); updateDeckProgress();
+}
+function writeShowDetails() {
+  const w = currentDeck[currentIndex]; if (!w) return;
+  const out = `
+    <p><b>Kanji:</b> ${w.kanji || "(n/a)"}</p>
+    <p><b>Hiragana:</b> ${w.hiragana || "(n/a)"}</p>
+    <p><b>Meaning:</b> ${w.meaning || w.back || "(n/a)"}</p>
+    ${w.romaji ? `<p><b>Romaji:</b> ${w.romaji}</p>` : ""}
+  `;
+  setHtml("write-feedback", out);
+}
 
-window.writeSkip = function () {
-  const idx = writeState.order[writeState.i];
-  const item = currentDeck[idx];
-  if (!item) return;
-
-  const key = item.front + "|" + item.back;
-
-  score.skipped++;
-  sessionBuf.skipped++;
-  sessionBuf.total++;
-  masteryMap[key] = 0;
-  mistakes.push(item);
-
-  localStorage.setItem("mistakes", JSON.stringify(mistakes));
-  localStorage.setItem("masteryMap", JSON.stringify(masteryMap));
-  persistSession();
-  updateScore();
-
-  writeNext();
-};
-
-window.writeShowDetails = function () {
-  const idx = writeState.order[writeState.i];
-  const item = currentDeck[idx];
-  const fb = $("write-feedback");
-  if (fb && item) {
-    let details = item.romaji || "(no details)";
-    details = details.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>");
-    fb.innerHTML = `👁 <b>Details:</b> <p>${details}</p>`;
-  }
-};
-
-window.writeNext = function () {
-  writeState.i++;
-  writeUpdateProgress();
-
-  if (writeState.i >= writeState.order.length) {
-    alert(`Finished! ✅ ${score.correct} ❌ ${score.wrong} ➖ ${score.skipped}\nSaving your progress…`);
-    autoCommitIfNeeded("finish write words");
-    // Return to deck select like other flows
-    showSection("deck-select");
-  } else {
-    writeRender();
-  }
-};
 
 function parseCSV(text){
   const rows = [];
@@ -667,29 +586,60 @@ async function fetchAndParseCSV(url) {
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   const text = (await res.text()).replace(/^\uFEFF/, "");
   const table = parseCSV(text);
-
+  // Replace your "looksLikeHeader" + mapping block with this helper, then call it.
+function mapCsvRows(table) {
   const looksLikeHeader = (row) => {
-    if (!row || row.length === 0) return false;
-    const h = row.map(c => (c || "").trim().toLowerCase());
-    const set = new Set(h);
-    return (
-      set.has("front") || set.has("back") || set.has("romaji") ||
-      set.has("word")  || set.has("meaning") || set.has("question") || set.has("answer")
-    );
+    if (!row || row.length < 2) return false;
+    const h = row.map(x => String(x || "").toLowerCase().trim());
+    return h.includes("kanji") || h.includes("hiragana") || h.includes("english") ||
+           h.includes("romaji") || h.includes("meaning");
   };
 
-  const rows = (table.length && looksLikeHeader(table[0]) ? table.slice(1) : table)
-    .map(cols => {
-      const [word = "", meaning = "", romaji = ""] = cols;
-      return {
-        front:  (word    || "").trim(),
-        back:   (meaning || "").trim(),
-        romaji: (romaji  || "").trim(),
-      };
-    })
-    .filter(r => r.front && r.back);
+  const rowsOnly = (table.length && looksLikeHeader(table[0])) ? table.slice(1) : table;
 
-  return rows;
+  // normalize to { kanji, hiragana, meaning, front, back, romaji } for compatibility
+  const norm = rowsOnly.map(cols => {
+    const a = (cols[0] || "").trim();
+    const b = (cols[1] || "").trim();
+    const c = (cols[2] || "").trim();
+
+    // Try to auto-detect:
+    // New schema (kanji, hiragana, english_meaning)
+    const plausibleNew = /[ぁ-んァ-ンー]/.test(b) && /[a-z]/i.test(c);
+    // Old schema variants we used before:
+    //   [jp, meaning, romaji]  OR  [meaning, jp, romaji]
+    const looksOld1 = /[ぁ-んァ-ン一-龠々]/.test(a) && /[a-z]/i.test(b);
+    const looksOld2 = /[a-z]/i.test(a) && /[ぁ-んァ-ン一-龠々]/.test(b);
+
+    let kanji="", hiragana="", meaning="", romaji="";
+
+    if (plausibleNew) {
+      kanji = a; hiragana = b; meaning = c; romaji = "";
+    } else if (looksOld1) {
+      // a=jp (kanji or hira), b=english, c=romaji?
+      // try to split jp into kanji/hira heuristically
+      if (/[一-龠々]/.test(a)) { kanji = a; } else { hiragana = a; }
+      meaning = b; romaji = c;
+    } else if (looksOld2) {
+      // a=english, b=jp
+      meaning = a;
+      if (/[一-龠々]/.test(b)) { kanji = b; } else { hiragana = b; }
+      romaji = c;
+    } else {
+      // fallback: keep whatever present
+      kanji = a; hiragana = b; meaning = c;
+    }
+
+    // derive front/back (compat) -> default to JP→EN flows
+    const front = hiragana || kanji || "";
+    const back  = meaning || "";
+    return { kanji, hiragana, meaning, romaji, front, back };
+  }).filter(r => (r.front && r.back));
+
+  return norm;
+}
+
+  
 }
 
 function renderDeckButtons() {
@@ -751,158 +701,217 @@ function resolveAudioFolder(deckName) {
 
 // ---------------- PRACTICE (Vocab MCQ) ----------------
 function startPractice(selectedMode) {
-  mode = selectedMode;
-  sessionBuf.mode = selectedMode;
+  mode = selectedMode; // 'jp-en','en-jp','kanji-hira','hira-kanji','hira&mean-kanji','k2hm'
+  if (!currentDeck.length) return alert("Pick a deck first.");
+
   currentIndex = 0;
   score = { correct: 0, wrong: 0, skipped: 0 };
-  shuffleArray(currentDeck);
+
+  // reset (and expand) session counters
+  sessionBuf = {
+    deckName: currentDeckName,
+    mode,
+    correct: 0, wrong: 0, skipped: 0, total: 0,
+    // legacy counters kept for LB compatibility; new ones added below
+    jpEnCorrect: 0, enJpCorrect: 0, grammarCorrect: 0,
+    hiraEnCorrect: 0, enHiraCorrect: 0, kanjiHiraCorrect: 0, hiraKanjiCorrect: 0,
+    hiraMeanKanjiCorrect: 0, k2hmCorrect: 0
+  };
+  persistSession();
+
   showSection("practice");
-  updateScore();
-  updateDeckProgress();
   showQuestion();
 }
-window.startPractice = startPractice;
+
+function fieldPlanForMode(m) {
+  switch (m) {
+    case 'jp-en':        return { prompt: 'jp',  answer: 'en' }; // legacy: jp=hiragana|kanji, en=meaning
+    case 'en-jp':        return { prompt: 'en',  answer: 'jp' };
+    case 'kanji-hira':   return { prompt: 'kanji', answer: 'hiragana' };
+    case 'hira-kanji':   return { prompt: 'hiragana', answer: 'kanji' };
+    case 'hira&mean-kanji': return { prompt: ['hiragana','meaning'], answer: 'kanji' };
+    case 'k2hm':         return { prompt: 'kanji', answer: ['hiragana','meaning'] }; // dual
+    default:             return { prompt: 'jp',  answer: 'en' };
+  }
+}
+
+function getField(w, key) {
+  if (key === 'jp') return w.hiragana || w.kanji || w.front;
+  if (key === 'en') return w.meaning || w.back;
+  return w[key] || '';
+}
+
+let dualPick = { hira: null, mean: null };
 
 function showQuestion() {
   const q = currentDeck[currentIndex];
-  if (!q) return nextQuestion();
+  if (!q) return;
 
-  const front  = (mode === "jp-en") ? q.front : q.back;
-  const answer = (mode === "jp-en") ? q.back  : q.front;
-  const options = generateOptions(answer);
+  const plan = fieldPlanForMode(mode);
 
-  const qb = $("question-box");
-  if (qb) {
-  qb.className = "flashcard";
-  qb.innerHTML = `
-    <div class="learn-word-row">
-      <div class="learn-word">${front || "—"}</div>
-      <button class="icon-btn" aria-label="Play pronunciation"
-              onclick="playWordAudioByIndex(currentIndex)"
-              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); playWordAudioByIndex(currentIndex);}">🔊</button>
-    </div>
-  `;
+  // prompt
+  const promptText = Array.isArray(plan.prompt)
+      ? plan.prompt.map(k => getField(q, k)).join("　/　")
+      : getField(q, plan.prompt);
+
+  // build options
+  const optsWrap = $("options-wrap");
+  const ulSingle = $("options");
+  const dualWrap = $("dual-options");
+  const ulHira   = $("options-hira");
+  const ulMean   = $("options-mean");
+
+  // reset selections
+  dualPick = { hira: null, mean: null };
+
+  setText("question-box", promptText); // your flashcard/question element id
+  // Single-answer modes
+  if (!Array.isArray(plan.answer)) {
+    const answer = getField(q, plan.answer);
+    const distractors = makeDistractors(plan.answer, answer, 2, currentDeck);
+    const all = shuffleArray([answer, ...distractors]);
+    // show single
+    ulSingle.innerHTML = "";
+    all.forEach(opt => {
+      const li = document.createElement("li");
+      li.textContent = opt;
+      li.onclick = () => checkAnswerSingle(opt, answer, q);
+      ulSingle.appendChild(li);
+    });
+    ulSingle.classList.remove("hidden");
+    dualWrap.classList.add("hidden");
+  } else {
+    // Dual-answer: {hiragana, meaning}
+    const ansH = getField(q, 'hiragana');
+    const ansM = getField(q, 'meaning') || getField(q, 'en');
+
+    const hiraDistr = makeDistractors('hiragana', ansH, 2, currentDeck);
+    const meanDistr = makeDistractors('meaning',  ansM, 2, currentDeck);
+
+    const hiraAll = shuffleArray([ansH, ...hiraDistr]);
+    const meanAll = shuffleArray([ansM, ...meanDistr]);
+
+    // render dual lists
+    ulHira.innerHTML = "";
+    hiraAll.forEach(opt => {
+      const li = document.createElement("li");
+      li.textContent = opt;
+      li.onclick = () => {
+        dualPick.hira = opt;
+        ulHira.querySelectorAll("li").forEach(x => x.classList.toggle("selected", x === li));
+        tryGradeDual(q, ansH, ansM);
+      };
+      ulHira.appendChild(li);
+    });
+
+    ulMean.innerHTML = "";
+    meanAll.forEach(opt => {
+      const li = document.createElement("li");
+      li.textContent = opt;
+      li.onclick = () => {
+        dualPick.mean = opt;
+        ulMean.querySelectorAll("li").forEach(x => x.classList.toggle("selected", x === li));
+        tryGradeDual(q, ansH, ansM);
+      };
+      ulMean.appendChild(li);
+    });
+
+    ulSingle.classList.add("hidden");
+    dualWrap.classList.remove("hidden");
   }
 
-  setText("extra-info", "");
-  const optionsList = $("options");
-  if (!optionsList) return;
-  optionsList.innerHTML = "";
-
-  options.forEach((opt) => {
-    const li = document.createElement("li");
-    li.textContent = opt;
-    li.onclick = () => checkAnswer(opt, answer, q);
-    optionsList.appendChild(li);
-  });
-
-  // script.js (inside showQuestion, after setting question and options)
-  const markBtn = $("practice-mark-btn");
-    if (markBtn) {
-      const qKey = q.front + "|" + q.back;
-      markBtn.disabled = false;
-      markBtn.classList.toggle("hidden", !!markedMap[qKey]);
-    }
-
   updateDeckProgress();
-
 }
 
-function generateOptions(correct) {
-  const pool = currentDeck.map((q) => (mode === "jp-en" ? q.back : q.front)).filter(Boolean);
-  const unique = [...new Set(pool.filter((opt) => opt !== correct))];
-  shuffleArray(unique);
-  const distractors = unique.slice(0, 3);
-  const options = [correct, ...distractors];
-  return shuffleArray(options);
+function makeDistractors(fieldKey, correct, need, pool) {
+  const seen = new Set([String(correct)]);
+  const arr = [];
+  // sample from same deck, same field
+  const candidates = shuffleArray(pool.slice());
+  for (const w of candidates) {
+    const v = String(getField(w, fieldKey)).trim();
+    if (!v || seen.has(v)) continue;
+    arr.push(v); seen.add(v);
+    if (arr.length >= need) break;
+  }
+  // pad if needed
+  while (arr.length < need) arr.push("—");
+  return arr;
 }
 
-function checkAnswer(selected, correct, wordObj) {
-  const options = document.querySelectorAll("#options li");
-  options.forEach((li) => {
-    if (li.textContent === correct) li.classList.add("correct");
-    else if (li.textContent === selected) li.classList.add("wrong");
-  });
-
-  const key = wordObj.front + "|" + wordObj.back;
-
-  if (selected === correct) {
-    score.correct++;
-    sessionBuf.correct++;
-    sessionBuf.total++;
+function checkAnswerSingle(selected, answer, wordObj) {
+  const correctNow = (selected === answer);
+  if (correctNow) {
+    score.correct++; sessionBuf.correct++; sessionBuf.total++;
+    // per-mode successful counter
     if (mode === 'jp-en') sessionBuf.jpEnCorrect++;
-    else sessionBuf.enJpCorrect++;
-
-    masteryMap[key] = (masteryMap[key] || 0) + 1;
-    if (masteryMap[key] >= 5) {
-      mistakes = mistakes.filter(
-        (m) => m.front !== wordObj.front || m.back !== wordObj.back
-      );
-    }
+    else if (mode === 'en-jp') sessionBuf.enJpCorrect++;
+    else if (mode === 'kanji-hira') sessionBuf.kanjiHiraCorrect++;
+    else if (mode === 'hira-kanji') sessionBuf.hiraKanjiCorrect++;
+    else if (mode === 'hira&mean-kanji') sessionBuf.hiraMeanKanjiCorrect++;
   } else {
-    score.wrong++;
-    sessionBuf.wrong++;
-    sessionBuf.total++;
-
-    masteryMap[key] = 0;
-    mistakes.push(wordObj);
+    score.wrong++; sessionBuf.wrong++; sessionBuf.total++;
   }
 
-  localStorage.setItem("mistakes", JSON.stringify(mistakes));
-  localStorage.setItem("masteryMap", JSON.stringify(masteryMap));
-  renderMistakesUI(); 
   persistSession();
   updateScore();
-  setTimeout(() => {
-    nextQuestion();
-    updateDeckProgress();
-  }, 600);
+  setTimeout(() => { nextQuestion(); }, 500);
 }
 
-function skipQuestion() {
-  const wordObj = currentDeck[currentIndex];
-  if (!wordObj) return;
-  const key = wordObj.front + "|" + wordObj.back;
+function tryGradeDual(wordObj, ansH, ansM) {
+  if (!dualPick.hira || !dualPick.mean) return; // wait until both picked
 
-  score.skipped++;
-  sessionBuf.skipped++;
-  sessionBuf.total++;
+  const hiraLis = Array.from(($("options-hira")||document.createElement('ul')).children);
+  const meanLis = Array.from(($("options-mean")||document.createElement('ul')).children);
 
-  masteryMap[key] = 0;
-  mistakes.push(wordObj);
+  // Color feedback
+  hiraLis.forEach(li => {
+    li.classList.remove("correct","wrong");
+    if (li.textContent === ansH) li.classList.add("correct");
+    else if (li.classList.contains("selected")) li.classList.add("wrong");
+  });
+  meanLis.forEach(li => {
+    li.classList.remove("correct","wrong");
+    if (li.textContent === ansM) li.classList.add("correct");
+    else if (li.classList.contains("selected")) li.classList.add("wrong");
+  });
 
-  localStorage.setItem("mistakes", JSON.stringify(mistakes));
-  localStorage.setItem("masteryMap", JSON.stringify(masteryMap));
-  renderMistakesUI(); // NEW
-  persistSession();
-  updateScore();
-  nextQuestion();
-  updateDeckProgress();
-}
-window.skipQuestion = skipQuestion;
-
-function nextQuestion() {
-  currentIndex++;
-  if (currentIndex >= currentDeck.length) {
-    alert(`Finished! ✅ ${score.correct} ❌ ${score.wrong} ➖ ${score.skipped}\nSaving your progress…`);
-    showSection("deck-select");
+  const ok = (dualPick.hira === ansH) && (dualPick.mean === ansM);
+  if (ok) {
+    score.correct++; sessionBuf.correct++; sessionBuf.total++; sessionBuf.k2hmCorrect++;
   } else {
-    showQuestion();
+    score.wrong++; sessionBuf.wrong++; sessionBuf.total++;
   }
+
+  persistSession();
+  updateScore();
+  setTimeout(() => { nextQuestion(); }, 800);
 }
 
-function updateScore() {
-  setText("correct", String(score.correct));
-  setText("wrong", String(score.wrong));
-  setText("skipped", String(score.skipped));
-}
 
 // ---------------- LEARN mode (Flashcard + Prev/Next + Show Romaji) ----------------
-function startLearnMode() {
-  currentIndex = 0;
+// Learn types: 'hira-en' (default) or 'kanji-hira'
+let learnType = 'hira-en';
+
+function startLearnMode(type = 'hira-en') {
+  learnType = type;
   if (!currentDeck.length) return alert("Pick a deck first!");
+  // resume last position per deck + type
+  const posKey = `learnPos:${currentDeckName}:${learnType}`;
+  const saved = parseInt(localStorage.getItem(posKey) || "0", 10);
+  currentIndex = Number.isFinite(saved) ? Math.min(Math.max(saved, 0), currentDeck.length - 1) : 0;
+
   showSection("learn");
   showLearnCard();
+  learnNoteBindForCurrent?.();
+
+  // keyboard shortcuts
+  document.onkeydown = (e) => {
+    if (currentSectionId !== "learn") return;
+    if (e.key === "ArrowLeft") { prevLearn(); }
+    if (e.key === "ArrowRight") { nextLearn(); }
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); showLearnRomaji(); }
+  };
 }
 window.startLearnMode = startLearnMode;
 
@@ -910,73 +919,91 @@ function showLearnCard() {
   const word = currentDeck[currentIndex];
   if (!word) return;
 
+  const posKey = `learnPos:${currentDeckName}:${learnType}`;
+  localStorage.setItem(posKey, String(currentIndex));
+
   const box = $("learn-box");
   if (box) {
     const audioEnabled = !!(audioManifestLoaded && currentAudioFolder) || ('speechSynthesis' in window);
     const disabledAttr = audioEnabled ? "" : "disabled title='Audio not available on this device'";
-    const aria = `aria-label="Play pronunciation"`;
-    const kb = `onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); playLearnAudio();}"`;
-    
-    // Show word + meaning inside the flashcard (meaning always shown by default)
+
+    let mainLine = "";
+    let subLine  = "";
+
+    if (learnType === 'hira-en') {
+      mainLine = word.hiragana || word.front || "—";
+      subLine  = `Meaning: ${word.meaning || word.back || "(no meaning)"}`;
+    } else { // 'kanji-hira'
+      mainLine = word.kanji || word.front || "—";
+      subLine  = `Hiragana: ${word.hiragana || "(n/a)"}`;
+    }
+
     box.className = "flashcard";
     box.innerHTML = `
       <div class="learn-word-row">
-        <div class="learn-word">${word.front || "—"}</div>
-        <button class="icon-btn" aria-label="Play pronunciation"
-        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); playWordAudioByIndex(currentIndex);}"
-        onclick="playWordAudioByIndex(currentIndex)" ${disabledAttr}>🔊</button>
+        <div class="learn-word">${mainLine}</div>
+        <button class="icon-btn" onclick="playWordAudioByIndex(currentIndex)" ${disabledAttr}>🔊</button>
       </div>
-      <div class="learn-meaning muted">Meaning: ${word.back || "(no meaning)"} </div>
+      <div class="learn-meaning muted">${subLine}</div>
     `;
   }
 
-  // Clear romaji line under the card
   const extra = $("learn-extra");
   if (extra) extra.textContent = "";
 
   const markBtn = $("learn-mark-btn");
   if (markBtn) {
-    const key = word.front + "|" + word.back;
+    const key = (word.front || "") + "|" + (word.back || "");
     markBtn.disabled = false;
     markBtn.classList.toggle("hidden", !!markedMap[key]);
   }
 }
 
 function nextLearn() {
-  if (learnNoteTimer){ clearTimeout(learnNoteTimer); learnNoteTimer = null; learnNoteSaveNow(); }
-
+  if (learnNoteTimer){ clearTimeout(learnNoteTimer); learnNoteTimer = null; learnNoteSaveNow?.(); }
   if (!currentDeck.length) return;
   currentIndex = Math.min(currentIndex + 1, currentDeck.length - 1);
   showLearnCard();
-  learnNoteBindForCurrent();
-
+  learnNoteBindForCurrent?.();
 }
 window.nextLearn = nextLearn;
 
 function prevLearn() {
-  if (learnNoteTimer){ clearTimeout(learnNoteTimer); learnNoteTimer = null; learnNoteSaveNow(); }
+  if (learnNoteTimer){ clearTimeout(learnNoteTimer); learnNoteTimer = null; learnNoteSaveNow?.(); }
   if (!currentDeck.length) return;
   currentIndex = Math.max(currentIndex - 1, 0);
   showLearnCard();
-  learnNoteBindForCurrent();
-
+  learnNoteBindForCurrent?.();
 }
 window.prevLearn = prevLearn;
 
+// Reuse existing button id + name for "Show details"
 function showLearnRomaji() {
-  const word = currentDeck[currentIndex];
-  if (!word) return;
+  const w = currentDeck[currentIndex];
+  if (!w) return;
   const extra = $("learn-extra");
-  if (extra) {
-    let details = word.romaji || "(no details)";
-    // Convert \n\n to <p>, and single \n to <br>
-    details = details
-      .replace(/\n\n/g, "</p><p>")
-      .replace(/\n/g, "<br>");
-    extra.innerHTML = `<p>Details: ${details}</p>`;
+  if (!extra) return;
+
+  // Show the "remaining columns" based on current learnType
+  let html = "";
+  if (learnType === 'hira-en') {
+    html = `
+      <p><b>Kanji:</b> ${w.kanji || "(n/a)"}</p>
+      <p><b>Hiragana:</b> ${w.hiragana || "(n/a)"}</p>
+      <p><b>Meaning:</b> ${w.meaning || w.back || "(n/a)"}</p>
+      ${w.romaji ? `<p><b>Romaji:</b> ${w.romaji}</p>` : ""}
+    `;
+  } else {
+    html = `
+      <p><b>Hiragana:</b> ${w.hiragana || "(n/a)"}</p>
+      <p><b>Meaning:</b> ${w.meaning || w.back || "(n/a)"}</p>
+      ${w.romaji ? `<p><b>Romaji:</b> ${w.romaji}</p>` : ""}
+    `;
   }
+  extra.innerHTML = html;
 }
 window.showLearnRomaji = showLearnRomaji;
+
 
 async function ensureDeckNotesLoaded(deckName){
   if (notesCache[deckName]) return; // already loaded

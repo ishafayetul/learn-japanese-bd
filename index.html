@@ -28,6 +28,7 @@
       <button onclick="showSection('practice-grammar')">✍️ Practice Grammar</button>
       <button onclick="showSection('progress-section')">📈 Progress</button>
       <button onclick="showSection('overall-leaderboard-section')">🏆 Overall Leaderboard</button>
+      <button onclick="showSection('weekly-leaderboard-section')">🗓️ Weekly Leaderboard</button>
       <button onclick="showSection('todays-leaderboard-section')">📅 Today’s Leaderboard</button>
       <button onclick="showSection('mistakes-section')">❗ Mistakes</button>
       <button onclick="showSection('marked-section')">📌 Marked Words</button>
@@ -77,6 +78,10 @@
                 <button onclick="startMixedLearn()">🧠 Learn (mixed)</button>
                 <button onclick="startMixedPractice('jp-en')">JP → EN (mixed)</button>
                 <button onclick="startMixedPractice('en-jp')">EN → JP (mixed)</button>
+                <button onclick="startMixedPractice('kanji-hira')">Kanji → Hiragana (mixed)</button>
+                <button onclick="startMixedPractice('hira-kanji')">Hiragana → Kanji (mixed)</button>
+                <button onclick="startMixedPractice('hira&mean-kanji')">Hira&Meaning → Kanji (mixed)</button>
+                <button onclick="startMixedPractice('k2hm')">Kanji → Hira&Meaning (mixed)</button>
                 <button onclick="startMixedWrite()">✍️ Write Words (mixed)</button>
                 <button onclick="startMixedMake()">📝 Make Sentence (mixed)</button>
               </div>
@@ -92,6 +97,10 @@
           <button onclick="startLearnMode()">🧠 Learn</button>
           <button onclick="startPractice('jp-en')">Japanese → English</button>
           <button onclick="startPractice('en-jp')">English → Japanese</button>
+          <button onclick="startPractice('kanji-hira')">Kanji → Hiragana</button>
+          <button onclick="startPractice('hira-kanji')">Hiragana → Kanji</button>
+          <button onclick="startPractice('hira&mean-kanji')">Hiragana & Meaning → Kanji</button>
+          <button onclick="startPractice('k2hm')">Kanji → Hiragana & Meaning (dual)</button>
           <button onclick="startWriteWords()">✍️ Write Words</button>
           <button onclick="startMakeSentence()">📝 Make Sentence</button>
         </section>
@@ -126,7 +135,23 @@
           </div>
 
           <div class="flashcard" id="question-box"></div>
-          <ul id="options"></ul>
+          <!-- Single or Dual options container -->
+          <div id="options-wrap">
+            <ul id="options" class="options-single"></ul>
+
+            <!-- Dual-answer (hidden unless mode = k2hm) -->
+            <div id="dual-options" class="dual-grid hidden">
+              <div class="dual-col">
+                <h4>Hiragana</h4>
+                <ul id="options-hira"></ul>
+              </div>
+              <div class="dual-col">
+                <h4>Meaning</h4>
+                <ul id="options-mean"></ul>
+              </div>
+            </div>
+          </div>
+
           <div class="practice-actions">
             <button onclick="skipQuestion()">Skip</button>
             <button onclick="showRomaji()">👁 Show Details</button>
@@ -278,6 +303,10 @@
         <section id="todays-leaderboard-section" class="hidden">
           <h2>📅 Today’s Leaderboard</h2>
           <ul id="todays-leaderboard-list"></ul>
+        </section>
+        <section id="weekly-leaderboard-section" class="hidden">
+          <h2>🗓️ This Week’s Leaderboard</h2>
+          <ul id="weekly-leaderboard-list"></ul>
         </section>
 
         <!-- Mistakes -->

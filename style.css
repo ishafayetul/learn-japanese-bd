@@ -129,6 +129,25 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .correct{ background: var(--success) !important; }
 .wrong{ background: var(--danger) !important; }
 
+.dual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.dual-col h4 {
+  margin: 6px 0 8px;
+  font-size: 14px;
+  opacity: .8;
+}
+#dual-options.hidden { display: none; }
+.options-single.hidden { display: none; }
+
+/* Reuse your existing li styles; if needed, ensure click area is big */
+#options-hira li, #options-mean li {
+  cursor: pointer;
+  user-select: none;
+}
+
 /* =========================
    Flashcard (shared by Learn, Vocab MCQ, Practice Grammar)
    ========================= */
