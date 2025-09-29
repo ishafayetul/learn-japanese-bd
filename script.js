@@ -65,14 +65,6 @@ let audioFolders = new Set();
 // IME helper
 let __writeIMEComposing = false;
 
-
-////////////////////////
-// Tiny DOM utilities //
-////////////////////////
-const $  = (id) => document.getElementById(id);
-const setText = (id, txt) => { const el = $(id); if (el) el.textContent = String(txt ?? ""); };
-const setHTML = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
-
 function statusLine(id, msg) { const el = $(id); if (el) el.textContent = msg; console.log(`[status:${id}]`, msg); }
 function persistSession(){ localStorage.setItem("sessionBuf", JSON.stringify(sessionBuf)); }
 
@@ -780,7 +772,7 @@ function pushMistake(w){
 
 function renderMistakesUI(){
   const statusEl = $("mistakes-status");
-  const modeSel = $("mistakes-mode-select");
+  const modeSel = $("mistakes-mode");
   const n = Array.isArray(mistakes) ? mistakes.length : 0;
   if (statusEl) statusEl.textContent = n ? `You have ${n} mistake word${n===1?"":"s"}.` : "No mistakes yet.";
   if (modeSel) modeSel.classList.toggle("hidden", n === 0);
