@@ -48,7 +48,7 @@ let currentSectionId = "deck-select";
 let markedWordsList = [];         // array of {front, back, kanji, hiragana, meaning, deck, id}
 let markedMap = {};               // key = `${front}|${back}` => true
 let mistakes = JSON.parse(localStorage.getItem("mistakes")||"[]");    // same shape as cards
-renderMistakesUI();
+
 
 // Audio manifest
 let audioManifestLoaded = false;
@@ -57,6 +57,10 @@ let audioFolders = new Set();
 
 // IME helper
 let __writeIMEComposing = false;
+/* === DOM helpers MUST be first === */
+function $(id){ return document.getElementById(id); }
+function setText(id, txt){ const el = $(id); if (el) el.textContent = String(txt ?? ""); }
+function setHTML(id, html){ const el = $(id); if (el) el.innerHTML = html; }
 
 ////////////////////////
 // Tiny DOM utilities //
