@@ -27,9 +27,6 @@
       <button onclick="showSection('grammar-section')">📖 Grammar</button>
       <button onclick="showSection('practice-grammar')">✍️ Practice Grammar</button>
       <button onclick="showSection('progress-section')">📈 Progress</button>
-      <button onclick="showSection('overall-leaderboard-section')">🏆 Overall Leaderboard</button>
-      <button onclick="showSection('weekly-leaderboard-section')">🗓️ Weekly Leaderboard</button>
-      <button onclick="showSection('todays-leaderboard-section')">📅 Today’s Leaderboard</button>
       <button onclick="showSection('mistakes-section')">❗ Mistakes</button>
       <button onclick="showSection('marked-section')">📌 Marked Words</button>
       <button onclick="saveCurrentScore()">💾 Save Progress</button>
@@ -75,15 +72,15 @@
                 <button onclick="multiSelectDeckNone()">Clear</button>
               </div>
               <div class="practice-actions" style="margin-top:6px;">
-                <button onclick="startMixedLearn()">🧠 Learn (mixed)</button>
-                <button onclick="startMixedPractice('jp-en')">JP → EN (mixed)</button>
-                <button onclick="startMixedPractice('en-jp')">EN → JP (mixed)</button>
-                <button onclick="startMixedPractice('kanji-hira')">Kanji → Hiragana (mixed)</button>
-                <button onclick="startMixedPractice('hira-kanji')">Hiragana → Kanji (mixed)</button>
-                <button onclick="startMixedPractice('hira&mean-kanji')">Hira&Meaning → Kanji (mixed)</button>
-                <button onclick="startMixedPractice('k2hm')">Kanji → Hira&Meaning (mixed)</button>
-                <button onclick="startMixedWrite()">✍️ Write Words (mixed)</button>
-                <button onclick="startMixedMake()">📝 Make Sentence (mixed)</button>
+                <div id="mix-deck-list"></div>
+                <button onclick="startMixedPractice('hira-en')">Mixed: Hiragana → English</button>
+                <button onclick="startMixedPractice('en-hira')">Mixed: English → Hiragana</button>
+                <button onclick="startMixedPractice('kanji-hira')">Mixed: Kanji → Hiragana</button>
+                <button onclick="startMixedPractice('hira-kanji')">Mixed: Hiragana → Kanji</button>
+                <button onclick="startMixedPractice('k2hm')">Mixed: Kanji → (Hira & Meaning)</button>
+                <button onclick="startMixedPractice('hm2k')">Mixed: (Hira & Meaning) → Kanji</button>
+                <button onclick="startWriteWords('kanji->hira')">Write: Kanji → Hiragana</button>
+                <button onclick="startWriteWords('en->hira')">Write: English → Hiragana</button>
               </div>
               <p id="deck-multi-status" class="muted" style="margin-top:6px;">Select decks to enable.</p>
             </details>
@@ -94,14 +91,14 @@
         <!-- Mode -->
         <section id="mode-select" class="hidden">
           <h2>Select Mode</h2>
-          <button onclick="startLearnMode()">🧠 Learn</button>
-          <button onclick="startPractice('jp-en')">Japanese → English</button>
-          <button onclick="startPractice('en-jp')">English → Japanese</button>
+          <button onclick="startLearnMode('hira-en')">Learn: Hiragana → English</button>
+          <button onclick="startLearnMode('kanji-hira')">Learn: Kanji → Hiragana</button>
+          <button onclick="startPractice('hira-en')">Hiragana → English</button>
+          <button onclick="startPractice('en-hira')">English → Hiragana</button>
           <button onclick="startPractice('kanji-hira')">Kanji → Hiragana</button>
           <button onclick="startPractice('hira-kanji')">Hiragana → Kanji</button>
-          <button onclick="startPractice('hira&mean-kanji')">Hiragana & Meaning → Kanji</button>
-          <button onclick="startPractice('k2hm')">Kanji → Hiragana & Meaning (dual)</button>
-          <button onclick="startWriteWords()">✍️ Write Words</button>
+          <button onclick="startWriteWords('kanji->hira')">Write: Kanji → Hiragana</button>
+          <button onclick="startWriteWords('en->hira')">Write: English → Hiragana</button>
           <button onclick="startMakeSentence()">📝 Make Sentence</button>
         </section>
 
@@ -139,14 +136,14 @@
           <div id="options-wrap">
             <ul id="options" class="options-single"></ul>
 
-            <!-- Dual-answer (hidden unless mode = k2hm) -->
+            <!-- Dual-answer (only visible in k2hm) -->
             <div id="dual-options" class="dual-grid hidden">
               <div class="dual-col">
-                <h4>Hiragana</h4>
+                <h4>Hiragana（ひらがな）</h4>
                 <ul id="options-hira"></ul>
               </div>
               <div class="dual-col">
-                <h4>Meaning</h4>
+                <h4>Meaning（いみ）</h4>
                 <ul id="options-mean"></ul>
               </div>
             </div>
@@ -293,21 +290,6 @@
           </div>
         </section>
 
-        <!-- Overall Leaderboard -->
-        <section id="overall-leaderboard-section" class="hidden">
-          <h2>🏆 Overall Leaderboard</h2>
-          <ul id="overall-leaderboard-list"></ul>
-        </section>
-
-        <!-- Today’s Leaderboard -->
-        <section id="todays-leaderboard-section" class="hidden">
-          <h2>📅 Today’s Leaderboard</h2>
-          <ul id="todays-leaderboard-list"></ul>
-        </section>
-        <section id="weekly-leaderboard-section" class="hidden">
-          <h2>🗓️ This Week’s Leaderboard</h2>
-          <ul id="weekly-leaderboard-list"></ul>
-        </section>
 
         <!-- Mistakes -->
         <!-- Mistakes -->

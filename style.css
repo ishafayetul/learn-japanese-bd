@@ -517,3 +517,26 @@ button.unmark-btn:hover {
 }
 /* Optional AI loading tint */
 .pg-feedback.loading { background: var(--warning); color: #7c2d12; }
+/* Dual-answer layout */
+.dual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dual-col h4 { margin: 6px 0 8px; font-size: 14px; opacity: 0.8; }
+.hidden { display: none !important; }
+
+.options-single li,
+#options-hira li,
+#options-mean li {
+  cursor: pointer;
+  user-select: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #ddd);
+  margin-bottom: 6px;
+}
+
+.selected { outline: 2px solid var(--accent, #1677ff); }
+.correct  { background: rgba(30, 180, 90, 0.18); border-color: rgba(30,180,90,0.4); }
+.wrong    { background: rgba(220, 60, 60, 0.18); border-color: rgba(220,60,60,0.4); }
+
+/* Simple progress bars (practice/write) */
+.progress { background:#eee; border-radius: 999px; overflow:hidden; height:8px; }
+.progress .bar { height:100%; width:0%; background: var(--accent, #1677ff); transition: width .2s ease; }
