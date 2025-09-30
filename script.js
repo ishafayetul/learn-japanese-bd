@@ -250,13 +250,19 @@ async function whenFBReady(timeout = 15000) {
     try { await flushSession(); } catch {}
     App.level = level; App.lesson = null; App.tab = "videos"; App.mode = null;
     App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel(); setCrumbs();
+
+    // NEW: hide any previously open lesson/tab pane before we show the lesson list
+    [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
+    clearVideosPane(); clearVocabPane(); clearGrammarPane(); // also clears DOM inside tabs
+    elLessonArea.classList.add("hidden");                    // hide previous lesson detail view
+    closeVideoLightbox?.();                                  // close any open video overlay
+
     hideAllSections();
-    clearVideosPane(); clearVocabPane(); clearGrammarPane();
     elLevelShell.classList.remove("hidden");
-    elLessonArea.classList.add("hidden");
     elLessonStatus.textContent = "Scanning lessons…";
     await showLessonList(level);
   };
+
 
   window.openSection = async (name) => {
     try { await flushSession(); } catch {}
@@ -305,9 +311,17 @@ async function whenFBReady(timeout = 15000) {
   // ---------- Open lesson & tabs ----------
   async function openLesson(level, lesson){
     try { await flushSession(); } catch {}
+    // NEW: wipe any previous tab content first
+    [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
+    clearVideosPane(); clearVocabPane(); clearGrammarPane();
+    closeVideoLightbox?.();
+
     App.level = level; App.lesson = lesson; setCrumbs();
 
-    elLessonArea.classList.remove("hidden");
+    // Show lesson view; hide the lesson list if you prefer a single-pane experience
+    elLevelShell.classList.add("hidden");     // <— hide lesson list pane
+    elLessonArea.classList.remove("hidden");  // show the tabs for this lesson
+
     elLessonTitle.textContent = `${lesson.replace(/-/g," ")} — ${level}`;
     elLessonAvail.textContent = "";
     await openLessonTab("videos");
@@ -322,18 +336,19 @@ async function whenFBReady(timeout = 15000) {
   }
 
   window.openLessonTab = async (tab)=>{
-    try { await flushSession(); } catch {}
-    App.tab = tab; setCrumbs();
-    A(".tab-btn").forEach(b=>b.setAttribute("aria-selected", String(b.id===`tabbtn-${tab}`)));
-    [elTabVideos, elTabVocab, elTabGrammar].forEach(s=>s.classList.add("hidden"));
+  try { await flushSession(); } catch {}
+  App.tab = tab; setCrumbs();
 
-    // Always clear other panes before switching
-    clearVideosPane(); clearVocabPane(); clearGrammarPane();
+  // NEW: hide all tab panes and clear their DOM before showing the new one
+  [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
+  clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
 
-    if (tab==="videos"){ elTabVideos.classList.remove("hidden"); await renderVideos(); }
-    else if (tab==="vocab"){ elTabVocab.classList.remove("hidden"); await ensureDeckLoaded(); elVocabStatus.textContent = "Pick a mode."; }
-    else if (tab==="grammar"){ elTabGrammar.classList.remove("hidden"); wireGrammarTab(); }
+  // now show the selected tab
+  if (tab==="videos"){ elTabVideos.classList.remove("hidden"); await renderVideos(); }
+  else if (tab==="vocab"){ elTabVocab.classList.remove("hidden"); await ensureDeckLoaded(); elVocabStatus.textContent = "Pick a mode."; }
+  else if (tab==="grammar"){ elTabGrammar.classList.remove("hidden"); wireGrammarTab(); }
   };
+
 
   // ---------- Video Module (no extra file buttons) ----------
   async function loadAllVideoRows(level, lesson){
