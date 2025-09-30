@@ -35,6 +35,7 @@ async function whenFBReady(timeout = 15000) {
 
   // Shell
   const elApp = D("#app-root");
+  const elBack = D("#back-btn");
   const elCrumbLevel = D("#crumb-level");
   const elCrumbLesson = D("#crumb-lesson");
   const elCrumbMode = D("#crumb-mode");
@@ -208,6 +209,34 @@ async function whenFBReady(timeout = 15000) {
     return null;
   }
 
+  // Global Back button logic
+elBack.addEventListener("click", () => {
+  // 1) If a video is open, close it → back to videos
+  if (videoLightboxEl) {
+    closeVideoLightbox();
+    elLessonArea.classList.remove("hidden");
+    openLessonTab("videos");
+    updateBackVisibility();
+    return;
+  }
+
+  // 2) If we're in a lesson tabs view → go back to the lesson list
+  if (!elLessonArea.classList.contains("hidden")) {
+    elLessonArea.classList.add("hidden");
+    elLevelShell.classList.remove("hidden");
+    updateBackVisibility();
+    return;
+  }
+
+  // 3) If we're in any section (progress, leaderboards, etc.) → back to lesson list
+  const sections = [elProgressSection, elLeaderboardSection, elMistakesSection, elMarkedSection, elSignWordSection];
+  if (sections.some(s => !s.classList.contains("hidden"))) {
+    sections.forEach(s => s.classList.add("hidden"));
+    elLevelShell.classList.remove("hidden");
+    updateBackVisibility();
+  }
+});
+
   // ---------- Auth ----------
   elAuthBtn.addEventListener("click", async () => {
     try { const fb = await whenFBReady(); await fb.auth.signInWithGoogle(); }
@@ -225,6 +254,23 @@ async function whenFBReady(timeout = 15000) {
   }).catch(()=>{ elAuthGate.style.display=""; });
 
   // ---------- Routing & view cleanup ----------
+  // Hide every main pane (level list, lesson tabs, sections). Used before opening video full view.
+  function hideAllMain() {
+    [elLevelShell, elLessonArea, elProgressSection, elLeaderboardSection, elMistakesSection, elMarkedSection, elSignWordSection]
+      .forEach(x => x.classList.add("hidden"));
+    clearVideosPane(); clearVocabPane(); clearGrammarPane();
+  }
+
+  // Show/hide the global Back button depending on what's visible
+  function updateBackVisibility() {
+    // Back is visible whenever we're NOT on the level list
+    const onLevelList = !elLevelShell.classList.contains("hidden") &&
+                        elLessonArea.classList.contains("hidden") &&
+                        [elProgressSection, elLeaderboardSection, elMistakesSection, elMarkedSection, elSignWordSection]
+                          .every(s => s.classList.contains("hidden"));
+    elBack.classList.toggle("hidden", onLevelList && !videoLightboxEl);
+  }
+
   function clearVideosPane(){ elVideoCards.innerHTML = ""; elVideoStatus.textContent = ""; closeVideoLightbox(); }
   function clearVocabPane(){
     elVocabStatus.textContent = "";
@@ -247,33 +293,48 @@ async function whenFBReady(timeout = 15000) {
   }
 
   window.navigateLevel = async (level) => {
-    try { await flushSession(); } catch {}
-    App.level = level; App.lesson = null; App.tab = "videos"; App.mode = null;
-    App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel(); setCrumbs();
+  try { await flushSession(); } catch {}
+  App.level = level; App.lesson = null; App.tab = "videos"; App.mode = null;
+  App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel(); setCrumbs();
 
-    // NEW: hide any previously open lesson/tab pane before we show the lesson list
-    [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
-    clearVideosPane(); clearVocabPane(); clearGrammarPane(); // also clears DOM inside tabs
-    elLessonArea.classList.add("hidden");                    // hide previous lesson detail view
-    closeVideoLightbox?.();                                  // close any open video overlay
+  // Clean slate
+  [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
+  closeVideoLightbox();
+  hideAllMain();                   // <— hides everything
+  elLevelShell.classList.remove("hidden"); // show lesson list
 
-    hideAllSections();
-    elLevelShell.classList.remove("hidden");
-    elLessonStatus.textContent = "Scanning lessons…";
-    await showLessonList(level);
-  };
+  elLessonStatus.textContent = "Scanning lessons…";
+  await showLessonList(level);
+  updateBackVisibility();
+};
+
 
 
   window.openSection = async (name) => {
-    try { await flushSession(); } catch {}
-    hideAllSections();
-    clearVideosPane(); clearVocabPane(); clearGrammarPane();
-    if (name==="progress"){ elProgressSection.classList.remove("hidden"); await renderProgress(); }
-    else if (name==="leaderboard"){ elLeaderboardSection.classList.remove("hidden"); await renderOverallLeaderboard(); }
-    else if (name==="mistakes"){ elMistakesSection.classList.remove("hidden"); renderMistakesLanding(); }
-    else if (name==="marked"){ elMarkedSection.classList.remove("hidden"); await renderMarkedList(); }
-    else if (name==="signword"){ elSignWordSection.classList.remove("hidden"); await renderSignWordList(); }
-  };
+  try { await flushSession(); } catch {}
+  closeVideoLightbox();
+  hideAllMain();
+
+  if (name === "progress") {
+    elProgressSection.classList.remove("hidden");
+    await renderProgress();
+  } else if (name === "leaderboard") {
+    elLeaderboardSection.classList.remove("hidden");
+    await renderOverallLeaderboard();
+  } else if (name === "mistakes") {
+    elMistakesSection.classList.remove("hidden");
+    renderMistakesLanding();
+  } else if (name === "marked") {
+    elMarkedSection.classList.remove("hidden");
+    await renderMarkedList();
+  } else if (name === "signword") {
+    elSignWordSection.classList.remove("hidden");
+    await renderSignWordList();
+  }
+
+  updateBackVisibility();
+};
+
 
   // ---------- Lesson discovery ----------
   async function showLessonList(level){
@@ -311,20 +372,19 @@ async function whenFBReady(timeout = 15000) {
   // ---------- Open lesson & tabs ----------
   async function openLesson(level, lesson){
     try { await flushSession(); } catch {}
-    // NEW: wipe any previous tab content first
+    // wipe previous content
     [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
-    clearVideosPane(); clearVocabPane(); clearGrammarPane();
-    closeVideoLightbox?.();
+    closeVideoLightbox();
+    hideAllMain();
 
     App.level = level; App.lesson = lesson; setCrumbs();
 
-    // Show lesson view; hide the lesson list if you prefer a single-pane experience
-    elLevelShell.classList.add("hidden");     // <— hide lesson list pane
-    elLessonArea.classList.remove("hidden");  // show the tabs for this lesson
-
+    // show lesson tabs view
+    elLessonArea.classList.remove("hidden");
     elLessonTitle.textContent = `${lesson.replace(/-/g," ")} — ${level}`;
     elLessonAvail.textContent = "";
     await openLessonTab("videos");
+    updateBackVisibility();
 
     // quick availability snapshot
     const hasPDF = await anyExists([
@@ -347,7 +407,9 @@ async function whenFBReady(timeout = 15000) {
   if (tab==="videos"){ elTabVideos.classList.remove("hidden"); await renderVideos(); }
   else if (tab==="vocab"){ elTabVocab.classList.remove("hidden"); await ensureDeckLoaded(); elVocabStatus.textContent = "Pick a mode."; }
   else if (tab==="grammar"){ elTabGrammar.classList.remove("hidden"); wireGrammarTab(); }
-  };
+  updateBackVisibility();
+
+};
 
 
   // ---------- Video Module (no extra file buttons) ----------
@@ -403,37 +465,53 @@ async function whenFBReady(timeout = 15000) {
     }
   }
   function extractYouTubeId(u){ try{ const url=new URL(u); if(url.hostname.includes("youtu.be")) return url.pathname.slice(1); return url.searchParams.get("v")||""; }catch{ return ""; } }
-
-  // Lightbox for videos (moderate large)
   let videoLightboxEl = null;
-  function openVideoLightbox(yid, title){
+
+// Open enlarged video and HIDE previous content
+function openVideoLightbox(yid, title) {
+  hideAllMain(); // <-- hides lesson area, level list, sections
+  closeVideoLightbox();
+
+  videoLightboxEl = document.createElement("div");
+  videoLightboxEl.className = "lightbox";
+  videoLightboxEl.innerHTML = `
+    <div class="lightbox-backdrop"></div>
+    <div class="lightbox-inner card">
+      <div class="lightbox-head">
+        <button class="lightbox-close" aria-label="Back">← Back</button>
+        <h4 style="margin-left:8px">${escapeHTML(title)}</h4>
+      </div>
+      <div class="yt-wrap" style="height:56vw; max-height:520px;">
+        <iframe loading="lazy" width="100%" height="100%"
+          src="https://www.youtube-nocookie.com/embed/${yid}?autoplay=1"
+          title="${escapeHTML(title)}" frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </div>`;
+  document.body.appendChild(videoLightboxEl);
+
+  // Back actions
+  const goBack = () => {
     closeVideoLightbox();
-    videoLightboxEl = document.createElement("div");
-    videoLightboxEl.className = "lightbox";
-    videoLightboxEl.innerHTML = `
-      <div class="lightbox-backdrop"></div>
-      <div class="lightbox-inner card">
-        <div class="lightbox-head">
-          <h4>${escapeHTML(title)}</h4>
-          <button class="lightbox-close" aria-label="Close">✕</button>
-        </div>
-        <div class="yt-wrap">
-          <iframe loading="lazy" width="100%" height="100%"
-            src="https://www.youtube-nocookie.com/embed/${yid}?autoplay=1"
-            title="${escapeHTML(title)}" frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-        </div>
-      </div>`;
-    document.body.appendChild(videoLightboxEl);
-    videoLightboxEl.querySelector(".lightbox-backdrop")?.addEventListener("click", closeVideoLightbox, { passive:true });
-    videoLightboxEl.querySelector(".lightbox-close")?.addEventListener("click", closeVideoLightbox);
-    window.addEventListener("keydown", escCloseOnce, { once:true });
-  }
+    // Restore to the videos tab of the current lesson
+    elLessonArea.classList.remove("hidden");
+    openLessonTab("videos");
+    updateBackVisibility();
+  };
+  videoLightboxEl.querySelector(".lightbox-backdrop")?.addEventListener("click", goBack, { passive:true });
+  videoLightboxEl.querySelector(".lightbox-close")?.addEventListener("click", goBack);
+  window.addEventListener("keydown", function escOnce(e){ if(e.key==="Escape"){ goBack(); } }, { once:true });
+
+  updateBackVisibility();
+}
+
+function closeVideoLightbox() {
+  if (videoLightboxEl) { videoLightboxEl.remove(); videoLightboxEl = null; }
+}
+
+  
   function escCloseOnce(e){ if (e.key==="Escape") closeVideoLightbox(); }
-  function closeVideoLightbox(){
-    if (videoLightboxEl){ videoLightboxEl.remove(); videoLightboxEl = null; }
-  }
 
   // ---------- Vocabulary ----------
   async function listVocabCsvFiles(level, lesson){
