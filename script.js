@@ -129,20 +129,21 @@ async function whenFBReady(timeout = 15000) {
   const elToast = D("#toast");
 
   // ---------- State ----------
-  const App = {
-    level: null, lesson: null, tab: "videos", mode: null,
-    deck: [], deckFiltered: [], qIndex: 0,
-    stats: { right: 0, wrong: 0, skipped: 0 },
-    write: { order: [], idx: 0, variant: "en2h" }, // "en2h" | "k2h"
-    make: { order: [], idx: 0 },
-    pg:   { rows: [], idx: 0 },
-    buffer: { points: 0 },
-    cache: {
-      lessons: new Map(),     // level -> [Lesson-XX]
-      vocab: new Map(),       // key -> deck
-      vocabCsvFiles: new Map()
-    }
-  };
+  // ---------- State ----------
+const App = {
+  level: null, lesson: null, tab: "videos", mode: null,
+  deck: [], deckFiltered: [], qIndex: 0,
+  stats: { right: 0, wrong: 0, skipped: 0 },
+  write: { order: [], idx: 0, variant: "en2h" },
+  make: { order: [], idx: 0 },
+  pg:   { rows: [], idx: 0 },
+  buffer: { points: 0 },
+  cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() }
+};
+
+// 👇 Add this line
+window.App = App;
+
 
   // ---------- Utils ----------
   const pad2 = (n) => String(n).padStart(2, "0");
