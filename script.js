@@ -264,10 +264,19 @@ elBack.addEventListener("click", () => {
 
   // ---------- Routing & view cleanup ----------
   // Hide every main pane (level list, lesson tabs, sections). Used before opening video full view.
-  function hideAllMain() {
-    [elLevelShell, elLessonArea, elProgressSection, elLeaderboardSection, elMistakesSection, elMarkedSection, elSignWordSection]
-      .forEach(x => x.classList.add("hidden"));
-    clearVideosPane(); clearVocabPane(); clearGrammarPane();
+  function hideContentPanes() {
+    // Do NOT touch the navbar or left column
+    // Only clear the RIGHT-SIDE panes
+    elLessonArea.classList.add("hidden");
+    elProgressSection.classList.add("hidden");
+    elLeaderboardSection.classList.add("hidden");
+    elMistakesSection.classList.add("hidden");
+    elMarkedSection.classList.add("hidden");
+    elSignWordSection.classList.add("hidden");
+
+    clearVideosPane();
+    clearVocabPane();
+    clearGrammarPane();
   }
 
   // Show/hide the global Back button depending on what's visible
@@ -309,7 +318,7 @@ elBack.addEventListener("click", () => {
   // Clean slate
   [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
   closeVideoLightbox();
-  hideAllMain();                   // <— hides everything
+  hideContentPanes();                   // <— hides everything
   elLevelShell.classList.remove("hidden"); // show lesson list
 
   elLessonStatus.textContent = "Scanning lessons…";
@@ -322,7 +331,7 @@ elBack.addEventListener("click", () => {
   window.openSection = async (name) => {
   try { await flushSession(); } catch {}
   closeVideoLightbox();
-  hideAllMain();
+  hideContentPanes();
 
   if (name === "progress") {
     elProgressSection.classList.remove("hidden");
@@ -362,6 +371,7 @@ elBack.addEventListener("click", () => {
     }
   }
   // REPLACE discoverLessons with this version
+// FULL REPLACEMENT
 async function discoverLessons(level){
   const found = [];
   let misses = 0;
@@ -369,19 +379,12 @@ async function discoverLessons(level){
     const num = pad2(i);
     const L = `Lesson-${num}`;
 
-    // Only probe a few canonical names to avoid 404 spam
+    // Only probe Vocab canonical names to decide if a lesson exists
     const ok = await firstOk([
-      // Vocabulary: prefer lesson-{num}.csv (lower/upper)
       `/level/${level}/${L}/Vocabulary/lesson-${num}.csv`,
       `/level/${level}/${L}/Vocabulary/Lesson-${num}.csv`,
       `/level/${level}/${L}/Vocabulary/lesson.csv`,
       `/level/${level}/${L}/Vocabulary/Lesson.csv`,
-      // Grammar PDF (optional)
-      `/level/${level}/${L}/Grammar/lesson-${num}.pdf`,
-      `/level/${level}/${L}/Grammar/Lesson.pdf`,
-      // Video (ONLY canonical Lesson.csv; we won't try part-*.csv anymore)
-      `/level/${level}/${L}/Video Lecture/Lesson.csv`,
-      `/level/${level}/${L}/Video Lecture/lesson.csv`,
     ]);
 
     if (ok){
@@ -389,71 +392,65 @@ async function discoverLessons(level){
       misses = 0;
     } else {
       misses++;
-      // Stop scanning if we hit a run of empty lessons (prevents tons of 404s)
-      if (misses >= 6) break;
+      if (misses >= 6) break; // early stop on empty tail
     }
   }
   return found;
 }
 
 
+
   // ---------- Open lesson & tabs ----------
   // REPLACE openLesson with this version
+// FULL REPLACEMENT
 async function openLesson(level, lesson){
   try { await flushSession(); } catch {}
 
-  // Clean slate
+  // Right-side cleanup only
   [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
   clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
-  hideAllSections();           // hide progress/marked/etc.
-  elLevelShell.classList.add("hidden"); // hide lesson list
+  hideContentPanes();              // keep navbar/left area visible
 
-  // Set state + show lesson shell
+  // Set state + show right pane
   App.level = level;
   App.lesson = lesson;
   setCrumbs();
 
   elLessonArea.classList.remove("hidden");
   elLessonTitle.textContent = `${lesson.replace(/-/g," ")} — ${level}`;
-  elLessonAvail.textContent = "Checking files…";
+  elLessonAvail.textContent = "Loading…";
 
   const num = lesson.split("-")[1];
 
-  // Decide the DEFAULT tab by what exists
+  // ONLY check Vocab for default tab to avoid 404 noise
   const hasVocab = await firstOk([
     `/level/${level}/${lesson}/Vocabulary/lesson-${num}.csv`,
     `/level/${level}/${lesson}/Vocabulary/Lesson-${num}.csv`,
     `/level/${level}/${lesson}/Vocabulary/lesson.csv`,
     `/level/${level}/${lesson}/Vocabulary/Lesson.csv`,
   ]);
-  const hasVideo = await firstOk([
-    `/level/${level}/${lesson}/Video Lecture/Lesson.csv`,
-    `/level/${level}/${lesson}/Video Lecture/lesson.csv`,
-  ]);
-  const hasPdf = await firstOk([
-    `/level/${level}/${lesson}/Grammar/lesson-${num}.pdf`,
-    `/level/${level}/${lesson}/Grammar/Lesson.pdf`,
-  ]);
 
-  // Prefer Vocab → Video → Grammar
-  const defaultTab = hasVocab ? "vocab" : (hasVideo ? "videos" : (hasPdf ? "grammar" : "videos"));
+  // Default to Vocab if present, otherwise Videos (we won't probe Video now)
+  const defaultTab = hasVocab ? "vocab" : "videos";
   await openLessonTab(defaultTab);
 
-  elLessonAvail.textContent = `Vocab: ${hasVocab ? "Yes" : "No"} • Video: ${hasVideo ? "Yes" : "No"} • PDF: ${hasPdf ? "Yes" : "No"}`;
+  // Avail string (lazy, don’t probe missing files)
+  elLessonAvail.textContent = hasVocab ? "Vocab: Yes" : "Vocab: No";
   updateBackVisibility();
 }
 
 
+
   // REPLACE openLessonTab with this version
+// FULL REPLACEMENT
 window.openLessonTab = async (tab)=>{
   try { await flushSession(); } catch {}
   App.tab = tab; setCrumbs();
 
-  // Always clear/hide all panes first
+  // Right-side cleanup only
   [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
   clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
 
-  // Now show the selected pane
   if (tab === "videos") {
     elTabVideos.classList.remove("hidden");
     await renderVideos();
@@ -468,6 +465,7 @@ window.openLessonTab = async (tab)=>{
 
   updateBackVisibility();
 };
+
 
 
 
@@ -523,7 +521,7 @@ async function loadAllVideoRows(level, lesson){
 
 // Open enlarged video and HIDE previous content
 function openVideoLightbox(yid, title) {
-  hideAllMain(); // <-- hides lesson area, level list, sections
+  hideContentPanes(); // <-- hides lesson area, level list, sections
   closeVideoLightbox();
 
   videoLightboxEl = document.createElement("div");
