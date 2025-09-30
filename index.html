@@ -2,317 +2,322 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Japanese Vocab MCQ Practice</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Learn Japanese — N5 to N3</title>
   <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Auth gate -->
+  <!-- ========== Auth Gate ========== -->
   <div id="auth-gate" class="auth-gate">
     <div class="auth-card">
-      <h1>Learn Japanese N5</h1>
-      <h1>Sign in to continue</h1>
-      <p class="muted">Use your Google account to save progress and continue.</p>
+      <h1>Learn Japanese</h1>
+      <p class="muted">Sign in with Google to save progress, notes, and leaderboards.</p>
       <button id="auth-btn">🔐 Sign in with Google</button>
       <p id="auth-error" class="error" style="display:none;"></p>
     </div>
   </div>
 
-  <!-- App (hidden until signed in) -->
+  <!-- ========== App ========== -->
   <div id="app-root" class="layout hidden">
-    <nav class="sidebar">
+    <!-- Sidebar -->
+    <nav class="sidebar" aria-label="Main">
       <h2>📘 Menu</h2>
-      <button onclick="showSection('deck-select')">📚 Vocab</button>
-      <button onclick="showSection('grammar-section')">📖 Grammar</button>
-      <button onclick="showSection('practice-grammar')">✍️ Practice Grammar</button>
-      <button onclick="showSection('progress-section')">📈 Progress</button>
-      <button onclick="showSection('overall-leaderboard-section')">🏆 Overall Leaderboard</button>
-      <button onclick="showSection('todays-leaderboard-section')">📅 Today’s Leaderboard</button>
-      <button onclick="showSection('mistakes-section')">❗ Mistakes</button>
-      <button onclick="showSection('marked-section')">📌 Marked Words</button>
+      <button onclick="navigateLevel('N5')">Learn N5</button>
+      <button onclick="navigateLevel('N4')">Learn N4</button>
+      <button onclick="navigateLevel('N3')">Learn N3</button>
+      <hr style="opacity:.2;border:none;border-top:1px solid #ffffff30;margin:8px 0 12px">
+      <button onclick="openSection('progress')">📈 Progress</button>
+      <button onclick="openSection('leaderboard')">🏆 Overall Leaderboard</button>
+      <button onclick="openSection('mistakes')">❗ Mistakes</button>
+      <button onclick="openSection('marked')">📌 Marked Words</button>
+      <button onclick="openSection('signword')">✍️ Sign Word</button>
+      <hr style="opacity:.2;border:none;border-top:1px solid #ffffff30;margin:12px 0">
       <button onclick="saveCurrentScore()">💾 Save Progress</button>
-      <button onclick="resetSite()">🔁 Reset</button>
+      <button id="signout-btn" class="danger">🚪 Sign out</button>
     </nav>
 
-    <!-- To-Do flyout (shown/hidden by firebase.js) -->
-    <div id="todo-flyout" class="todo-flyout hidden">
-      <div class="todo-head">
-        <span>Today’s To-Dos</span>
-        <span id="todo-timer" class="todo-timer">00:00:00</span>
-      </div>
-      <ul id="todo-list" class="todo-list"></ul>
-      <div id="admin-row" class="admin-row hidden">
-        <input id="admin-task-input" placeholder="Add a task for everyone today…" />
-        <button id="admin-task-add">Add</button>
-      </div>
-    </div>
-
+    <!-- Main content -->
     <div class="main-content">
-      <header>
-        <h1>Japanese Vocabulary Practice</h1>
-        <div id="score">
-          ✅ Correct: <span id="correct">0</span>
-          ❌ Wrong: <span id="wrong">0</span>
-          ➖ Skipped: <span id="skipped">0</span>
+      <header class="topbar">
+        <div class="crumbs" aria-live="polite">
+          <span id="crumb-level">—</span>
+          <span class="sep">›</span>
+          <span id="crumb-lesson">—</span>
+          <span class="sep">›</span>
+          <span id="crumb-mode">—</span>
+        </div>
+        <div class="topbar-right">
+          <div id="score">
+            ✅ Correct: <span id="correct">0</span>
+            ❌ Wrong: <span id="wrong">0</span>
+            ➖ Skipped: <span id="skipped">0</span>
+          </div>
+          <button onclick="saveCurrentScore()">💾 Save</button>
         </div>
       </header>
 
       <main>
-        <!-- Vocab -->
-        <section id="deck-select">
-          <h2>Vocab</h2>
-          <p id="deck-status" class="muted" style="margin:8px 0"></p>
-          <div id="deck-buttons"></div>
-          <!-- Multi-select Vocab -->
-          <div id="deck-multi" class="card" style="margin-top:10px;">
-            <details open>
-              <summary><b>🧩 Mix multiple vocab decks</b></summary>
-              <div id="deck-multi-list" style="margin:10px 0;"></div>
-              <div class="practice-actions">
-                <button onclick="multiSelectDeckAll()">Select All</button>
-                <button onclick="multiSelectDeckNone()">Clear</button>
+        <!-- ========= Level Shell (N5/N4/N3) ========= -->
+        <section id="level-shell" class="hidden">
+          <div class="level-head">
+            <h2 id="level-title">Level —</h2>
+            <p class="muted">Pick a lesson. Lessons are discovered from <code>/level/&lt;Nx&gt;/Lesson-YY/</code>.</p>
+          </div>
+
+          <!-- Lessons list -->
+          <div class="card">
+            <h3>Lessons</h3>
+            <div id="lesson-list" class="lesson-list" role="list"></div>
+            <p id="lesson-status" class="muted" style="margin-top:6px;">Loading lessons…</p>
+          </div>
+
+          <!-- Lesson area -->
+          <div id="lesson-area" class="hidden">
+            <div class="lesson-bar card">
+              <div class="lesson-meta">
+                <b id="lesson-title">Lesson —</b>
+                <span id="lesson-availability" class="muted"></span>
               </div>
-              <div class="practice-actions" style="margin-top:6px;">
-                <button onclick="startMixedLearn()">🧠 Learn (mixed)</button>
-                <button onclick="startMixedPractice('jp-en')">JP → EN (mixed)</button>
-                <button onclick="startMixedPractice('en-jp')">EN → JP (mixed)</button>
-                <button onclick="startMixedWrite()">✍️ Write Words (mixed)</button>
-                <button onclick="startMixedMake()">📝 Make Sentence (mixed)</button>
+              <div class="lesson-tabs" role="tablist" aria-label="Lesson content tabs">
+                <button id="tabbtn-videos" class="tab-btn" role="tab" aria-controls="tab-videos" aria-selected="true" onclick="openLessonTab('videos')">🎬 Video Lectures</button>
+                <button id="tabbtn-vocab"  class="tab-btn" role="tab" aria-controls="tab-vocab"  aria-selected="false" onclick="openLessonTab('vocab')">🗂 Vocabulary</button>
+                <button id="tabbtn-grammar"class="tab-btn" role="tab" aria-controls="tab-grammar" aria-selected="false" onclick="openLessonTab('grammar')">📖 Grammar</button>
               </div>
-              <p id="deck-multi-status" class="muted" style="margin-top:6px;">Select decks to enable.</p>
-            </details>
-          </div>
-
-        </section>
-
-        <!-- Mode -->
-        <section id="mode-select" class="hidden">
-          <h2>Select Mode</h2>
-          <button onclick="startLearnMode()">🧠 Learn</button>
-          <button onclick="startPractice('jp-en')">Japanese → English</button>
-          <button onclick="startPractice('en-jp')">English → Japanese</button>
-          <button onclick="startWriteWords()">✍️ Write Words</button>
-          <button onclick="startMakeSentence()">📝 Make Sentence</button>
-        </section>
-
-        <!-- Learn (flashcard + prev/next + romaji in middle) -->
-        <section id="learn" class="hidden">
-          <div class="flashcard" id="learn-box"></div>
-          <div class="card learn-note-card">
-          <div class="learn-note-row">
-            <label for="learn-note-text" class="learn-note-label">📝 Note for this word</label>
-            <span id="learn-note-status" class="learn-note-status muted">—</span>
-          </div>
-          <textarea id="learn-note-text" class="learn-note-input" rows="3" placeholder="Write your own mnemonic, nuance, usage, Bangla hint, etc."></textarea>
-          <div class="practice-actions">
-            <button id="learn-note-save" class="save" onclick="learnNoteSaveNow()">Save Note</button>
-          </div>
-        </div>
-          <div class="practice-actions">
-            <button onclick="prevLearn()">⬅️ Previous</button>
-            <button onclick="showLearnRomaji()">👁 Show Details</button>
-            <button onclick="nextLearn()">➡️ Next</button>
-            <button id="learn-mark-btn" onclick="markCurrentWord()">📌 Mark</button>
-          </div>
-          <div id="learn-extra" class="muted" style="margin-top:8px;"></div>
-        </section>
-
-        <!-- Practice (MCQ) -->
-        <section id="practice" class="hidden">
-          <div id="deck-progress" class="deck-progress">
-            <div class="deck-progress-bar" id="deck-progress-bar"></div>
-            <div class="deck-progress-text" id="deck-progress-text">0 / 0 (0%)</div>
-          </div>
-
-          <div class="flashcard" id="question-box"></div>
-          <ul id="options"></ul>
-          <div class="practice-actions">
-            <button onclick="skipQuestion()">Skip</button>
-            <button onclick="showRomaji()">👁 Show Details</button>
-            <button onclick="showMeaning()">💡 Show Meaning</button>
-            <button id="learn-mark-btn" onclick="markCurrentWord()">📌 Mark</button>
-          </div>
-          <div id="extra-info" style="margin-top: 10px; font-size: 16px;"></div>
-        </section>
-
-        <!-- Grammar (PDF list) -->
-        <section id="grammar-section" class="hidden">
-          <h2>Grammar Lessons</h2>
-          <p id="grammar-status" class="muted" style="margin:8px 0"></p>
-          <div id="grammar-list"></div>
-        </section>
-
-        <!-- ✍️ Practice Grammar (type the answer) -->
-        <section id="practice-grammar" class="hidden">
-          <h2>Practice Grammar</h2>
-          <p id="pg-status" class="muted" style="margin:8px 0">Loading practice sets…</p>
-          <div id="pg-file-buttons" class="pg-files"></div>
-          <!-- Multi-select Grammar -->
-          <div id="pg-multi" class="card" style="margin-top:10px;">
-            <details>
-              <summary><b>🧩 Mix multiple grammar sets</b></summary>
-              <div id="pg-multi-list" class="pg-files" style="margin:10px 0;"></div>
-              <div class="practice-actions">
-                <button onclick="pgMultiSelectAll()">Select All</button>
-                <button onclick="pgMultiSelectNone()">Clear</button>
-                <button onclick="pgStartMixed()">Start Mixed Grammar ➡️</button>
-              </div>
-              <p id="pg-multi-status" class="muted" style="margin-top:6px;">Pick sets to combine.</p>
-            </details>
-          </div>
-
-          <!-- Shown when a set is started -->
-          <div id="pg-area" class="hidden">
-            <div id="pg-progress" class="deck-progress">
-              <div class="deck-progress-bar" id="pg-progress-bar"></div>
-              <div class="deck-progress-text" id="pg-progress-text">0 / 0 (0%)</div>
             </div>
 
-            <div class="flashcard" id="pg-card"></div>
+            <!-- Tab: Videos -->
+            <section id="tab-videos" class="tab-pane">
+              <div class="card">
+                <h3>Lectures</h3>
+                <p id="video-status" class="muted">Loading video manifest…</p>
+                <div id="video-cards" class="video-grid" role="list"></div>
+              </div>
+            </section>
 
-            <div class="pg-input-row">
-              <input id="pg-input" class="pg-input" placeholder="Type your answer…" />
-              <button id="pg-submit" onclick="pgSubmit()">Submit</button>
-              <button id="pg-show-answer" onclick="pgShowAnswer()">Show Answer</button>
-              <button id="pg-next" onclick="pgNext()">Next ➡️</button>
-            </div>
+            <!-- Tab: Vocab -->
+            <section id="tab-vocab" class="tab-pane hidden">
+              <div class="card">
+                <h3>Vocab Modes</h3>
+                <div id="vocab-mode-select" class="practice-actions">
+                  <button onclick="startLearnMode()">🧠 Learn</button>
+                  <button onclick="startPractice('jp-en')">Hiragana → English</button>
+                  <button onclick="startPractice('en-jp')">English → Hiragana</button>
+                  <button onclick="startPractice('kanji-hira')" id="btn-k2h">Kanji → Hiragana</button>
+                  <button onclick="startPractice('hira-kanji')" id="btn-h2k">Hiragana → Kanji</button>
+                  <button onclick="startDualMCQ('k2h-e')" id="btn-k2h-e">Kanji → (Hiragana & English)</button>
+                  <button onclick="startDualMCQ('he2k')" id="btn-he2k">Hiragana, English → Kanji</button>
+                  <button onclick="startWriteWords()">✍️ Write (type Hiragana)</button>
+                  <button onclick="startMakeSentence()">📝 Make Sentence</button>
+                </div>
+                <p id="vocab-status" class="muted" style="margin-top:6px;">Pick a mode.</p>
+              </div>
 
-            <div id="pg-feedback" class="pg-feedback muted"></div>
+              <!-- Flashcard Learn -->
+              <section id="learn" class="hidden">
+                <div class="flashcard" id="learn-box"></div>
+
+                <!-- Notes -->
+                <div class="card learn-note-card">
+                  <div class="learn-note-row">
+                    <label for="learn-note-text" class="learn-note-label">📝 Note for this word</label>
+                    <span id="learn-note-status" class="learn-note-status muted">—</span>
+                  </div>
+                  <textarea id="learn-note-text" class="learn-note-input" rows="3" placeholder="Write your mnemonic, nuance, Bangla hint, etc."></textarea>
+                  <div class="practice-actions">
+                    <button id="learn-note-save" class="save" onclick="learnNoteSaveNow()">Save Note</button>
+                    <button id="learn-mark-btn" onclick="markCurrentWord()">📌 Mark</button>
+                  </div>
+                </div>
+
+                <div class="practice-actions">
+                  <button onclick="prevLearn()">⬅️ Previous</button>
+                  <button onclick="showLearnRomaji()">👁 Show Details</button>
+                  <button onclick="nextLearn()">➡️ Next</button>
+                </div>
+                <div id="learn-extra" class="muted" style="margin-top:8px;"></div>
+              </section>
+
+              <!-- MCQ -->
+              <section id="practice" class="hidden">
+                <div class="deck-progress">
+                  <div class="deck-progress-bar" id="deck-progress-bar"></div>
+                  <div class="deck-progress-text" id="deck-progress-text">0 / 0 (0%)</div>
+                </div>
+
+                <div class="flashcard" id="question-box"></div>
+                <ul id="options"></ul>
+                <div class="practice-actions">
+                  <button onclick="skipQuestion()">Skip</button>
+                  <button onclick="showRomaji()">👁 Show Details</button>
+                  <button onclick="showMeaning()">💡 Show Meaning</button>
+                  <button id="practice-mark-btn" onclick="markCurrentWord()">📌 Mark</button>
+                </div>
+                <div id="extra-info" class="muted" style="margin-top:10px;"></div>
+              </section>
+
+              <!-- Write -->
+              <section id="write" class="hidden">
+                <div class="deck-progress">
+                  <div class="deck-progress-bar" id="write-progress-bar"></div>
+                  <div class="deck-progress-text" id="write-progress-text">0 / 0 (0%)</div>
+                </div>
+
+                <div class="flashcard" id="write-card"></div>
+                <div class="pg-input-row">
+                  <input id="write-input" class="pg-input" placeholder="Type the Hiragana…" />
+                  <button id="write-submit" onclick="writeSubmit()">Submit</button>
+                  <button id="write-skip" onclick="writeSkip()">Skip</button>
+                  <button id="write-details" onclick="writeShowDetails()">👁 Show Details</button>
+                  <button id="write-next" onclick="writeNext()">Next ➡️</button>
+                  <button id="write-mark-btn" onclick="markCurrentWord()">📌 Mark</button>
+                </div>
+                <div id="write-feedback" class="pg-feedback muted"></div>
+              </section>
+
+              <!-- Make Sentence -->
+              <section id="make" class="hidden">
+                <div class="deck-progress">
+                  <div class="deck-progress-bar" id="make-progress-bar"></div>
+                  <div class="deck-progress-text" id="make-progress-text">0 / 0 (0%)</div>
+                </div>
+
+                <div class="flashcard" id="make-card"></div>
+                <div class="pg-input-row">
+                  <textarea id="make-input" class="pg-input make-textarea" rows="3"
+                    placeholder="Write a simple sentence using ALL shown word(s)…"></textarea>
+                  <button id="make-submit" onclick="makeSubmit()">Submit</button>
+                  <button id="make-skip" onclick="makeSkip()">Skip</button>
+                  <button id="make-hints" onclick="makeShowHints()">👁 Show Hints</button>
+                  <button id="make-next" onclick="makeNext()">Next ➡️</button>
+                </div>
+                <div id="make-feedback" class="pg-feedback muted"></div>
+              </section>
+            </section>
+
+            <!-- Tab: Grammar -->
+            <section id="tab-grammar" class="tab-pane hidden">
+              <div class="card">
+                <h3>Lesson PDF</h3>
+                <p class="muted">Opens <code>/level/&lt;Nx&gt;/Lesson-YY/Grammar/lesson-YY.pdf</code> in a new tab.</p>
+                <button id="open-grammar-pdf">📄 Open Lesson PDF</button>
+              </div>
+
+              <div class="card" style="margin-top:12px;">
+                <h3>Practice (typing)</h3>
+                <p id="pg-status" class="muted">Pick a set to start.</p>
+                <div id="pg-file-buttons" class="pg-files"></div>
+
+                <div id="pg-area" class="hidden">
+                  <div class="deck-progress">
+                    <div class="deck-progress-bar" id="pg-progress-bar"></div>
+                    <div class="deck-progress-text" id="pg-progress-text">0 / 0 (0%)</div>
+                  </div>
+
+                  <div class="flashcard" id="pg-card"></div>
+                  <div class="pg-input-row">
+                    <input id="pg-input" class="pg-input" placeholder="Type your answer…" />
+                    <button id="pg-submit" onclick="pgSubmit()">Submit</button>
+                    <button id="pg-show-answer" onclick="pgShowAnswer()">Show Answer</button>
+                    <button id="pg-next" onclick="pgNext()">Next ➡️</button>
+                  </div>
+                  <div id="pg-feedback" class="pg-feedback muted"></div>
+                </div>
+              </div>
+            </section>
           </div>
         </section>
-        <!-- ✍️ Write Words (EN → JP typing) -->
-        <section id="write" class="hidden">
-          <div class="deck-progress">
-            <div class="deck-progress-bar" id="write-progress-bar"></div>
-            <div class="deck-progress-text" id="write-progress-text">0 / 0 (0%)</div>
-          </div>
 
-          <div class="flashcard" id="write-card"></div>
-
-          <div class="pg-input-row"> <!-- reuse existing styles -->
-            <input id="write-input" class="pg-input" placeholder="Type the Japanese word…" />
-            <button id="write-submit" onclick="writeSubmit()">Submit</button>
-            <button id="write-skip" onclick="writeSkip()">Skip</button>
-            <button id="write-details" onclick="writeShowDetails()">👁 Show Details</button>
-            <button id="write-next" onclick="writeNext()">Next ➡️</button>
-            <button id="write-mark-btn" onclick="markCurrentWord()">📌 Mark</button>
-          </div>
-
-          <div id="write-feedback" class="pg-feedback muted"></div>
-        </section>
-        <section id="make" class="hidden">
-          <div class="deck-progress">
-            <div class="deck-progress-bar" id="make-progress-bar"></div>
-            <div class="deck-progress-text" id="make-progress-text">0 / 0 (0%)</div>
-          </div>
-
-          <div class="flashcard" id="make-card"></div>
-
-          <div class="pg-input-row">
-            <textarea id="make-input" class="pg-input make-textarea" rows="3"
-              placeholder="Write a Japanese sentence using ALL shown word(s)…"></textarea>
-            <button id="make-submit" onclick="makeSubmit()">Submit</button>
-            <button id="make-skip" onclick="makeSkip()">Skip</button>
-            <button id="make-hints" onclick="makeShowHints()">👁 Show Hints</button>
-            <button id="make-next" onclick="makeNext()">Next ➡️</button>
-          </div>
-
-          <div id="make-feedback" class="pg-feedback muted"></div>
-        </section>
-
-        <!-- Progress -->
+        <!-- ========= Progress ========= -->
         <section id="progress-section" class="hidden">
           <h2>📈 Your Progress</h2>
           <div class="progress-grid">
-            <div class="card">
-              <h3>Last Attempt</h3>
-              <div id="progress-last">No attempts yet.</div>
-            </div>
-            <div class="card">
-              <h3>Previous Attempt (same deck)</h3>
-              <div id="progress-prev">—</div>
-            </div>
-            <div class="card">
-              <h3>Delta</h3>
-              <div id="progress-delta">—</div>
-            </div>
+            <div class="card"><h3>Last Attempt</h3><div id="progress-last">No attempts yet.</div></div>
+            <div class="card"><h3>Previous Attempt (same deck)</h3><div id="progress-prev">—</div></div>
+            <div class="card"><h3>Delta</h3><div id="progress-delta">—</div></div>
           </div>
 
           <h3 style="margin-top:18px;">Recent Attempts</h3>
           <div class="table-wrap">
             <table id="progress-table" class="progress-table">
-              <thead>
-                <tr>
-                  <th>Date</th><th>Deck</th><th>Mode</th>
-                  <th>Right</th><th>Wrong</th><th>Skipped</th><th>Total</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th>Date</th><th>Deck</th><th>Mode</th>
+                <th>Right</th><th>Wrong</th><th>Skipped</th><th>Total</th>
+              </tr></thead>
               <tbody></tbody>
             </table>
           </div>
-          <h3 style="margin-top:18px;">Write Words — Per-Deck Completion (best session)</h3>
+
+          <h3 style="margin-top:18px;">Write — Per-Deck Completion (best session)</h3>
           <div class="table-wrap">
             <table id="write-progress-table" class="progress-table">
               <thead>
-                <tr>
-                  <th>Deck</th>
-                  <th>Best Attempted</th>
-                  <th>Deck Size</th>
-                  <th>Best Completion</th>
-                  <th>Last Write</th>
-                </tr>
+                <tr><th>Deck</th><th>Best Attempted</th><th>Deck Size</th><th>Best Completion</th><th>Last Write</th></tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
         </section>
 
-        <!-- Overall Leaderboard -->
-        <section id="overall-leaderboard-section" class="hidden">
+        <!-- ========= Leaderboard ========= -->
+        <section id="leaderboard-section" class="hidden">
           <h2>🏆 Overall Leaderboard</h2>
           <ul id="overall-leaderboard-list"></ul>
         </section>
 
-        <!-- Today’s Leaderboard -->
-        <section id="todays-leaderboard-section" class="hidden">
-          <h2>📅 Today’s Leaderboard</h2>
-          <ul id="todays-leaderboard-list"></ul>
-        </section>
-
-        <!-- Mistakes -->
-        <!-- Mistakes -->
+        <!-- ========= Mistakes ========= -->
         <section id="mistakes-section" class="hidden">
           <h2>❗ Mistakes</h2>
           <p id="mistakes-status" class="muted" style="margin:8px 0;"></p>
           <div id="mistakes-mode-select">
             <h3>Select Mode</h3>
             <button onclick="startMistakeLearn()">🧠 Learn</button>
-            <button onclick="startMistakePractice('jp-en')">Japanese → English</button>
-            <button onclick="startMistakePractice('en-jp')">English → Japanese</button>
-            <button onclick="startMistakeWrite()">✍️ Write Words</button>
+            <button onclick="startMistakePractice('jp-en')">Hiragana → English</button>
+            <button onclick="startMistakePractice('en-jp')">English → Hiragana</button>
+            <button onclick="startMistakeWrite()">✍️ Write</button>
             <button onclick="clearMistakes()">🗑 Clear Mistakes</button>
           </div>
         </section>
-        <!-- index.html (Marked Words section) -->
+
+        <!-- ========= Marked ========= -->
         <section id="marked-section" class="hidden">
           <h2>📌 Marked Words</h2>
-          <p id="marked-status" class="muted" style="margin: 8px 0;"></p>
+          <p id="marked-status" class="muted" style="margin:8px 0;"></p>
           <div id="marked-container"></div>
           <div id="marked-mode-select">
             <h3>Select Mode</h3>
             <button onclick="startMarkedLearn()">🧠 Learn</button>
-            <button onclick="startMarkedPractice('jp-en')">Japanese → English</button>
-            <button onclick="startMarkedPractice('en-jp')">English → Japanese</button>
-            <button onclick="startMarkedWrite()">✍️ Write Words</button>
+            <button onclick="startMarkedPractice('jp-en')">Hiragana → English</button>
+            <button onclick="startMarkedPractice('en-jp')">English → Hiragana</button>
+            <button onclick="startMarkedWrite()">✍️ Write</button>
           </div>
         </section>
-        <!-- index.html (Toast container at end of body) -->
+
+        <!-- ========= Sign Word ========= -->
+        <section id="signword-section" class="hidden">
+          <h2>✍️ Sign Word</h2>
+          <div class="card">
+            <div class="pg-input-row">
+              <input id="sw-front" class="pg-input" placeholder="Front (e.g., Kanji/Hiragana)" />
+              <input id="sw-back"  class="pg-input" placeholder="Back (e.g., English/Bangla)" />
+              <input id="sw-romaji" class="pg-input" placeholder="Romaji (optional)" />
+              <button onclick="signWordAdd()">Add</button>
+            </div>
+            <p class="muted">Quick-save any word to your personal list. You can practice these from Marked.</p>
+          </div>
+          <div class="card" style="margin-top:12px;">
+            <h3>Your Signed Words</h3>
+            <div id="signword-list"></div>
+          </div>
+        </section>
+
+        <!-- Toast -->
         <div id="toast" class="toast"></div>
       </main>
     </div>
   </div>
 
+  <!-- Scripts -->
   <script type="module" src="firebase.js"></script>
   <script src="script.js"></script>
 </body>

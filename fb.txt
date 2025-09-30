@@ -1,0 +1,9 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyCIAoRM5KuCC6beLAAIHZief0wIiZOcu8I",
+  authDomain: "cool-kit-469207-r6.firebaseapp.com",
+  projectId: "cool-kit-469207-r6",
+  storageBucket: "cool-kit-469207-r6.firebasestorage.app",
+  messagingSenderId: "801430687128",
+  appId: "1:801430687128:web:d30d5c33ac1b7b06a62fed",
+  measurementId: "G-9KB1WBZ847"
+};

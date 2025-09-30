@@ -1,500 +1,494 @@
-/* =========================
-   Base / Resets
-   ========================= */
-:root{
-  --bg: #f7f8fa;
-  --text: #222;
-  --muted: #666;
-  --primary: #0d6efd;
-  --primary-hover: #0b5ed7;
-  --sidebar-bg: #2c3e50;
-  --sidebar-btn: #34495e;
-  --sidebar-btn-hover: #1abc9c;
-  --card: #fff;
-  --border: #e5e7eb;
-  --success: #d4edda;
-  --danger: #f8d7da;
-  --shadow: 0 10px 24px rgba(0,0,0,.12);
-  --green: #16a34a;
-  --red: #dc2626;
-  --warning: #fff7ed;
+/* =========================================================
+   Learn Japanese — Core Styles (Fresh build)
+   - Accessible, keyboard-first, responsive
+   - Sidebar layout (left) with mobile horizontal collapse
+   - Clean cards, flashcards, MCQ, progress tables, toasts
+   - Dark-mode by default; adapts to prefers-color-scheme
+   ========================================================= */
+
+/* ---------- CSS Reset (modern minimal) ---------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+img, video, iframe { max-width: 100%; display: block; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: none; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+table { border-collapse: collapse; width: 100%; }
+:focus { outline: none; }
+
+/* ---------- Theme Tokens ---------- */
+:root {
+  --bg: #0e1116;
+  --panel: #171a21;
+  --panel-2: #1e2530;
+  --text: #e9eef6;
+  --muted: #a9b4c7;
+  --accent: #7aa2ff;
+  --accent-2: #4cc9f0;
+  --ok: #22c55e;
+  --bad: #ef4444;
+  --warn: #eab308;
+  --border: #2a3240;
+  --shadow: 0 10px 30px rgba(0,0,0,.28);
+  --radius: 14px;
+
+  --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+
+  --pad-1: 8px;
+  --pad-2: 12px;
+  --pad-3: 16px;
+  --pad-4: 20px;
+  --gap-1: 8px;
+  --gap-2: 12px;
+  --gap-3: 16px;
+  --gap-4: 20px;
+
+  --ring: 0 0 0 3px rgba(122,162,255,.35);
+  --trans: 170ms ease;
 }
 
-* { box-sizing: border-box; }
-html, body { height: 100%; }
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
-  color: var(--text);
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f9fc;
+    --panel: #ffffff;
+    --panel-2: #f2f5fb;
+    --text: #20242b;
+    --muted: #566176;
+    --accent: #2f6dff;
+    --accent-2: #008be8;
+    --ok: #198754;
+    --bad: #dc3545;
+    --warn: #c79500;
+    --border: #e6ecf5;
+    --shadow: 0 10px 30px rgba(0,0,0,.08);
+  }
+}
+
+/* ---------- Base ---------- */
+html, body {
+  height: 100%;
   background: var(--bg);
-  line-height: 1.4;
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.45;
 }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
 .hidden { display: none !important; }
-
-/* =========================
-   Layout
-   ========================= */
-.layout { min-height: 100vh; }
-.sidebar{
-  position: fixed;
-  top: 0; left: 0; bottom: 0;
-  width: 220px;
-  background: var(--sidebar-bg);
-  color: #fff;
-  padding: 20px;
-  display: flex; flex-direction: column;
-}
-.main-content{
-  margin-left: 220px;
-  padding: 20px;
-}
-
-/* =========================
-   Typography / Headings
-   ========================= */
-h1 { margin: 0 0 8px; font-size: 28px; }
-h2 { margin: 20px 0 12px; font-size: 22px; }
-h3 { margin: 0 0 10px; font-size: 18px; }
 .muted { color: var(--muted); }
-.error { color: #b00020; margin-top: 10px; }
 
-/* =========================
-   Score
-   ========================= */
-#score { font-size: 16px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
-#score span { font-weight: 700; }
-
-/* =========================
-   Sidebar buttons
-   ========================= */
-.sidebar h2 { font-size: 18px; margin-bottom: 18px; }
-.sidebar button{
-  background: var(--sidebar-btn);
-  color: #fff;
-  border: 0;
-  padding: 10px;
-  margin-bottom: 10px;
-  text-align: left;
-  border-radius: 8px;
-  font-size: 15px;
-  cursor: pointer;
-  transition: background .18s ease, transform .06s ease;
-}
-.sidebar button:hover{ background: var(--sidebar-btn-hover); }
-.sidebar button:active{ transform: translateY(1px); }
-
-/* =========================
-   Generic buttons
-   ========================= */
-button{
-  padding: 10px 18px;
-  margin: 6px;
-  cursor: pointer;
-  border: none;
-  background: var(--primary);
-  color: #fff;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: background .18s ease, transform .06s ease, box-shadow .18s ease;
-}
-button:hover{ background: var(--primary-hover); }
-button:active{ transform: translateY(1px); }
-button.save{ background:#10b981; }
-button.save:hover{ background:#0ea371; }
-button:disabled { opacity: .6; cursor: not-allowed; }
-
-/* =========================
-   Practice actions
-   ========================= */
-.practice-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-
-/* =========================
-   Deck list / options
-   ========================= */
-#deck-buttons{ display:flex; flex-wrap:wrap; gap:10px; }
-#deck-buttons button{ border-radius: 999px; padding: 8px 14px; }
-
-#options{ list-style:none; padding:0; margin: 12px 0 0; }
-#options li{
-  margin: 8px 0;
-  padding: 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
+/* Focus ring */
+:where(button, [role="tab"], .pg-input, textarea, input):focus-visible {
+  box-shadow: var(--ring);
   border-radius: 10px;
-  cursor: pointer;
+}
+
+/* ---------- Auth Gate ---------- */
+.auth-gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.auth-card {
+  width: min(520px, 92vw);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+.auth-card h1 { margin: 0 0 10px; }
+.auth-card button {
+  background: var(--accent);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 12px;
+  transition: transform var(--trans), opacity var(--trans);
+}
+.auth-card button:hover { transform: translateY(-1px); opacity: .95; }
+.error { color: var(--bad); }
+
+/* ---------- App Layout ---------- */
+.layout {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 0;
+}
+
+.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sidebar h2 {
+  margin: 0 0 8px;
   font-size: 18px;
-  transition: background .18s ease, border-color .18s ease;
+  color: var(--muted);
+  font-weight: 600;
 }
-#options li:hover{ background:#f2f4f7; }
-.correct{ background: var(--success) !important; }
-.wrong{ background: var(--danger) !important; }
-
-/* =========================
-   Flashcard (shared by Learn, Vocab MCQ, Practice Grammar)
-   ========================= */
-.flashcard{
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  min-height: 120px;
-  padding: 18px 20px;
-  display:flex; align-items:center; justify-content:center;
-  font-size: 22px;
-  text-align: center;
-  transition: transform .18s ease, box-shadow .18s ease;
-}
-.flashcard:focus-within, .flashcard:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(0,0,0,.14);
-}
-
-/* Learn box as a flashcard if the div ID is used instead of .flashcard class */
-#learn-box{
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  min-height: 120px;
-  padding: 18px 20px;
-  display:flex; flex-direction: column; align-items:center; justify-content:center;
-  font-size: 22px;
-  text-align: center;
-}
-
-/* Question box (MCQ) */
-#question-box{
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  min-height: 120px;
-  padding: 18px 20px;
-  display:flex; align-items:center; justify-content:center;
-  font-size: 22px;
-  text-align: center;
-}
-
-/* Learn actions alignment (Prev/Next/Show...) */
-#learn .practice-actions{
-  justify-content:center;
-}
-
-/* =========================
-   Deck progress (Practice + Grammar)
-   ========================= */
-.deck-progress{
-  margin: 8px 0 12px;
-  background: #eef2ff;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-.deck-progress-bar{
-  height: 10px;
-  width: 0%;
-  background: var(--primary);
-  transition: width .25s ease;
-}
-.deck-progress-text{
-  padding: 8px 10px;
-  font-size: 14px;
-  color: #111;
-}
-
-/* =========================
-   Practice Grammar
-   ========================= */
-.pg-files{ display:flex; flex-wrap:wrap; gap:10px; margin: 6px 0 12px; }
-.pg-files button{ border-radius: 999px; padding: 8px 14px; }
-
-.pg-input-row{
-  display:flex; gap:8px; flex-wrap:wrap;
-  margin-top: 12px;
-  align-items: center;
-}
-.pg-input{
-  flex: 1 1 320px;
-  min-width: 280px;
-  padding: 16px 20px;
-  font-size: 24px;
-  height: 56px;
-  line-height: 1.2;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #fff;
-  outline: none;
-  transition: box-shadow .18s ease, border-color .18s ease, background .18s ease;
-}
-/* Put any .pg-input on its own line */
-.pg-input-row .pg-input{
-  flex-basis: 100%;
-  width: 100%;
-}
-.pg-input::placeholder{ font-size: .95em; opacity: .7; }
-.pg-input:focus{
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 4px rgba(59,130,246,.15);
-}
-/* Make Sentence: multi-line input uses the same look as pg-input */
-.pg-input.make-textarea{
-  height: auto;
-  min-height: 96px;
-  line-height: 1.4;
-  resize: vertical;
-}
-.pg-feedback{
-  margin-top: 8px;
-  font-size: 15px;
-  padding: 8px 10px;
+.sidebar button {
+  text-align: left;
+  padding: 10px 12px;
   border-radius: 10px;
   background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  transition: background var(--trans), border-color var(--trans), transform var(--trans);
 }
-.pg-feedback.ok{ background:#ecfdf5; color:#065f46; }
-.pg-feedback.bad{ background:#fef2f2; color:#7f1d1d; }
+.sidebar button:hover {
+  background: var(--panel-2);
+  border-color: var(--border);
+  transform: translateY(-1px);
+}
+.sidebar .danger {
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.35);
+  color: #ffb3b3;
+}
+.sidebar .danger:hover { background: rgba(239,68,68,.18); }
 
-/* =========================
-   Leaderboards
-   ========================= */
-#overall-leaderboard-list,
-#todays-leaderboard-list{ list-style:none; padding-left:0; }
-#overall-leaderboard-list li,
-#todays-leaderboard-list li{
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 12px;
-  margin: 8px 0;
-  box-shadow: var(--shadow);
-}
-.lb-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-.lb-rank{ width:48px; font-weight:700; }
-.lb-name{ min-width:150px; font-weight:600; }
-.lb-part{ color:#333; }
-.lb-score{ margin-left:auto; font-weight:700; }
-
-/* =========================
-   Progress
-   ========================= */
-.progress-grid{
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap:12px;
-}
-.card{
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: var(--shadow);
-}
-.table-wrap{ overflow:auto; }
-.progress-table{
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.progress-table th, .progress-table td{
-  font-size: 14px;
-  border-bottom: 1px solid var(--border);
-  padding: 8px 10px;
-  text-align: left;
-}
-.progress-table thead th{ background:#f3f4f6; }
-.delta-up{ color: var(--green); font-weight: 700; }
-.delta-down{ color: var(--red); font-weight: 700; }
-
-/* =========================
-   Auth gate
-   ========================= */
-.auth-gate{
-  position: fixed; inset: 0;
-  display: grid; place-items: center;
-  background: #0f172a;
-  z-index: 9999;
-}
-.auth-card{
-  background:#fff;
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-  padding: 28px;
-  width: min(420px, calc(100% - 40px));
-  text-align: center;
-}
-
-/* =========================
-   To-Do flyout (bottom-right)
-   ========================= */
-.todo-flyout{
-  position: fixed;
-  bottom: 12px;
-  right: 12px;
-  width: 360px;
-  max-height: 45vh;
-  overflow: auto;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  z-index: 500;
-  padding: 14px;
-}
-.todo-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; font-weight:600; }
-.todo-timer{
-  padding:2px 8px; border-radius:999px; background:#0ea5e9; color:#fff; font-weight:700;
-  font-variant-numeric: tabular-nums;
-}
-.todo-list{ list-style:none; padding:0; margin:0; max-height: 40vh; overflow:auto; }
-.todo-item{ display:flex; align-items:center; gap:10px; padding:8px; border-radius:8px; }
-.todo-item:hover{ background:#f6f8fa; }
-.todo-empty{ color:var(--muted); padding:6px; }
-.admin-row{ display:flex; gap:8px; margin-top:10px; border-top:1px dashed #e2e8f0; padding-top:10px; }
-.admin-row input{ flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; }
-
-/* =========================
-   Responsive
-   ========================= */
-@media (max-width: 900px){
-  .todo-flyout{ position: static; width:100%; margin:10px 0 0; }
-}
-
-@media (max-width: 768px){
-  .sidebar{
-    position: static;
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    gap: 6px;
-    overflow-x: auto;
+/* Mobile: collapse sidebar to horizontal scroller at top */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
   }
-  .main-content{ margin-left: 0; }
-  .sidebar button{ white-space: nowrap; font-size: 14px; text-align: center; }
-  h1{ font-size: 24px; }
-  h2{ font-size: 20px; }
-  #options li{ font-size: 16px; }
-  .progress-grid{ grid-template-columns: 1fr; }
-  .flashcard, #learn-box, #question-box{ font-size: 20px; min-height: 100px; }
-  .pg-input{ flex-basis: 100%; }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    min-height: auto;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    scrollbar-width: thin;
+  }
+  .sidebar h2 { display: none; }
+  .sidebar button {
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+  }
 }
 
-@media (max-width: 480px){
-  .sidebar{ flex-wrap: wrap; gap: 6px; }
-  .sidebar button{ min-width: 120px; font-size: 13px; padding: 8px; }
-  button{ font-size: 14px; }
-  #options li{ font-size: 15px; }
-  .flashcard, #learn-box, #question-box{ font-size: 18px; }
+/* ---------- Main Content ---------- */
+.main-content {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
 }
 
-/* Reserve room so content isn't covered by the fixed flyout on desktop */
-@media (min-width: 769px){
-  .main-content{ padding-bottom: 360px; }
-}
-/* Extra helper for inline diff highlighting in Practice Grammar */
-.diff-wrong { color: var(--red); font-weight: 600; }
-
-/* Optional: nicer spacing inside Learn card */
-.learn-word { font-size: 3.5em; margin-bottom: 6px; }
-.learn-meaning { font-size: 0.95em; margin-top: 6px; }
-
-/* Learn: word + speaker icon side-by-side */
-.learn-word-row{
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Small circular icon button (speaker) */
-.icon-btn{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
-  min-height: 38px;
-  border-radius: 999px;
-  background: var(--sidebar-btn);
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  transition: background .18s ease, transform .06s ease, box-shadow .18s ease;
-}
-.icon-btn:hover{ background: var(--sidebar-btn-hover); }
-.icon-btn:disabled{ opacity: .5; cursor: not-allowed; }
-
-/* Toast for non-blocking messages */
-.toast{
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%) translateY(20px);
-  background: #111;
-  color: #fff;
-  padding: 10px 14px;
-  border-radius: 999px;
-  font-size: 14px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .18s ease, transform .18s ease;
-  z-index: 99999;
-}
-.toast.show{
-  opacity: .95;
-  transform: translateX(-50%) translateY(0);
-}
-/* Optional: make Next lighter by default; it’s secondary to Submit */
-#write-next { background: #6b7280; }
-#write-next:hover { background: #4b5563; }
-.learn-note-card { margin-top: 12px; }
-.learn-note-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:8px;
-}
-.learn-note-label{ font-weight:600; }
-.learn-note-status{ font-size: 12px; }
-.learn-note-input{
-  width: 100%;
-  min-height: 72px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  outline: none;
-  resize: vertical;
-  background: #fff;
-  transition: box-shadow .18s ease, border-color .18s ease;
-}
-.learn-note-input:focus{
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 4px rgba(59,130,246,.15);
-}
-
-/* style.css (new styles for Marked Words feature) */
-/* Make the Unmark button red (danger style) */
-button.unmark-btn {
-  background: var(--red);
-}
-button.unmark-btn:hover {
-  background: #b91c1c; /* a slightly darker red on hover */
-}
-
-/* Style each marked word entry as a card with spaced content */
-.marked-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: var(--shadow);              /* reuse base card styling if using a preprocessor, or manually ensure same base styles */
+.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
-/* Optional AI loading tint */
-.pg-feedback.loading { background: var(--warning); color: #7c2d12; }
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.crumbs .sep { opacity: .4; }
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#score { font-size: 14px; color: var(--muted); }
+.topbar button {
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+/* ---------- Generic UI ---------- */
+main {
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.practice-actions button {
+  padding: 8px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: background var(--trans), transform var(--trans);
+}
+.practice-actions button:hover { background: rgba(255,255,255,.04); transform: translateY(-1px); }
+.practice-actions .save { background: rgba(122,162,255,.18); border-color: rgba(122,162,255,.4); }
+
+/* ---------- Lesson Lists & Tabs ---------- */
+.lesson-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.lesson-list .lesson-item {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 64px;
+  display: grid;
+  align-content: center;
+  transition: transform var(--trans), background var(--trans);
+  cursor: pointer;
+}
+.lesson-list .lesson-item:hover { transform: translateY(-2px); background: rgba(255,255,255,.03); }
+
+.lesson-bar {
+  display: grid;
+  gap: 10px;
+}
+.lesson-meta { display: flex; align-items: baseline; gap: 10px; }
+.lesson-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.tab-btn[aria-selected="true"] {
+  background: rgba(122,162,255,.22);
+  border-color: rgba(122,162,255,.45);
+}
+
+/* ---------- Videos ---------- */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.video-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+.video-card h4 { margin: 0; font-size: 15px; }
+
+/* ---------- Flashcards ---------- */
+.flashcard {
+  background: var(--panel);
+  border: 1px dashed var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  min-height: 140px;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  font-size: clamp(18px, 3.5vw, 28px);
+  text-align: center;
+}
+
+/* ---------- MCQ ---------- */
+#options {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+#options li button {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: background var(--trans), border-color var(--trans), transform var(--trans);
+}
+#options li button:hover { background: rgba(255,255,255,.04); transform: translateY(-1px); }
+#options li button[disabled] { opacity: .6; cursor: not-allowed; }
+#options li button.is-correct { border-color: rgba(34,197,94,.6); background: rgba(34,197,94,.15); }
+#options li button.is-wrong   { border-color: rgba(239,68,68,.6); background: rgba(239,68,68,.15); }
+
+/* Dual 8-option grid (4+4) */
+.dual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .dual-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- Deck Progress Bars ---------- */
+.deck-progress {
+  position: relative;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  height: 12px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.deck-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 220ms ease;
+}
+.deck-progress-text {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ---------- Input Rows (Write / Practice / Sign Word) ---------- */
+.pg-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.pg-input {
+  flex: 1 1 220px;
+  min-width: 160px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.pg-input::placeholder { color: #8b95a8; }
+.pg-feedback {
+  margin-top: 8px;
+  font-size: 14px;
+}
+.make-textarea { min-height: 100px; }
+
+/* ---------- Learn Notes ---------- */
+.learn-note-card { margin-top: 12px; }
+.learn-note-row {
+  display: flex; gap: 8px; align-items: baseline; justify-content: space-between;
+}
+.learn-note-label { font-weight: 600; }
+.learn-note-status { font-size: 12px; }
+.learn-note-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  resize: vertical;
+}
+
+/* ---------- Grammar Practice ---------- */
+.pg-files { display: flex; gap: 8px; flex-wrap: wrap; }
+.pg-files button {
+  padding: 8px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+#pg-card { min-height: 120px; display: grid; place-items: center; }
+
+/* ---------- Tables (Progress) ---------- */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.progress-table th, .progress-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+.progress-table thead th {
+  position: sticky; top: 0; background: var(--panel);
+  font-size: 13px; color: var(--muted);
+}
+.progress-table tbody tr:hover { background: rgba(255,255,255,.03); }
+
+/* ---------- Marked & Mistakes ---------- */
+#marked-container { display: grid; gap: 10px; }
+#marked-container .marked-item,
+#signword-list .sw-item {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+#mistakes-status, #marked-status { color: var(--muted); }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transition: transform var(--trans), opacity var(--trans);
+  pointer-events: none;
+  z-index: 50;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---------- Utilities ---------- */
+.error-inline { color: var(--bad); }
+.ok-inline { color: var(--ok); }
+.warn-inline { color: var(--warn); }
+
+button[disabled] { opacity: .6; cursor: not-allowed; }
+
+/* ---------- Reduced Motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ---------- Print-safe minimal ---------- */
+@media print {
+  .sidebar, .topbar, .practice-actions, .toast { display: none !important; }
+  body { background: #fff; color: #000; }
+  .card, .table-wrap { box-shadow: none; border-color: #ccc; }
+}
