@@ -265,3 +265,27 @@ code{ background:#0c1424; border:1px solid var(--border); padding:1px 6px; borde
   .sidebar{ position:relative; min-height:auto; border-right:none; border-bottom:1px solid var(--border); }
   .topbar{ position:sticky; top:0; }
 }
+
+/* --- Video lightbox (moderate large) --- */
+.lightbox{
+  position: fixed; inset: 0; z-index: 50;
+  display: grid; place-items: center;
+}
+.lightbox-backdrop{
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(2px);
+}
+.lightbox-inner{
+  position: relative; z-index: 1;
+  width: min(920px, 94vw);
+}
+.lightbox-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:10px;
+}
+.lightbox-close{
+  border:1px solid var(--border);
+  background:#0f1726; color: var(--text);
+  padding:6px 10px; border-radius:10px; cursor:pointer;
+}
