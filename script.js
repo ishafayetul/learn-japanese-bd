@@ -274,7 +274,7 @@ async function whenFBReady(timeout = 15000) {
     if (!lessons) { lessons = await discoverLessons(level); App.cache.lessons.set(level, lessons); }
 
     elLessonList.innerHTML = "";
-    if (!lessons.length) { elLessonStatus.textContent = "No lessons found. Ensure /level/" + level + "/Lesson-YY/ exists."; return; }
+    if (!lessons.length) { elLessonStatus.textContent = "No lessons found. Ensure level/" + level + "/Lesson-YY/ exists."; return; }
     elLessonStatus.textContent = `${lessons.length} lesson(s) found.`;
     for (const name of lessons) {
       const item = document.createElement("div");
@@ -292,16 +292,16 @@ async function whenFBReady(timeout = 15000) {
       const L = `Lesson-${pad2(i)}`;
       const any = await getFirstOk([
         // Vocabulary checks
-        `/level/${level}/${L}/Vocabulary/manifest.json`,
-        `/level/${level}/${L}/Vocabulary/menifest.json`,
-        `/level/${level}/${L}/Vocabulary/Lesson.csv`,
+        `./level/${level}/${L}/Vocabulary/manifest.json`,
+        `./level/${level}/${L}/Vocabulary/menifest.json`,
+        `./level/${level}/${L}/Vocabulary/Lesson.csv`,
         // Video checks
-        `/level/${level}/${L}/Video Lecture/manifest.json`,
-        `/level/${level}/${L}/Video Lecture/menifest.json`,
-        `/level/${level}/${L}/Video Lecture/Lesson.csv`,
+        `./level/${level}/${L}/Video Lecture/manifest.json`,
+        `./level/${level}/${L}/Video Lecture/menifest.json`,
+        `./level/${level}/${L}/Video Lecture/Lesson.csv`,
         // Grammar PDF
-        `/level/${level}/${L}/Grammar/lesson-${pad2(i)}.pdf`,
-        `/level/${level}/${L}/Grammar/Lesson.pdf`,
+        `./level/${level}/${L}/Grammar/lesson-${pad2(i)}.pdf`,
+        `./level/${level}/${L}/Grammar/Lesson.pdf`,
       ]);
       if (any) found.push(L);
     }
@@ -313,6 +313,7 @@ async function whenFBReady(timeout = 15000) {
     try { await flushSession(); } catch {}
     App.level = level; App.lesson = lesson; setCrumbs();
 
+    resetVocabTab();
     elLessonArea.classList.remove("hidden");
     elLessonTitle.textContent = `${lesson.replace(/-/g, " ")} — ${level}`;
     elLessonAvail.textContent = "";
@@ -343,8 +344,8 @@ async function whenFBReady(timeout = 15000) {
   async function pdfExists(level, lesson) {
     const num = lesson.split("-")[1];
     const u = await getFirstOk([
-      `/level/${level}/${lesson}/Grammar/lesson-${num}.pdf`,
-      `/level/${level}/${lesson}/Grammar/Lesson.pdf`,
+      `./level/${level}/${lesson}/Grammar/lesson-${num}.pdf`,
+      `./level/${level}/${lesson}/Grammar/Lesson.pdf`,
     ]);
     return !!u;
   }
@@ -357,22 +358,22 @@ async function whenFBReady(timeout = 15000) {
 
     // manifest or menifest
     const j = await fetchJSONFirst([
-      `/level/${level}/${lesson}/Video Lecture/manifest.json`,
-      `/level/${level}/${lesson}/Video Lecture/menifest.json`,
+      `./level/${level}/${lesson}/Video Lecture/manifest.json`,
+      `./level/${level}/${lesson}/Video Lecture/menifest.json`,
     ]);
 
     let files = (j && Array.isArray(j.files)) ? j.files : [];
 
     // fallback to Lesson.csv if no manifest
     if (!files.length) {
-      const fallback = await getFirstOk([ `/level/${level}/${lesson}/Video Lecture/Lesson.csv` ]);
+      const fallback = await getFirstOk([ `./level/${level}/${lesson}/Video Lecture/Lesson.csv` ]);
       if (fallback) files = ["Lesson.csv"];
     }
 
     let rows = [];
     for (const f of files) {
       try {
-        const path = `/level/${level}/${lesson}/Video Lecture/${f}`;
+        const path = `./level/${level}/${lesson}/Video Lecture/${f}`;
         const txt = await (await fetch(path, { cache: "no-cache" })).text();
         const csv = parseCSV(txt);
         for (const r2 of csv) { if (!r2[0] || !r2[1]) continue; rows.push({ title: r2[0], url: r2[1] }); }
@@ -408,8 +409,8 @@ async function whenFBReady(timeout = 15000) {
   // ---------- Vocabulary ----------
   async function loadVocabFileList(level, lesson) {
     const j = await fetchJSONFirst([
-      `/level/${level}/${lesson}/Vocabulary/manifest.json`,
-      `/level/${level}/${lesson}/Vocabulary/menifest.json`,
+      `./level/${level}/${lesson}/Vocabulary/manifest.json`,
+      `./level/${level}/${lesson}/Vocabulary/menifest.json`,
     ]);
     if (j && Array.isArray(j.files)) return j.files;
 
@@ -421,7 +422,7 @@ async function whenFBReady(timeout = 15000) {
     ];
     const existing = [];
     for (const f of candidates) {
-      const u = await getFirstOk([ `/level/${level}/${lesson}/Vocabulary/${f}` ]);
+      const u = await getFirstOk([ `./level/${level}/${lesson}/Vocabulary/${f}` ]);
       if (u) existing.push(f);
     }
     return existing;
@@ -435,7 +436,7 @@ async function whenFBReady(timeout = 15000) {
     const files = await loadVocabFileList(App.level, App.lesson);
     const deck = [];
     for (const f of files) {
-      const path = `/level/${App.level}/${App.lesson}/Vocabulary/${f}`;
+      const path = `./level/${App.level}/${App.lesson}/Vocabulary/${f}`;
       try {
         const txt = await (await fetch(path, { cache: "no-cache" })).text();
         const csv = parseCSV(txt);
@@ -680,6 +681,29 @@ async function whenFBReady(timeout = 15000) {
 
   function hideAllPractice(){ D("#practice")?.classList.add("hidden"); elLearn.classList.add("hidden"); elWrite.classList.add("hidden"); elMake.classList.add("hidden"); }
 
+  function resetVocabTab() {
+    hideAllPractice();
+    elVocabStatus.textContent = "Pick a mode.";
+    elQuestionBox.innerHTML = "";
+    elOptions.innerHTML = "";
+    elExtraInfo.textContent = "";
+    elDeckBar.style.width = "0%";
+    elDeckText.textContent = "0 / 0 (0%)";
+    elLearnBox.innerHTML = "";
+    elLearnNoteText.value = "";
+    elLearnNoteStatus.textContent = "—";
+    elWriteCard.textContent = "";
+    elWriteInput.value = "";
+    elWriteFeedback.textContent = "";
+    elWriteBar.style.width = "0%";
+    elWriteText.textContent = "0 / 0 (0%)";
+    elMakeCard.textContent = "";
+    elMakeInput.value = "";
+    elMakeFeedback.textContent = "";
+    elMakeBar.style.width = "0%";
+    elMakeText.textContent = "0 / 0 (0%)";
+  }
+
   // ---------- Mistakes ----------
   const MKEY = "lj_mistakes_v1";
   function getMistakes(){ try { return JSON.parse(localStorage.getItem(MKEY)) || []; } catch { return []; } }
@@ -754,8 +778,8 @@ async function whenFBReady(timeout = 15000) {
     elOpenGrammarPDF.onclick = async () => {
       const n = App.lesson.split("-")[1];
       const u = await getFirstOk([
-        `/level/${App.level}/${App.lesson}/Grammar/lesson-${n}.pdf`,
-        `/level/${App.level}/${App.lesson}/Grammar/Lesson.pdf`,
+        `./level/${App.level}/${App.lesson}/Grammar/lesson-${n}.pdf`,
+        `./level/${App.level}/${App.lesson}/Grammar/Lesson.pdf`,
       ]);
       if (u) window.open(u, "_blank", "noopener"); else toast("PDF not found.");
     };
@@ -767,7 +791,7 @@ async function whenFBReady(timeout = 15000) {
     elPgStatus.textContent = "Loading practice sets…";
     try {
       if (!App.cache.grammarFiles) {
-        const j = await fetchJSONFirst([ `/practice_grammar/manifest.json` ]);
+        const j = await fetchJSONFirst([ `./practice_grammar/manifest.json` ]);
         App.cache.grammarFiles = (j && Array.isArray(j.files)) ? j.files : [];
       }
       const files = App.cache.grammarFiles;
@@ -784,7 +808,7 @@ async function whenFBReady(timeout = 15000) {
 
   async function loadGrammarPractice(filename) {
     try {
-      const txt = await (await fetch(`/practice_grammar/${filename}`, { cache: "no-cache" })).text();
+      const txt = await (await fetch(`./practice_grammar/${filename}`, { cache: "no-cache" })).text();
       const csv = parseCSV(txt).filter(r => r.length >= 2);
       App.pg.rows = csv.map(r => ({ q: r[0], a: r[1] }));
       App.pg.idx = 0; elPgArea.classList.remove("hidden"); renderPgItem();
