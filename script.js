@@ -1,12 +1,12 @@
 /* =========================================================
-   Learn Japanese — App Script (Level Spec Compliant)
-   - Level manifest: /level/N5|N4|N3/manifest.json
-   - Per-lesson manifests for Video/Vocab
-   - Video cards: click-to-play
-   - MCQ (incl. 8-option dual, both picks required)
-   - Write modes: EN→Hira, Kanji→Hira + shortcuts
-   - Kanji "—" excluded in Kanji-testing modes
-   - Waits for Firebase before use
+   Learn Japanese — App Script (no-manifest, folder scan)
+   - Scans /level/{N5|N4|N3}/Lesson-XX/ subfolders
+   - Video: buttons per CSV file in /Video Lecture/
+   - Vocab: loads all CSVs in /Vocabulary/
+   - Grammar: lesson-XX.pdf or Lesson.pdf
+   - Firebase access guarded by whenFBReady()
+   - Write shortcuts: Enter=Submit, Ctrl+Enter=Next, Esc=Skip,
+     Right Arrow=Next, Left-Shift+M=Mark
    ========================================================= */
 
 // Wait until firebase.js finished and window.FB is ready
@@ -51,6 +51,15 @@ async function whenFBReady(timeout = 15000) {
   const elTabGrammar = D("#tab-grammar");
   const elVideoStatus = D("#video-status");
   const elVideoCards = D("#video-cards");
+  // create / reuse a holder for video CSV buttons
+  let elVideoFileButtons = D("#video-file-buttons");
+  if (!elVideoFileButtons) {
+    elVideoFileButtons = document.createElement("div");
+    elVideoFileButtons.id = "video-file-buttons";
+    elVideoFileButtons.className = "file-button-row";
+    elTabVideos?.prepend(elVideoFileButtons);
+  }
+
   const elVocabStatus = D("#vocab-status");
   const elPgStatus = D("#pg-status");
   const elPgFiles = D("#pg-file-buttons");
@@ -66,7 +75,6 @@ async function whenFBReady(timeout = 15000) {
   const elLearn = D("#learn");
   const elLearnBox = D("#learn-box");
   const elLearnNoteText = D("#learn-note-text");
-  const elLearnNoteSave = D("#learn-note-save");
   const elLearnNoteStatus = D("#learn-note-status");
 
   // Write
@@ -140,10 +148,11 @@ async function whenFBReady(timeout = 15000) {
     cache: {
       lessons: new Map(),   // level -> [Lesson-XX]
       vocab: new Map(),     // key -> deck
-      videos: new Map(),    // key -> rows
-      grammarFiles: null,
-      levelManifests: new Map(), // level -> lessons from manifest
+      videosCsvFiles: new Map(), // key -> [filenames] under Video Lecture
+      vocabCsvFiles: new Map(),  // key -> [filenames] under Vocabulary
     },
+    // for current video file selection
+    currentVideoCsv: null,
   };
 
   // ---------- Utils ----------
@@ -174,10 +183,51 @@ async function whenFBReady(timeout = 15000) {
   function speakJa(t){ try{ const u=new SpeechSynthesisUtterance(t); u.lang="ja-JP"; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch{} }
   function pct(a,b){ if(!b) return "0%"; return Math.round((a/b)*100)+"%"; }
   function currentDeckId(){ return (App.level && App.lesson) ? `${App.level}/${App.lesson}` : (App.lesson || App.level || "-"); }
+  function encodePath(p){ try{ return decodeURI(p) === p ? encodeURI(p) : p; } catch { return p; } }
 
-  // tolerant fetch helpers
-  async function getFirstOk(urls){ for(const u of urls){ try{ const r=await fetch(u,{method:"GET",cache:"no-cache"}); if(r.ok) return u; }catch{} } return null; }
-  async function fetchJSONFirst(urls){ const u=await getFirstOk(urls); if(!u) return null; try{ return await (await fetch(u,{cache:"no-cache"})).json(); }catch{ return null; } }
+  // ---- Directory listing helper (best effort) ----
+  // Tries to list .csv files by fetching the folder URL and parsing links.
+  // If directory indexes are disabled, falls back to probing common names.
+  async function listCsvFiles(dirUrl, fallbackPatterns = []) {
+    dirUrl = dirUrl.endsWith("/") ? dirUrl : dirUrl + "/";
+    try {
+      const r = await fetch(encodePath(dirUrl), { cache: "no-cache" });
+      if (r.ok) {
+        const ct = r.headers.get("content-type") || "";
+        const txt = await r.text();
+        // parse html directory index
+        if (ct.includes("text/html")) {
+          const links = [];
+          const re = /href="([^"]+\.csv)"/gi;
+          let m;
+          while ((m = re.exec(txt))) {
+            let href = m[1];
+            // ignore parent links
+            if (href.includes("..")) continue;
+            // normalize
+            const url = new URL(href, location.origin + dirUrl).pathname;
+            const name = decodeURIComponent(url.split("/").pop());
+            if (!links.includes(name)) links.push(name);
+          }
+          if (links.length) return links;
+        }
+        // some static hosts show plain text lists; catch that too
+        const plain = Array.from(txt.matchAll(/([^\s"'>]+\.csv)/gi)).map(x => x[1]);
+        const uniq = [...new Set(plain)].map(s => decodeURIComponent(s.split("/").pop()));
+        if (uniq.length) return uniq;
+      }
+    } catch {}
+    // Fallback: probe known filename patterns
+    const existing = [];
+    for (const patt of fallbackPatterns) {
+      const u = dirUrl + patt;
+      try {
+        const r = await fetch(encodePath(u), { method: "GET", cache: "no-cache" });
+        if (r.ok) existing.push(patt);
+      } catch {}
+    }
+    return existing;
+  }
 
   // ---------- Auth ----------
   elAuthBtn.addEventListener("click", async () => {
@@ -203,7 +253,7 @@ async function whenFBReady(timeout = 15000) {
     closeAllSections();
     elLevelShell.classList.remove("hidden");
     elLessonArea.classList.add("hidden");
-    elLessonStatus.textContent = "Loading lessons…";
+    elLessonStatus.textContent = "Scanning lessons…";
     await showLessonList(level);
   };
   window.openSection = async (name) => {
@@ -217,15 +267,13 @@ async function whenFBReady(timeout = 15000) {
   };
   function closeAllSections(){ [elLevelShell, elProgressSection, elLeaderboardSection, elMistakesSection, elMarkedSection, elSignWordSection].forEach(x=>x.classList.add("hidden")); }
 
-  // ---------- Lesson list (Level manifest first) ----------
+  // ---------- Lesson discovery (probe Lesson-01..60) ----------
   async function showLessonList(level){
     let lessons = App.cache.lessons.get(level);
-    if (!lessons) {
-      lessons = await loadLevelLessonList(level);
-      App.cache.lessons.set(level, lessons);
-    }
+    if (!lessons) { lessons = await discoverLessons(level); App.cache.lessons.set(level, lessons); }
+
     elLessonList.innerHTML = "";
-    if (!lessons.length){ elLessonStatus.textContent = "No lessons found. Provide /level/"+level+"/manifest.json."; return; }
+    if (!lessons.length){ elLessonStatus.textContent = "No lessons found under /level/"+level; return; }
     elLessonStatus.textContent = `${lessons.length} lesson(s) found.`;
     for (const name of lessons){
       const item = document.createElement("div");
@@ -235,33 +283,27 @@ async function whenFBReady(timeout = 15000) {
       elLessonList.appendChild(item);
     }
   }
-
-  // Level manifest format supported:
-  // { "lessons": ["Lesson-01","Lesson-02"] }  or  { "files": [...] }
-  async function loadLevelLessonList(level){
-    // primary: level manifest drives which lesson folders show up
-    const j = await fetchJSONFirst([ `/level/${level}/manifest.json` ]);
-    if (j) {
-      const list = (Array.isArray(j.lessons) ? j.lessons : (Array.isArray(j.files) ? j.files : [])).filter(Boolean);
-      if (list.length) return list;
-    }
-    // fallback: probe (kept for resilience)
-    return await discoverLessons(level);
-  }
-
-  // Probe for any valid module under a lesson
   async function discoverLessons(level){
     const found=[];
     for(let i=1;i<=60;i++){
       const L = `Lesson-${pad2(i)}`;
-      const any = await getFirstOk([
-        `/level/${level}/${L}/Vocabulary/manifest.json`,
-        `/level/${level}/${L}/Video Lecture/manifest.json`,
+      const any = await anyExists([
+        `/level/${level}/${L}/Vocabulary/lesson-${pad2(i)}.csv`,
+        `/level/${level}/${L}/Vocabulary/Lesson-${pad2(i)}.csv`,
+        `/level/${level}/${L}/Vocabulary/Lesson.csv`,
+        `/level/${level}/${L}/Video Lecture/Lesson.csv`,
         `/level/${level}/${L}/Grammar/lesson-${pad2(i)}.pdf`,
+        `/level/${level}/${L}/Grammar/Lesson.pdf`,
       ]);
       if (any) found.push(L);
     }
     return found;
+  }
+  async function anyExists(urls){
+    for (const u of urls){
+      try{ const r = await fetch(encodePath(u), { method:"GET", cache:"no-cache" }); if (r.ok) return true; }catch{}
+    }
+    return false;
   }
 
   // ---------- Lesson open & tabs ----------
@@ -273,103 +315,133 @@ async function whenFBReady(timeout = 15000) {
     elLessonAvail.textContent = "";
     openLessonTab("videos");
 
-    const [videosCount, vocabCount, hasPDF] = await Promise.all([
-      countVideos(level, lesson),
-      countVocabFiles(level, lesson),
+    const [videoCsvs, vocabCsvs, hasPDF] = await Promise.all([
+      listVideoCsvFiles(level, lesson),
+      listVocabCsvFiles(level, lesson),
       pdfExists(level, lesson),
     ]);
-    elLessonAvail.textContent = `Videos: ${videosCount} • Vocab files: ${vocabCount} • PDF: ${hasPDF ? "Yes" : "No"}`;
+    elLessonAvail.textContent = `Video files: ${videoCsvs.length} • Vocab files: ${vocabCsvs.length} • PDF: ${hasPDF ? "Yes" : "No"}`;
   }
   window.openLessonTab = async (tab)=>{
     try { await flushSession(); } catch {}
     App.tab = tab; setCrumbs();
     A(".tab-btn").forEach(b=>b.setAttribute("aria-selected", String(b.id===`tabbtn-${tab}`)));
     [elTabVideos, elTabVocab, elTabGrammar].forEach(s=>s.classList.add("hidden"));
-    if (tab==="videos"){ elTabVideos.classList.remove("hidden"); await renderVideos(); }
-    else if (tab==="vocab"){ elTabVocab.classList.remove("hidden"); await ensureDeckLoaded(); elVocabStatus.textContent="Pick a mode."; }
+    if (tab==="videos"){ elTabVideos.classList.remove("hidden"); await renderVideoCsvButtons(); }
+    else if (tab==="vocab"){ elTabVocab.classList.remove("hidden"); await ensureDeckLoaded(); elVocabStatus.textContent = "Pick a mode."; }
     else if (tab==="grammar"){ elTabGrammar.classList.remove("hidden"); wireGrammarTab(); }
   };
-
-  async function countVideos(level, lesson){ const list = await loadVideoList(level, lesson); return list.length; }
-  async function countVocabFiles(level, lesson){ const files = await loadVocabFileList(level, lesson); return files.length; }
   async function pdfExists(level, lesson){
     const num = lesson.split("-")[1];
-    const u = await getFirstOk([ `/level/${level}/${lesson}/Grammar/lesson-${num}.pdf` ]);
-    return !!u;
+    const ok = await anyExists([
+      `/level/${level}/${lesson}/Grammar/lesson-${num}.pdf`,
+      `/level/${level}/${lesson}/Grammar/Lesson.pdf`,
+    ]);
+    return !!ok;
   }
 
-  // ---------- Videos (manifest -> CSV rows) ----------
-  async function loadVideoList(level, lesson){
+  // ---------- Video Module ----------
+  async function listVideoCsvFiles(level, lesson){
     const key = `${level}/${lesson}`;
-    if (App.cache.videos.has(key)) return App.cache.videos.get(key);
-    elVideoStatus.textContent = "Loading video manifest…";
-
-    const j = await fetchJSONFirst([ `/level/${level}/${lesson}/Video Lecture/manifest.json` ]);
-    const files = (j && Array.isArray(j.files)) ? j.files : [];
-    let rows = [];
-    for (const f of files) {
-      try {
-        const path = `/level/${level}/${lesson}/Video Lecture/${f}`;
-        const txt = await (await fetch(path, { cache: "no-cache" })).text();
-        const csv = parseCSV(txt);
-        for (const r2 of csv) { if (!r2[0] || !r2[1]) continue; rows.push({ title: r2[0], url: r2[1] }); }
-      } catch {}
-    }
-    App.cache.videos.set(key, rows);
-    elVideoStatus.textContent = rows.length ? `Loaded ${rows.length} lecture(s).` : "No lectures found.";
-    return rows;
+    if (App.cache.videosCsvFiles.has(key)) return App.cache.videosCsvFiles.get(key);
+    const dir = `/level/${level}/${lesson}/Video Lecture/`;
+    const files = await listCsvFiles(dir, [
+      "Lesson.csv", "lesson.csv",
+      // try numbered sets common on some exports
+      ...Array.from({length:40}, (_,i)=>`set-${pad2(i+1)}.csv`),
+      ...Array.from({length:40}, (_,i)=>`part-${pad2(i+1)}.csv`),
+    ]);
+    App.cache.videosCsvFiles.set(key, files);
+    return files;
   }
 
-  // Small cards → click to embed player
-  async function renderVideos(){
-    const list = await loadVideoList(App.level, App.lesson);
+  async function renderVideoCsvButtons(){
     elVideoCards.innerHTML = "";
-    for (const { title, url } of list){
-      const id = extractYouTubeId(url);
-      const card = document.createElement("button");
-      card.className = "video-card";
-      card.innerHTML = `
-        <div class="video-thumb">
-          <img alt="${escapeHTML(title)}" loading="lazy"
-               src="https://img.youtube.com/vi/${id}/hqdefault.jpg">
-          <span class="play-badge">▶</span>
-        </div>
-        <h4>${escapeHTML(title)}</h4>
-      `;
-      card.addEventListener("click", ()=>{
-        // replace thumb with iframe (lazy embed on click)
+    elVideoFileButtons.innerHTML = "";
+    elVideoStatus.textContent = "Looking for video CSV files…";
+    const files = await listVideoCsvFiles(App.level, App.lesson);
+    if (!files.length){
+      elVideoStatus.textContent = "No CSV files found in “Video Lecture”. If your host disables directory listing, add a fallback file like Lesson.csv.";
+      return;
+    }
+    elVideoStatus.textContent = "Choose a file:";
+    for (const f of files){
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.textContent = f.replace(/\.csv$/i, "").replace(/[_-]/g, " ");
+      b.addEventListener("click", ()=> loadAndRenderVideoFile(f));
+      elVideoFileButtons.appendChild(b);
+    }
+  }
+
+  async function loadAndRenderVideoFile(filename){
+    App.currentVideoCsv = filename;
+    const path = `/level/${App.level}/${App.lesson}/Video Lecture/${filename}`;
+    elVideoCards.innerHTML = "";
+    elVideoStatus.textContent = `Loading ${filename}…`;
+    try{
+      const txt = await (await fetch(encodePath(path), { cache:"no-cache" })).text();
+      const csv = parseCSV(txt);
+      const rows = csv.filter(r=>r && r[0] && r[1]).map(r=>({ title: r[0], url: r[1] }));
+      elVideoStatus.textContent = `${rows.length} lecture(s)`;
+      for (const { title, url } of rows){
+        const id = extractYouTubeId(url);
+        const card = document.createElement("button");
+        card.className = "video-card";
         card.innerHTML = `
-          <h4>${escapeHTML(title)}</h4>
-          <div class="yt-wrap">
-            <iframe loading="lazy" width="100%" height="170"
-              src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1"
-              title="${escapeHTML(title)}" frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-          </div>`;
-        card.disabled = true;
-      });
-      elVideoCards.appendChild(card);
+          <div class="video-thumb">
+            <img alt="${escapeHTML(title)}" loading="lazy"
+                 src="https://img.youtube.com/vi/${id}/hqdefault.jpg">
+            <span class="play-badge">▶</span>
+          </div>
+          <h4>${escapeHTML(title)}</h4>`;
+        card.addEventListener("click", ()=>{
+          card.innerHTML = `
+            <h4>${escapeHTML(title)}</h4>
+            <div class="yt-wrap">
+              <iframe loading="lazy" width="100%" height="170"
+                src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1"
+                title="${escapeHTML(title)}" frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            </div>`;
+          card.disabled = true;
+        });
+        elVideoCards.appendChild(card);
+      }
+    } catch {
+      elVideoStatus.textContent = "Failed to load CSV.";
     }
   }
   function extractYouTubeId(u){ try{ const url=new URL(u); if(url.hostname.includes("youtu.be")) return url.pathname.slice(1); return url.searchParams.get("v")||""; }catch{ return ""; } }
 
-  // ---------- Vocabulary (manifest -> CSV rows) ----------
-  async function loadVocabFileList(level, lesson){
-    const j = await fetchJSONFirst([ `/level/${level}/${lesson}/Vocabulary/manifest.json` ]);
-    return (j && Array.isArray(j.files)) ? j.files : [];
+  // ---------- Vocabulary Module ----------
+  async function listVocabCsvFiles(level, lesson){
+    const key = `v/${level}/${lesson}`;
+    if (App.cache.vocabCsvFiles.has(key)) return App.cache.vocabCsvFiles.get(key);
+    const dir = `/level/${level}/${lesson}/Vocabulary/`;
+    const files = await listCsvFiles(dir, [
+      `lesson-${lesson.split("-")[1]}.csv`,
+      `Lesson-${lesson.split("-")[1]}.csv`,
+      "Lesson.csv", "lesson.csv",
+      // allow multi-part
+      ...Array.from({length:20}, (_,i)=>`lesson-${lesson.split("-")[1]}-${i+1}.csv`),
+      ...Array.from({length:20}, (_,i)=>`Lesson-${lesson.split("-")[1]}-${i+1}.csv`),
+    ]);
+    App.cache.vocabCsvFiles.set(key, files);
+    return files;
   }
 
   async function ensureDeckLoaded(){
     const key = `${App.level}/${App.lesson}`;
-    if (App.cache.vocab.has(key)){ App.deck = App.cache.vocab.get(key).slice(); return; }
+    if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
     elVocabStatus.textContent = "Loading vocabulary…";
-    const files = await loadVocabFileList(App.level, App.lesson);
+    const files = await listVocabCsvFiles(App.level, App.lesson);
     const deck = [];
     for (const f of files){
       try{
         const path = `/level/${App.level}/${App.lesson}/Vocabulary/${f}`;
-        const txt = await (await fetch(path, { cache: "no-cache" })).text();
+        const txt = await (await fetch(encodePath(path), { cache:"no-cache" })).text();
         const csv = parseCSV(txt);
         for (const r of csv){
           const kanji = (r[0]||"").trim();
@@ -393,7 +465,7 @@ async function whenFBReady(timeout = 15000) {
       case "k2h-e":
       case "he2k":
       case "write-k2h":
-        return App.deck.filter(hasKanji); // enforce spec: skip "—"
+        return App.deck.filter(hasKanji); // skip "—"
       default:
         return App.deck.slice();
     }
@@ -403,7 +475,7 @@ async function whenFBReady(timeout = 15000) {
   window.startLearnMode = async () => {
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
     App.mode = "learn"; setCrumbs();
-    App.deckFiltered = shuffle(App.deck);
+    App.deckFiltered = App.deck.slice(); // sequential per spec
     App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
     hideAllPractice(); elLearn.classList.remove("hidden"); renderLearnCard();
   };
@@ -414,39 +486,48 @@ async function whenFBReady(timeout = 15000) {
       <div>
         <div class="muted" style="font-size:1.2em;">Kanji → Hiragana / Hiragana → English</div>
         <div style="margin:8px 0;font-size:2em;">${escapeHTML(w.kanji && w.kanji!=="—" ? w.kanji : w.hira)}</div>
-        <div id="learn-reveal" class="muted" style="margin-top:6px;">(click to reveal)</div>
+        <div class="muted" style="margin-top:6px;">${escapeHTML(w.hira)} · ${escapeHTML(w.en)}</div>
         <div style="margin-top:8px;">
           <button id="btn-audio" title="Play audio">🔊</button>
           <button id="btn-mark" title="Mark word">📌 Mark</button>
         </div>
+        <div class="note-row">
+          <textarea id="learn-note-text" placeholder="Add a note…"></textarea>
+          <button id="learn-note-save">Save Note</button>
+          <span id="learn-note-status" class="muted"></span>
+        </div>
+        <div class="nav-row">
+          <button id="btn-prev">Previous</button>
+          <button id="btn-next">Next</button>
+        </div>
       </div>`;
     D("#btn-audio").addEventListener("click", ()=>speakJa(w.hira));
     D("#btn-mark").addEventListener("click", markCurrentWord);
-    const revealer = D("#learn-reveal"); let stage=0;
-    revealer.addEventListener("click", ()=>{ stage++; revealer.textContent = (stage===1)? w.hira : w.en; });
+    D("#btn-prev").addEventListener("click", ()=>{ if (App.qIndex>0) { App.qIndex--; renderLearnCard(); } });
+    D("#btn-next").addEventListener("click", ()=>{ if (App.qIndex<App.deckFiltered.length-1) { App.qIndex++; renderLearnCard(); } });
 
     // notes
     const key = keyForWord(w);
-    elLearnNoteStatus.textContent = "Loading…";
+    const elNote = D("#learn-note-text");
+    const elSave = D("#learn-note-save");
+    const elStat = D("#learn-note-status");
+    elStat.textContent = "Loading…";
     whenFBReady().then(fb=>fb.getNote(key)).then(v=>{
-      elLearnNoteText.value = v?.note || ""; elLearnNoteStatus.textContent = v ? "Loaded" : "—";
-    }).catch(()=>{ elLearnNoteText.value=""; elLearnNoteStatus.textContent="—"; });
+      elNote.value = v?.note || ""; elStat.textContent = v ? "Loaded" : "—";
+    }).catch(()=>{ elNote.value=""; elStat.textContent="—"; });
+    elSave.addEventListener("click", async ()=>{
+      try { const fb = await whenFBReady(); await fb.setNote(key, elNote.value || ""); elStat.textContent="Saved ✓"; toast("Note saved"); }
+      catch { toast("Failed to save note"); }
+    });
   }
-  window.prevLearn = ()=>{ if (App.qIndex>0) App.qIndex--; renderLearnCard(); };
-  window.nextLearn = ()=>{ if (App.qIndex<App.deckFiltered.length-1) App.qIndex++; renderLearnCard(); };
-  window.showLearnRomaji = ()=> toast("Romaji: (not available in CSV) — add in note.");
-  window.learnNoteSaveNow = async ()=>{
-    const w = App.deckFiltered[App.qIndex]; if(!w) return;
-    try { const fb = await whenFBReady(); await fb.setNote(keyForWord(w), elLearnNoteText.value || ""); elLearnNoteStatus.textContent="Saved ✓"; toast("Note saved"); }
-    catch { toast("Failed to save note"); }
-  };
 
   // --- MCQ Modes ---
-  // Supported: "jp-en" (Hira→En), "en-jp" (En→Hira), "kanji-hira", "hira-kanji", "k2h-e" (Kanji→[Hira & En]), "he2k" ([Hira & En]→Kanji)
+  // Supported: "jp-en" (Hira→En), "en-jp" (En→Hira), "kanji-hira", "hira-kanji",
+  //            "k2h-e" (Kanji→[Hira & En]), "he2k" ([Hira & En]→Kanji)
   window.startPractice = async (mode)=>{
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
     App.mode = mode; setCrumbs();
-    App.deckFiltered = shuffle(filterDeckForMode(mode)); // spec: random
+    App.deckFiltered = shuffle(filterDeckForMode(mode)); // randomized per spec
     App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
     hideAllPractice();
     elQuestionBox.innerHTML=""; elOptions.innerHTML=""; elExtraInfo.textContent="";
@@ -494,7 +575,7 @@ async function whenFBReady(timeout = 15000) {
   window.showRomaji = ()=> toast("Romaji: (not available)");
   window.showMeaning = ()=>{ const w=App.deckFiltered[App.qIndex]; if(w) toast(`Meaning: ${w.en}`); };
 
-  // --- Dual 8-option (both selections required) ---
+  // --- Dual 8-option (require two selections) ---
   function renderDualQuestion(w){
     elOptions.innerHTML="";
     const mode = App.mode;
@@ -504,7 +585,7 @@ async function whenFBReady(timeout = 15000) {
 
     let prompt="", correctLeft="", correctRight="";
     if (mode==="k2h-e"){ prompt = w.kanji; correctLeft = w.hira; correctRight = w.en; }
-    else { prompt = `${w.hira} · ${w.en}`; correctLeft = w.kanji; correctRight = w.en; } // require both picks per spec
+    else { prompt = `${w.hira} · ${w.en}`; correctLeft = w.kanji; correctRight = w.en; }
     elQuestionBox.textContent = prompt;
 
     const pickSetLeft  = buildOptions(correctLeft,  mode==="k2h-e" ? "hira" : "kanji");
@@ -541,7 +622,7 @@ async function whenFBReady(timeout = 15000) {
   }
   window.startDualMCQ = (variant)=> window.startPractice(variant);
 
-  // --- Write Mode (two variants) ---
+  // ---------- Write Mode ----------
   window.startWriteEN2H = async ()=> startWriteWords("en2h");
   window.startWriteK2H  = async ()=> startWriteWords("k2h");
   window.startWriteWords = async (variant="en2h")=>{
@@ -549,9 +630,8 @@ async function whenFBReady(timeout = 15000) {
     App.mode = (variant==="k2h") ? "write-k2h" : "write-en2h";
     App.write.variant = (variant==="k2h") ? "k2h" : "en2h";
     setCrumbs();
-    // spec: deck randomized
-    const deckBase = (variant==="k2h") ? filterDeckForMode("write-k2h") : App.deck.slice();
-    App.deckFiltered = shuffle(deckBase);
+    const base = (variant==="k2h") ? filterDeckForMode("write-k2h") : App.deck.slice();
+    App.deckFiltered = shuffle(base);
     App.write.order = App.deckFiltered.map((_,i)=>i);
     App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
     hideAllPractice(); elWrite.classList.remove("hidden"); wireWriteShortcuts(true); renderWriteCard();
@@ -590,7 +670,7 @@ async function whenFBReady(timeout = 15000) {
   window.writeNext = ()=>{ App.write.idx++; renderWriteCard(); };
   function normalizeJa(s){ return (s||"").replace(/\s+/g,"").toLowerCase(); }
 
-  // Keyboard shortcuts (Write): Ctrl+Enter submit, Esc skip, → next, Left-Shift+M mark
+  // Keyboard shortcuts (Write): Enter submit, Ctrl+Enter next, Esc skip, → next, Left-Shift+M mark
   let writeHotkeysOn = false;
   function wireWriteShortcuts(on){
     if (on && !writeHotkeysOn){
@@ -603,17 +683,14 @@ async function whenFBReady(timeout = 15000) {
   }
   function writeHotkeyHandler(e){
     if (elWrite.classList.contains("hidden")) return;
-    // Ctrl+Enter
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); window.writeSubmit(); return; }
-    // Esc → Skip
-    if (e.key === "Escape"){ e.preventDefault(); window.writeSkip(); return; }
-    // Right Arrow → Next
-    if (e.key === "ArrowRight"){ e.preventDefault(); window.writeNext(); return; }
-    // Left-Shift + M → Mark
-    if (e.code === "KeyM" && e.shiftKey){ e.preventDefault(); window.markCurrentWord(); return; }
+    if (e.key === "Enter" && !(e.ctrlKey||e.metaKey)){ e.preventDefault(); window.writeSubmit(); return; } // Enter = Submit
+    if (e.key === "Enter" && (e.ctrlKey||e.metaKey)){ e.preventDefault(); window.writeNext(); return; }  // Ctrl+Enter = Next
+    if (e.key === "Escape"){ e.preventDefault(); window.writeSkip(); return; }                            // Esc = Skip
+    if (e.key === "ArrowRight"){ e.preventDefault(); window.writeNext(); return; }                       // → = Next
+    if (e.code === "KeyM" && e.shiftKey && !e.ctrlKey && !e.metaKey){ e.preventDefault(); window.markCurrentWord(); return; } // LShift+M
   }
 
-  // --- Make Sentence (best-effort parity) ---
+  // --- Make Sentence ---
   window.startMakeSentence = async ()=>{
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
     App.mode = "make"; setCrumbs();
@@ -695,7 +772,7 @@ async function whenFBReady(timeout = 15000) {
     else deck=await getMarkedAsDeck();
     if (!deck.length){ toast("No items to practice."); return; }
     App.deck = deck; App.mode = mode; setCrumbs();
-    if (mode==="learn"){ App.deckFiltered=shuffle(deck); App.qIndex=0; hideAllPractice(); elLearn.classList.remove("hidden"); renderLearnCard(); }
+    if (mode==="learn"){ App.deckFiltered=deck.slice(); App.qIndex=0; hideAllPractice(); elLearn.classList.remove("hidden"); renderLearnCard(); }
     else if (mode==="write"){ App.deckFiltered=shuffle(deck); App.write.order=App.deckFiltered.map((_,i)=>i); App.write.idx=0; hideAllPractice(); elWrite.classList.remove("hidden"); wireWriteShortcuts(true); renderWriteCard(); }
     else { App.deckFiltered=shuffle(deck); App.qIndex=0; hideAllPractice(); D("#practice").classList.remove("hidden"); updateDeckProgress(); renderQuestion(); }
   }
@@ -704,19 +781,20 @@ async function whenFBReady(timeout = 15000) {
   function wireGrammarTab(){
     elOpenGrammarPDF.onclick = async ()=>{
       const n = App.lesson.split("-")[1];
-      const u = await getFirstOk([ `/level/${App.level}/${App.lesson}/Grammar/lesson-${n}.pdf` ]);
+      const u = await firstOk([
+        `/level/${App.level}/${App.lesson}/Grammar/lesson-${n}.pdf`,
+        `/level/${App.level}/${App.lesson}/Grammar/Lesson.pdf`,
+      ]);
       if (u) window.open(u,"_blank","noopener"); else toast("PDF not found.");
     };
     renderGrammarPracticeFiles();
   }
   async function renderGrammarPracticeFiles(){
-    elPgFiles.innerHTML=""; elPgStatus.textContent="Loading practice sets…";
+    // unchanged: if you use practice csvs, list their buttons; otherwise ignore UI
+    elPgFiles.innerHTML=""; elPgStatus.textContent="(optional) choose a practice set:";
+    // If you don’t ship practice_grammar, you can comment this section out.
     try{
-      if (!App.cache.grammarFiles){
-        const j = await fetchJSONFirst([ `/practice_grammar/manifest.json` ]);
-        App.cache.grammarFiles = (j && Array.isArray(j.files)) ? j.files : [];
-      }
-      const files = App.cache.grammarFiles;
+      const files = await listCsvFiles(`/practice_grammar/`, ["basics-1.csv","particles-a.csv"]);
       if (!files.length){ elPgStatus.textContent="No practice sets."; return; }
       elPgStatus.textContent="Choose a set:";
       for (const f of files){
@@ -728,7 +806,7 @@ async function whenFBReady(timeout = 15000) {
   }
   async function loadGrammarPractice(filename){
     try{
-      const txt = await (await fetch(`/practice_grammar/${filename}`, { cache:"no-cache" })).text();
+      const txt = await (await fetch(encodePath(`/practice_grammar/${filename}`), { cache:"no-cache" })).text();
       const csv = parseCSV(txt).filter(r=>r.length>=2);
       App.pg.rows = csv.map(r=>({ q:r[0], a:r[1] })); App.pg.idx=0; elPgArea.classList.remove("hidden"); renderPgItem();
     } catch { toast("Failed to load set"); }
@@ -751,6 +829,13 @@ async function whenFBReady(timeout = 15000) {
   };
   window.pgShowAnswer = ()=>{ const row=App.pg.rows[App.pg.idx]; if(row) elPgFeedback.innerHTML=`Answer: <b>${escapeHTML(row.a)}</b>`; };
   window.pgNext = ()=>{ App.pg.idx++; renderPgItem(); };
+
+  async function firstOk(urls){
+    for (const u of urls){
+      try{ const r = await fetch(encodePath(u), { cache:"no-cache" }); if (r.ok) return u; } catch {}
+    }
+    return null;
+  }
 
   // ---------- Progress / Leaderboard ----------
   async function renderProgress(){
@@ -864,7 +949,7 @@ async function whenFBReady(timeout = 15000) {
   }
 
   // Inputs quick binds
-  elWriteInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.ctrlKey && !e.metaKey){ e.preventDefault(); window.writeSubmit(); } });
+  elWriteInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !(e.ctrlKey||e.metaKey)){ e.preventDefault(); window.writeSubmit(); } });
   elPgInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); window.pgSubmit(); } });
 
   window.addEventListener("beforeunload", ()=>{ try{}catch{} });
