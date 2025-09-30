@@ -4,7 +4,14 @@
    - Firebase API consumed via window.FB (from firebase.js)
    - Offline-friendly: lightweight caching + local mistakes buffer
    ========================================================= */
-
+async function whenFBReady(timeout = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (window.FB && window.FB.isReady) return window.FB;
+    await new Promise(r => setTimeout(r, 50));
+  }
+  throw new Error("Firebase not ready");
+}
 (() => {
   "use strict";
 
@@ -263,30 +270,39 @@
 
   // ---------- Auth ----------
   elAuthBtn.addEventListener("click", async () => {
-    try {
-      await FB.auth.signInWithGoogle();
-    } catch (e) {
-      console.error(e);
-      elAuthErr.style.display = "block";
-      elAuthErr.textContent = e.message || "Sign-in failed.";
-    }
-  });
-  elSignOut.addEventListener("click", async () => {
-    try { await flushSession(); } catch {}
-    await FB.auth.signOut();
-  });
+  try {
+    const fb = await whenFBReady();
+    await fb.auth.signInWithGoogle();
+  } catch (e) {
+    console.error(e);
+    elAuthErr.style.display = "block";
+    elAuthErr.textContent = e.message || "Sign-in failed.";
+  }
+});
 
-  FB?.auth?.onChange?.(user => {
+  elSignOut.addEventListener("click", async () => {
+  try { await flushSession(); } catch {}
+  const fb = await whenFBReady();
+  await fb.auth.signOut();
+});
+
+
+whenFBReady().then(fb => {
+  fb.auth.onChange(user => {
     if (user) {
       elAuthGate.style.display = "none";
       elApp.classList.remove("hidden");
-      // Default landing
       navigateLevel("N5");
     } else {
       elApp.classList.add("hidden");
       elAuthGate.style.display = "";
     }
   });
+}).catch(() => {
+  // If Firebase never becomes ready, keep the auth gate visible.
+  elAuthGate.style.display = "";
+});
+
 
   // ---------- Routing ----------
   window.navigateLevel = async (level) => {
@@ -962,6 +978,7 @@
   // ---------- Marked ----------
   async function renderMarkedList() {
     try {
+      const fb = await whenFBReady();
       const rows = await FB.listMarked();
       elMarkedStatus.textContent = `${rows.length} marked item(s).`;
       elMarkedContainer.innerHTML = "";
@@ -985,15 +1002,16 @@
   window.startMarkedPractice = async (m) => setupListPractice("marked", m);
   window.startMarkedWrite = async () => setupListPractice("marked", "write");
 
-  async function getMarkedAsDeck() {
-    const rows = await FB.listMarked();
-    // normalize to vocab item shape
-    return rows.map(r => ({
-      kanji: r.kanji || "—",
-      hira: r.hira || r.front || "",
-      en: r.en || r.back || "",
-    })).filter(x => x.hira && x.en);
-  }
+async function getMarkedAsDeck() {
+  const fb = await whenFBReady();
+  const rows = await fb.listMarked();
+  return rows.map(r => ({
+    kanji: r.kanji || "—",
+    hira: r.hira || r.front || "",
+    en: r.en || r.back || "",
+  })).filter(x => x.hira && x.en);
+}
+
 
   // List-based practice helper (mistake / marked)
   async function setupListPractice(source, mode) {
@@ -1126,6 +1144,7 @@
   // ---------- Progress ----------
   async function renderProgress() {
     try {
+      const fb = await whenFBReady();
       const rows = await FB.getRecentAttempts({ max: 100 });
       // Last attempt
       if (rows.length) {
@@ -1189,6 +1208,7 @@
   async function renderOverallLeaderboard() {
     elOverallLB.innerHTML = "";
     try {
+      const fb = await whenFBReady();
       const rows = await FB.getOverallLeaderboard({ max: 100 });
       for (const r of rows) {
         const li = document.createElement("li");
@@ -1205,14 +1225,12 @@
   // ---------- Sign Word ----------
   window.signWordAdd = async () => {
     const front = (elSWFront.value || "").trim();
-    const back = (elSWBack.value || "").trim();
-    const romaji = (elSWRomaji.value || "").trim();
-    if (!front || !back) {
-      toast("Please enter Front and Back.");
-      return;
-    }
-    try {
-      await FB.signWordAdd({ front, back, romaji: romaji || null });
+  const back = (elSWBack.value || "").trim();
+  const romaji = (elSWRomaji.value || "").trim();
+  if (!front || !back) { toast("Please enter Front and Back."); return; }
+  try {
+    const fb = await whenFBReady();
+    await fb.signWordAdd({ front, back, romaji: romaji || null });
       elSWFront.value = "";
       elSWBack.value = "";
       elSWRomaji.value = "";
@@ -1226,6 +1244,7 @@
   async function renderSignWordList() {
     elSWList.innerHTML = "";
     try {
+      const fb = await whenFBReady();
       const rows = await FB.signWordList();
       if (!rows.length) {
         elSWList.innerHTML = `<div class="muted">No signed words yet.</div>`;
@@ -1262,37 +1281,37 @@
   };
 
   async function flushSession() {
-    // Build an attempt only if there is activity
-    const totalAttempted = (App.stats.right|0) + (App.stats.wrong|0) + (App.stats.skipped|0);
-    if (!App.mode || !totalAttempted) return false;
+  const totalAttempted = (App.stats.right|0) + (App.stats.wrong|0) + (App.stats.skipped|0);
+  if (!App.mode || !totalAttempted) return false;
 
-    const deckTotal =
-      App.mode === "write" ? (App.write.order?.length || App.deckFiltered.length || App.deck.length || 0)
-                           : (App.deckFiltered.length || App.deck.length || 0);
+  const deckTotal =
+    App.mode === "write" ? (App.write.order?.length || App.deckFiltered.length || App.deck.length || 0)
+                         : (App.deckFiltered.length || App.deck.length || 0);
 
-    const attempt = {
-      level: App.level || null,
-      lesson: App.lesson || null,
-      deckId: currentDeckId(),
-      mode: App.mode,
-      right: App.stats.right|0,
-      wrong: App.stats.wrong|0,
-      skipped: App.stats.skipped|0,
-      total: deckTotal|0,
-    };
+  const attempt = {
+    level: App.level || null,
+    lesson: App.lesson || null,
+    deckId: currentDeckId(),
+    mode: App.mode,
+    right: App.stats.right|0,
+    wrong: App.stats.wrong|0,
+    skipped: App.stats.skipped|0,
+    total: deckTotal|0,
+  };
 
-    try {
-      await FB.commitSession({ attempts: [attempt], points: App.buffer.points|0 });
-      // reset counters for next session
-      App.buffer.points = 0;
-      App.stats = { right: 0, wrong: 0, skipped: 0 };
-      updateScorePanel();
-      return true;
-    } catch (e) {
-      console.error("[flushSession] commit failed", e);
-      return false;
-    }
+  try {
+    const fb = await whenFBReady();
+    await fb.commitSession({ attempts: [attempt], points: App.buffer.points|0 });
+    App.buffer.points = 0;
+    App.stats = { right: 0, wrong: 0, skipped: 0 };
+    updateScorePanel();
+    return true;
+  } catch (e) {
+    console.error("[flushSession] commit failed", e);
+    return false;
   }
+}
+
 
   // ---------- Key handlers ----------
   elWriteInput?.addEventListener("keydown", (e) => {

@@ -1,0 +1,256 @@
+N5-Vocab-Japanese/
+├── api/
+│   └── grammar-review.js
+├── fb.txt
+├── firebase.js
+├── index.html
+├── level/
+│   ├── N3/
+│   │   ├── Lesson-01/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-02/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-03/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-04/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-05/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-06/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-07/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-08/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   └── menifest.json
+│   ├── N4/
+│   │   ├── Lesson-01/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-02/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-03/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-04/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-05/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-06/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-07/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-08/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   └── menifest.json
+│   └── N5/
+│       ├── Lesson-01/
+│       │   ├── Grammar/
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
+│       │   ├── Video Lecture/
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
+│       ├── Lesson-02/
+│       │   ├── Grammar/
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
+│       │   ├── Video Lecture/
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
+│       ├── Lesson-03/
+│       │   ├── Grammar/
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
+│       │   ├── Video Lecture/
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
+│       ├── Lesson-04/
+│       │   ├── Grammar/
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
+│       │   ├── Video Lecture/
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
+│       ├── Lesson-05/
+│       │   ├── Grammar/
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
+│       │   ├── Video Lecture/
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
+│       ├── Lesson-06/
+│       │   ├── Grammar/
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
+│       │   ├── Video Lecture/
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
+│       ├── Lesson-07/
+│       │   ├── Grammar/
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
+│       │   ├── Video Lecture/
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
+│       ├── Lesson-08/
+│       │   ├── Grammar/
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
+│       │   ├── Video Lecture/
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
+│       └── menifest.json
+├── script.js
+├── sturcture.txt
+└── style.css
