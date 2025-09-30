@@ -392,7 +392,21 @@ window.openSection = async (name) => {
     if (!lessons) { lessons = await discoverLessons(level); App.cache.lessons.set(level, lessons); }
 
     elLessonList.innerHTML = "";
-    if (!lessons.length){ elLessonStatus.textContent = "No lessons found under /level/"+level; return; }
+    if (!lessons.length) {
+      // keep right content visible, just show the message
+      document.querySelector("#level-shell")?.classList.remove("hidden");
+
+      elLessonList.innerHTML = "";
+      elLessonStatus.textContent = "Coming Soon";
+      elLessonStatus.classList.add("coming-soon");   // add style class for nicer look
+
+      // make sure the Back button hides on lesson-list state
+      updateBackVisibility?.();
+      return;
+    }
+
+    // If we DO have lessons, clear the coming-soon style
+    elLessonStatus.classList.remove("coming-soon");
     elLessonStatus.textContent = `${lessons.length} lesson(s) found.`;
     for (const name of lessons){
       const item = document.createElement("div");

@@ -307,3 +307,10 @@ code{ background:#0c1424; border:1px solid var(--border); padding:1px 6px; borde
 .lightbox-inner { position: relative; z-index: 1; width: min(920px,94vw); }
 .lightbox-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .lightbox-close { border:1px solid var(--border); background:#0f1726; color: var(--text); padding:6px 10px; border-radius:10px; cursor:pointer; }
+/* Coming soon message on empty levels */
+#lesson-status.coming-soon {
+  text-align: center;
+  padding: 40px 0;
+  font-size: 1.25rem;
+  opacity: 0.85;
+}
