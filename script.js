@@ -196,18 +196,27 @@ async function whenFBReady(timeout = 15000) {
     }catch{ return []; }
   }
 
-  async function anyExists(urls){
-    for (const u of urls){
-      try{ const r = await fetch(encodePath(u), { method:"GET", cache:"no-cache" }); if (r.ok) return true; }catch{}
-    }
-    return false;
+  // REPLACE firstOk + anyExists with this HEAD→GET variant
+async function firstOk(urls){
+  for (const raw of urls){
+    const u = encodePath(raw);
+    try {
+      // Try HEAD first to reduce bandwidth/log noise
+      let r = await fetch(u, { method: "HEAD", cache: "no-cache" });
+      if (r.ok) return raw;
+      // Some static hosts return 405 for HEAD; fallback to GET
+      if (r.status === 405) {
+        r = await fetch(u, { method: "GET", cache: "no-cache" });
+        if (r.ok) return raw;
+      }
+    } catch {}
   }
-  async function firstOk(urls){
-    for (const u of urls){
-      try{ const r = await fetch(encodePath(u), { cache:"no-cache" }); if (r.ok) return u; } catch {}
-    }
-    return null;
-  }
+  return null;
+}
+async function anyExists(urls){
+  return !!(await firstOk(urls));
+}
+
 
   // Global Back button logic
 elBack.addEventListener("click", () => {
@@ -352,94 +361,139 @@ elBack.addEventListener("click", () => {
       elLessonList.appendChild(item);
     }
   }
-  async function discoverLessons(level){
-    const found=[];
-    for(let i=1;i<=60;i++){
-      const L = `Lesson-${pad2(i)}`;
-      const any = await anyExists([
-        `/level/${level}/${L}/Vocabulary/lesson-${pad2(i)}.csv`,
-        `/level/${level}/${L}/Vocabulary/Lesson-${pad2(i)}.csv`,
-        `/level/${level}/${L}/Vocabulary/Lesson.csv`,
-        `/level/${level}/${L}/Video Lecture/Lesson.csv`,
-        `/level/${level}/${L}/Grammar/lesson-${pad2(i)}.pdf`,
-        `/level/${level}/${L}/Grammar/Lesson.pdf`,
-      ]);
-      if (any) found.push(L);
+  // REPLACE discoverLessons with this version
+async function discoverLessons(level){
+  const found = [];
+  let misses = 0;
+  for (let i = 1; i <= 60; i++){
+    const num = pad2(i);
+    const L = `Lesson-${num}`;
+
+    // Only probe a few canonical names to avoid 404 spam
+    const ok = await firstOk([
+      // Vocabulary: prefer lesson-{num}.csv (lower/upper)
+      `/level/${level}/${L}/Vocabulary/lesson-${num}.csv`,
+      `/level/${level}/${L}/Vocabulary/Lesson-${num}.csv`,
+      `/level/${level}/${L}/Vocabulary/lesson.csv`,
+      `/level/${level}/${L}/Vocabulary/Lesson.csv`,
+      // Grammar PDF (optional)
+      `/level/${level}/${L}/Grammar/lesson-${num}.pdf`,
+      `/level/${level}/${L}/Grammar/Lesson.pdf`,
+      // Video (ONLY canonical Lesson.csv; we won't try part-*.csv anymore)
+      `/level/${level}/${L}/Video Lecture/Lesson.csv`,
+      `/level/${level}/${L}/Video Lecture/lesson.csv`,
+    ]);
+
+    if (ok){
+      found.push(L);
+      misses = 0;
+    } else {
+      misses++;
+      // Stop scanning if we hit a run of empty lessons (prevents tons of 404s)
+      if (misses >= 6) break;
     }
-    return found;
   }
+  return found;
+}
+
 
   // ---------- Open lesson & tabs ----------
-  async function openLesson(level, lesson){
-    try { await flushSession(); } catch {}
-    // wipe previous content
-    [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
-    closeVideoLightbox();
-    hideAllMain();
+  // REPLACE openLesson with this version
+async function openLesson(level, lesson){
+  try { await flushSession(); } catch {}
 
-    App.level = level; App.lesson = lesson; setCrumbs();
+  // Clean slate
+  [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
+  clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
+  hideAllSections();           // hide progress/marked/etc.
+  elLevelShell.classList.add("hidden"); // hide lesson list
 
-    // show lesson tabs view
-    elLessonArea.classList.remove("hidden");
-    elLessonTitle.textContent = `${lesson.replace(/-/g," ")} — ${level}`;
-    elLessonAvail.textContent = "";
-    await openLessonTab("videos");
-    updateBackVisibility();
+  // Set state + show lesson shell
+  App.level = level;
+  App.lesson = lesson;
+  setCrumbs();
 
-    // quick availability snapshot
-    const hasPDF = await anyExists([
-      `/level/${level}/${lesson}/Grammar/lesson-${lesson.split("-")[1]}.pdf`,
-      `/level/${level}/${lesson}/Grammar/Lesson.pdf`,
-    ]);
-    // Just show counts we can determine without 404 spam:
-    elLessonAvail.textContent = `PDF: ${hasPDF ? "Yes" : "No"}`;
-  }
+  elLessonArea.classList.remove("hidden");
+  elLessonTitle.textContent = `${lesson.replace(/-/g," ")} — ${level}`;
+  elLessonAvail.textContent = "Checking files…";
 
-  window.openLessonTab = async (tab)=>{
+  const num = lesson.split("-")[1];
+
+  // Decide the DEFAULT tab by what exists
+  const hasVocab = await firstOk([
+    `/level/${level}/${lesson}/Vocabulary/lesson-${num}.csv`,
+    `/level/${level}/${lesson}/Vocabulary/Lesson-${num}.csv`,
+    `/level/${level}/${lesson}/Vocabulary/lesson.csv`,
+    `/level/${level}/${lesson}/Vocabulary/Lesson.csv`,
+  ]);
+  const hasVideo = await firstOk([
+    `/level/${level}/${lesson}/Video Lecture/Lesson.csv`,
+    `/level/${level}/${lesson}/Video Lecture/lesson.csv`,
+  ]);
+  const hasPdf = await firstOk([
+    `/level/${level}/${lesson}/Grammar/lesson-${num}.pdf`,
+    `/level/${level}/${lesson}/Grammar/Lesson.pdf`,
+  ]);
+
+  // Prefer Vocab → Video → Grammar
+  const defaultTab = hasVocab ? "vocab" : (hasVideo ? "videos" : (hasPdf ? "grammar" : "videos"));
+  await openLessonTab(defaultTab);
+
+  elLessonAvail.textContent = `Vocab: ${hasVocab ? "Yes" : "No"} • Video: ${hasVideo ? "Yes" : "No"} • PDF: ${hasPdf ? "Yes" : "No"}`;
+  updateBackVisibility();
+}
+
+
+  // REPLACE openLessonTab with this version
+window.openLessonTab = async (tab)=>{
   try { await flushSession(); } catch {}
   App.tab = tab; setCrumbs();
 
-  // NEW: hide all tab panes and clear their DOM before showing the new one
+  // Always clear/hide all panes first
   [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
   clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
 
-  // now show the selected tab
-  if (tab==="videos"){ elTabVideos.classList.remove("hidden"); await renderVideos(); }
-  else if (tab==="vocab"){ elTabVocab.classList.remove("hidden"); await ensureDeckLoaded(); elVocabStatus.textContent = "Pick a mode."; }
-  else if (tab==="grammar"){ elTabGrammar.classList.remove("hidden"); wireGrammarTab(); }
-  updateBackVisibility();
+  // Now show the selected pane
+  if (tab === "videos") {
+    elTabVideos.classList.remove("hidden");
+    await renderVideos();
+  } else if (tab === "vocab") {
+    elTabVocab.classList.remove("hidden");
+    await ensureDeckLoaded();
+    elVocabStatus.textContent = App.deck.length ? "Pick a mode." : "No vocabulary found.";
+  } else if (tab === "grammar") {
+    elTabGrammar.classList.remove("hidden");
+    wireGrammarTab();
+  }
 
+  updateBackVisibility();
 };
 
 
+
   // ---------- Video Module (no extra file buttons) ----------
-  async function loadAllVideoRows(level, lesson){
-    const base = `/level/${level}/${lesson}/Video Lecture/`;
-    // Prefer listing (if enabled), otherwise only try canonical filenames (no part-* probing)
-    let files = await listCsvFiles(base);
-    if (!files.length){
-      // Only a couple of safe attempts to avoid 404 spam
-      const canonical = [];
-      const f1 = await firstOk([base + "Lesson.csv"]);
-      if (f1) canonical.push("Lesson.csv");
-      else {
-        const f2 = await firstOk([base + "lesson.csv"]);
-        if (f2) canonical.push("lesson.csv");
+  // REPLACE loadAllVideoRows with this minimal canonical loader
+async function loadAllVideoRows(level, lesson){
+  const base = `/level/${level}/${lesson}/Video Lecture/`;
+  const files = [];
+
+  // Only try canonical names to avoid 404 storms
+  const f = await firstOk([ base + "Lesson.csv", base + "lesson.csv" ]);
+  if (f) files.push(f.split("/").pop());
+
+  const rows = [];
+  for (const name of files){
+    try{
+      const txt = await (await fetch(encodePath(base + name), { cache:"no-cache" })).text();
+      const csv = parseCSV(txt);
+      for (const r of csv){
+        if (r[0] && r[1]) rows.push({ title: r[0], url: r[1] });
       }
-      files = canonical;
-    }
-    const rows = [];
-    for (const f of files){
-      try{
-        const txt = await (await fetch(encodePath(base + f), { cache:"no-cache" })).text();
-        const csv = parseCSV(txt);
-        for (const r of csv){
-          if (r[0] && r[1]) rows.push({ title: r[0], url: r[1] });
-        }
-      }catch{}
-    }
-    return rows;
+    } catch {}
   }
+  return rows;
+}
+
 
   async function renderVideos(){
     elVideoCards.innerHTML = "";
