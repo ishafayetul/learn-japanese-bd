@@ -11,6 +11,9 @@
    ========================================================= */
 
 // Wait until firebase.js finished and window.FB is ready
+// --- bootstrap so navigateLevel() never touches undefined ---
+window.App = window.App || {};
+
 async function whenFBReady(timeout = 15000) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
@@ -128,9 +131,8 @@ async function whenFBReady(timeout = 15000) {
   // Toast
   const elToast = D("#toast");
 
-  // ---------- State ----------
-  // ---------- State ----------
-const App = {
+// ---------- State (safe bootstrap) ----------
+const App = Object.assign(window.App, {
   level: null, lesson: null, tab: "videos", mode: null,
   deck: [], deckFiltered: [], qIndex: 0,
   stats: { right: 0, wrong: 0, skipped: 0 },
@@ -139,10 +141,10 @@ const App = {
   pg:   { rows: [], idx: 0 },
   buffer: { points: 0 },
   cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() }
-};
-
-// 👇 Add this line
+});
+// keep a stable global reference
 window.App = App;
+
 
 
   // ---------- Utils ----------
@@ -330,8 +332,14 @@ function clearGrammarPane(){
 
   window.navigateLevel = async (level) => {
   try { await flushSession?.(); } catch {}
-  window.App.level = level; window.App.lesson = null; window.App.tab = "videos"; window.App.mode = null;
-  window.App.stats = { right:0, wrong:0, skipped:0 };
+
+  // ensure App exists (extra safety)
+  if (!window.App) window.App = {};
+  Object.assign(window.App, App); // keep the same object shape
+
+  App.level = level; App.lesson = null; App.tab = "videos"; App.mode = null;
+  App.stats = { right:0, wrong:0, skipped:0 };
+
   document.querySelector("#crumb-level").textContent = level || "—";
   document.querySelector("#crumb-lesson").textContent = "—";
   document.querySelector("#crumb-mode").textContent = "—";
@@ -343,10 +351,12 @@ function clearGrammarPane(){
 
   // Show lesson list pane
   document.querySelector("#level-shell")?.classList.remove("hidden");
-  document.querySelector("#lesson-status").textContent = "Scanning lessons…";
+  const st = document.querySelector("#lesson-status");
+  if (st) st.textContent = "Scanning lessons…";
   await showLessonList(level);
   updateBackVisibility();
 };
+
 
 window.openSection = async (name) => {
   try { await flushSession?.(); } catch {}
@@ -392,47 +402,37 @@ window.openSection = async (name) => {
   }
   // REPLACE discoverLessons with this version
 // FULL REPLACEMENT
+// Only check canonical vocab filenames to decide if a lesson exists
 async function discoverLessons(level){
   const found = [];
   let misses = 0;
   for (let i = 1; i <= 60; i++){
     const num = String(i).padStart(2, "0");
     const L = `Lesson-${num}`;
-    // Decide lesson existence ONLY by a small canonical vocab filename set
     const ok = await firstOk([
       `/level/${level}/${L}/Vocabulary/lesson-${num}.csv`,
       `/level/${level}/${L}/Vocabulary/Lesson-${num}.csv`,
       `/level/${level}/${L}/Vocabulary/lesson.csv`,
       `/level/${level}/${L}/Vocabulary/Lesson.csv`,
     ]);
-    if (ok){
-      found.push(L);
-      misses = 0;
-    } else {
-      misses++;
-      if (misses >= 3) break; // early stop on tail empties
-    }
+    if (ok){ found.push(L); misses = 0; }
+    else { if (++misses >= 3) break; } // early stop on empty tail
   }
   return found;
 }
 
-
-
-
   // ---------- Open lesson & tabs ----------
-  // REPLACE openLesson with this version
-// FULL REPLACEMENT
 async function openLesson(level, lesson){
   try { await flushSession?.(); } catch {}
 
   // Clean right side
   ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel=>document.querySelector(sel)?.classList.add("hidden"));
   clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
-  hideContentPanes(); // keep navbar
+  hideContentPanes(); // keep navbar visible
 
   // Set state + show lesson tabs area
-  window.App.level = level;
-  window.App.lesson = lesson;
+  App.level = level;
+  App.lesson = lesson;
   document.querySelector("#crumb-level").textContent = level || "—";
   document.querySelector("#crumb-lesson").textContent = lesson || "—";
   document.querySelector("#crumb-mode").textContent = "—";
@@ -455,14 +455,9 @@ async function openLesson(level, lesson){
   updateBackVisibility();
 }
 
-
-
-
-  // REPLACE openLessonTab with this version
-// FULL REPLACEMENT
 window.openLessonTab = async (tab)=>{
   try { await flushSession?.(); } catch {}
-  window.App.tab = tab;
+  App.tab = tab;
   document.querySelector("#crumb-mode").textContent = tab;
 
   // Clear all right-side panes
@@ -475,7 +470,7 @@ window.openLessonTab = async (tab)=>{
   } else if (tab === "vocab") {
     document.querySelector("#tab-vocab")?.classList.remove("hidden");
     await ensureDeckLoaded();
-    const has = (window.App.deck?.length || 0) > 0;
+    const has = (App.deck?.length || 0) > 0;
     document.querySelector("#vocab-status").textContent = has ? "Pick a mode." : "No vocabulary found.";
   } else if (tab === "grammar") {
     document.querySelector("#tab-grammar")?.classList.remove("hidden");
@@ -484,13 +479,7 @@ window.openLessonTab = async (tab)=>{
   updateBackVisibility();
 };
 
-
-
-
-
   // ---------- Video Module (no extra file buttons) ----------
-  // REPLACE loadAllVideoRows with this minimal canonical loader
-// Load all rows from canonical Video CSV (Lesson.csv or lesson.csv)
 async function loadAllVideoRows(level, lesson){
   const base = `/level/${level}/${lesson}/Video Lecture/`;
   const file = await firstOk([ base + "Lesson.csv", base + "lesson.csv" ]);
@@ -586,9 +575,9 @@ function closeVideoLightbox(){
   function escCloseOnce(e){ if (e.key==="Escape") closeVideoLightbox(); }
 
   // ---------- Vocabulary ----------
-  async function listVocabCsvFiles(level, lesson){
+ async function listVocabCsvFiles(level, lesson){
   const key = `v/${level}/${lesson}`;
-  if (window.App.cache?.vocabCsvFiles?.has(key)) return window.App.cache.vocabCsvFiles.get(key);
+  if (App.cache.vocabCsvFiles.has(key)) return App.cache.vocabCsvFiles.get(key);
 
   const dir = `/level/${level}/${lesson}/Vocabulary/`;
   const num = (lesson.split("-")[1] || "").padStart(2,"0");
@@ -599,9 +588,10 @@ function closeVideoLightbox(){
     dir + `Lesson.csv`,
   ]);
   const files = candidate ? [candidate.split("/").pop()] : [];
-  window.App.cache.vocabCsvFiles.set(key, files);
+  App.cache.vocabCsvFiles.set(key, files);
   return files;
 }
+
 
 
   async function ensureDeckLoaded(){
