@@ -330,32 +330,34 @@ function clearGrammarPane(){
       .forEach(x=>x.classList.add("hidden"));
   }
 
-  window.navigateLevel = async (level) => {
+ window.navigateLevel = async (level) => {
   try { await flushSession?.(); } catch {}
 
-  // ensure App exists (extra safety)
+  // make sure we’re writing to the same object used everywhere
   if (!window.App) window.App = {};
-  Object.assign(window.App, App); // keep the same object shape
+  const App = window.App;
 
   App.level = level; App.lesson = null; App.tab = "videos"; App.mode = null;
-  App.stats = { right:0, wrong:0, skipped:0 };
+  App.stats = { right: 0, wrong: 0, skipped: 0 };
 
-  document.querySelector("#crumb-level").textContent = level || "—";
+  document.querySelector("#crumb-level").textContent  = level || "—";
   document.querySelector("#crumb-lesson").textContent = "—";
-  document.querySelector("#crumb-mode").textContent = "—";
+  document.querySelector("#crumb-mode").textContent   = "—";
 
-  // Clean slate right side
-  ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel=>document.querySelector(sel)?.classList.add("hidden"));
+  // clean right side completely
+  ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel => document.querySelector(sel)?.classList.add("hidden"));
   closeVideoLightbox?.();
   hideContentPanes();
 
-  // Show lesson list pane
+  // show lesson list and load
   document.querySelector("#level-shell")?.classList.remove("hidden");
   const st = document.querySelector("#lesson-status");
   if (st) st.textContent = "Scanning lessons…";
   await showLessonList(level);
+
   updateBackVisibility();
 };
+
 
 
 window.openSection = async (name) => {
