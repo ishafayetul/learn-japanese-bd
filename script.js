@@ -173,9 +173,9 @@ async function whenFBReady(timeout = 15000) {
   function currentDeckId(){ return (App.level && App.lesson) ? `${App.level}/${App.lesson}` : (App.lesson || App.level || "-"); }
   // encode segments but preserve slashes
   function encodePath(p){
-    return p.split('/').map(s => s === '' ? '' : encodeURIComponent(s)).join('/')
-            .replace(/%3A/g, ':');
-  }
+  return p.split('/').map(s => s === '' ? '' : encodeURIComponent(s)).join('/')
+          .replace(/%3A/g, ':');
+}
 
   // Directory lister: only returns names if directory indexes are enabled (rare on Vercel)
   async function listCsvFiles(dirUrl){
@@ -197,53 +197,45 @@ async function whenFBReady(timeout = 15000) {
   }
 
   // REPLACE firstOk + anyExists with this HEAD→GET variant
-async function firstOk(urls){
-  for (const raw of urls){
-    const u = encodePath(raw);
-    try {
-      // Try HEAD first to reduce bandwidth/log noise
-      let r = await fetch(u, { method: "HEAD", cache: "no-cache" });
-      if (r.ok) return raw;
-      // Some static hosts return 405 for HEAD; fallback to GET
-      if (r.status === 405) {
-        r = await fetch(u, { method: "GET", cache: "no-cache" });
+  async function firstOk(urls){
+    for (const raw of urls){
+      const u = encodePath(raw);
+      try {
+        let r = await fetch(u, { method: "HEAD", cache: "no-cache" });
         if (r.ok) return raw;
-      }
-    } catch {}
+        if (r.status === 405) { // hosts that don't allow HEAD
+          r = await fetch(u, { method: "GET", cache: "no-cache" });
+          if (r.ok) return raw;
+        }
+      } catch {}
+    }
+    return null;
   }
-  return null;
-}
-async function anyExists(urls){
-  return !!(await firstOk(urls));
-}
+  async function anyExists(urls){ return !!(await firstOk(urls)); }
 
 
   // Global Back button logic
-elBack.addEventListener("click", () => {
-  // 1) If a video is open, close it → back to videos
-  if (videoLightboxEl) {
+  document.querySelector("#back-btn")?.addEventListener("click", () => {
+  // If video enlarged view open → close it and go back to videos tab
+  if (window.__videoLightboxOpen) {
     closeVideoLightbox();
-    elLessonArea.classList.remove("hidden");
+    document.querySelector("#lesson-area")?.classList.remove("hidden");
     openLessonTab("videos");
     updateBackVisibility();
     return;
   }
-
-  // 2) If we're in a lesson tabs view → go back to the lesson list
-  if (!elLessonArea.classList.contains("hidden")) {
-    elLessonArea.classList.add("hidden");
-    elLevelShell.classList.remove("hidden");
+  // If we're in lesson tabs → go back to lesson list
+  const area = document.querySelector("#lesson-area");
+  if (area && !area.classList.contains("hidden")) {
+    area.classList.add("hidden");
+    document.querySelector("#level-shell")?.classList.remove("hidden");
     updateBackVisibility();
     return;
   }
-
-  // 3) If we're in any section (progress, leaderboards, etc.) → back to lesson list
-  const sections = [elProgressSection, elLeaderboardSection, elMistakesSection, elMarkedSection, elSignWordSection];
-  if (sections.some(s => !s.classList.contains("hidden"))) {
-    sections.forEach(s => s.classList.add("hidden"));
-    elLevelShell.classList.remove("hidden");
-    updateBackVisibility();
-  }
+  // If in any other section → back to lesson list
+  hideContentPanes();
+  document.querySelector("#level-shell")?.classList.remove("hidden");
+  updateBackVisibility();
 });
 
   // ---------- Auth ----------
@@ -264,94 +256,121 @@ elBack.addEventListener("click", () => {
 
   // ---------- Routing & view cleanup ----------
   // Hide every main pane (level list, lesson tabs, sections). Used before opening video full view.
-  function hideContentPanes() {
-    // Do NOT touch the navbar or left column
-    // Only clear the RIGHT-SIDE panes
-    elLessonArea.classList.add("hidden");
-    elProgressSection.classList.add("hidden");
-    elLeaderboardSection.classList.add("hidden");
-    elMistakesSection.classList.add("hidden");
-    elMarkedSection.classList.add("hidden");
-    elSignWordSection.classList.add("hidden");
+  function hideContentPanes(){
+  document.querySelector("#lesson-area")?.classList.add("hidden");
+  document.querySelector("#progress-section")?.classList.add("hidden");
+  document.querySelector("#leaderboard-section")?.classList.add("hidden");
+  document.querySelector("#mistakes-section")?.classList.add("hidden");
+  document.querySelector("#marked-section")?.classList.add("hidden");
+  document.querySelector("#signword-section")?.classList.add("hidden");
 
-    clearVideosPane();
-    clearVocabPane();
-    clearGrammarPane();
-  }
+  clearVideosPane();
+  clearVocabPane();
+  clearGrammarPane();
+}
 
   // Show/hide the global Back button depending on what's visible
-  function updateBackVisibility() {
-    // Back is visible whenever we're NOT on the level list
-    const onLevelList = !elLevelShell.classList.contains("hidden") &&
-                        elLessonArea.classList.contains("hidden") &&
-                        [elProgressSection, elLeaderboardSection, elMistakesSection, elMarkedSection, elSignWordSection]
-                          .every(s => s.classList.contains("hidden"));
-    elBack.classList.toggle("hidden", onLevelList && !videoLightboxEl);
-  }
+  function updateBackVisibility(){
+  const elBack = document.querySelector("#back-btn");
+  const onLessonList = !document.querySelector("#level-shell")?.classList.contains("hidden")
+                    &&  document.querySelector("#lesson-area")?.classList.contains("hidden")
+                    &&  ["#progress-section","#leaderboard-section","#mistakes-section","#marked-section","#signword-section"]
+                          .every(sel => document.querySelector(sel)?.classList.contains("hidden"));
+  if (elBack) elBack.classList.toggle("hidden", onLessonList && !window.__videoLightboxOpen);
+}
 
-  function clearVideosPane(){ elVideoCards.innerHTML = ""; elVideoStatus.textContent = ""; closeVideoLightbox(); }
+  function clearVideosPane(){ 
+    const elVideoCards = document.querySelector("#video-cards");
+    const elVideoStatus = document.querySelector("#video-status");
+    if (elVideoCards) elVideoCards.innerHTML = "";
+    if (elVideoStatus) elVideoStatus.textContent = "";
+    closeVideoLightbox();
+  }
   function clearVocabPane(){
-    elVocabStatus.textContent = "";
-    D("#practice")?.classList.add("hidden");
-    elLearn.classList.add("hidden");
-    elWrite.classList.add("hidden");
-    elMake.classList.add("hidden");
-    elQuestionBox.textContent = ""; elOptions.innerHTML=""; elExtraInfo.textContent="";
-    elWriteFeedback.textContent = "";
-    elMakeFeedback.textContent = "";
-  }
-  function clearGrammarPane(){
-    elPgArea?.classList.add("hidden");
-    elPgCard.textContent = ""; elPgInput.value = ""; elPgFeedback.textContent = "";
-    elPgFiles && (elPgFiles.innerHTML=""); elPgStatus && (elPgStatus.textContent="");
-  }
+  const practice = document.querySelector("#practice");
+  const learn = document.querySelector("#learn");
+  const write = document.querySelector("#write");
+  const make = document.querySelector("#make");
+  if (practice) practice.classList.add("hidden");
+  if (learn) learn.classList.add("hidden");
+  if (write) write.classList.add("hidden");
+  if (make) make.classList.add("hidden");
+  const elVocabStatus = document.querySelector("#vocab-status");
+  if (elVocabStatus) elVocabStatus.textContent = "";
+  const elQuestionBox = document.querySelector("#question-box");
+  const elOptions = document.querySelector("#options");
+  const elExtraInfo = document.querySelector("#extra-info");
+  const elWriteFeedback = document.querySelector("#write-feedback");
+  const elMakeFeedback = document.querySelector("#make-feedback");
+  if (elQuestionBox) elQuestionBox.textContent = "";
+  if (elOptions) elOptions.innerHTML = "";
+  if (elExtraInfo) elExtraInfo.textContent = "";
+  if (elWriteFeedback) elWriteFeedback.textContent = "";
+  if (elMakeFeedback) elMakeFeedback.textContent = "";
+}
+function clearGrammarPane(){
+  const elPgArea = document.querySelector("#pg-area");
+  const elPgCard = document.querySelector("#pg-card");
+  const elPgInput = document.querySelector("#pg-input");
+  const elPgFeedback = document.querySelector("#pg-feedback");
+  const elPgFiles = document.querySelector("#pg-file-buttons");
+  const elPgStatus = document.querySelector("#pg-status");
+  if (elPgArea) elPgArea.classList.add("hidden");
+  if (elPgCard) elPgCard.textContent = "";
+  if (elPgInput) elPgInput.value = "";
+  if (elPgFeedback) elPgFeedback.textContent = "";
+  if (elPgFiles) elPgFiles.innerHTML = "";
+  if (elPgStatus) elPgStatus.textContent = "";
+}
   function hideAllSections(){
     [elLevelShell, elProgressSection, elLeaderboardSection, elMistakesSection, elMarkedSection, elSignWordSection]
       .forEach(x=>x.classList.add("hidden"));
   }
 
   window.navigateLevel = async (level) => {
-  try { await flushSession(); } catch {}
-  App.level = level; App.lesson = null; App.tab = "videos"; App.mode = null;
-  App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel(); setCrumbs();
+  try { await flushSession?.(); } catch {}
+  window.App.level = level; window.App.lesson = null; window.App.tab = "videos"; window.App.mode = null;
+  window.App.stats = { right:0, wrong:0, skipped:0 };
+  document.querySelector("#crumb-level").textContent = level || "—";
+  document.querySelector("#crumb-lesson").textContent = "—";
+  document.querySelector("#crumb-mode").textContent = "—";
 
-  // Clean slate
-  [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
-  closeVideoLightbox();
-  hideContentPanes();                   // <— hides everything
-  elLevelShell.classList.remove("hidden"); // show lesson list
+  // Clean slate right side
+  ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel=>document.querySelector(sel)?.classList.add("hidden"));
+  closeVideoLightbox?.();
+  hideContentPanes();
 
-  elLessonStatus.textContent = "Scanning lessons…";
+  // Show lesson list pane
+  document.querySelector("#level-shell")?.classList.remove("hidden");
+  document.querySelector("#lesson-status").textContent = "Scanning lessons…";
   await showLessonList(level);
   updateBackVisibility();
 };
 
-
-
-  window.openSection = async (name) => {
-  try { await flushSession(); } catch {}
-  closeVideoLightbox();
+window.openSection = async (name) => {
+  try { await flushSession?.(); } catch {}
+  closeVideoLightbox?.();
   hideContentPanes();
 
-  if (name === "progress") {
-    elProgressSection.classList.remove("hidden");
-    await renderProgress();
-  } else if (name === "leaderboard") {
-    elLeaderboardSection.classList.remove("hidden");
-    await renderOverallLeaderboard();
-  } else if (name === "mistakes") {
-    elMistakesSection.classList.remove("hidden");
-    renderMistakesLanding();
-  } else if (name === "marked") {
-    elMarkedSection.classList.remove("hidden");
-    await renderMarkedList();
-  } else if (name === "signword") {
-    elSignWordSection.classList.remove("hidden");
-    await renderSignWordList();
-  }
+  const map = {
+    progress: "#progress-section",
+    leaderboard: "#leaderboard-section",
+    mistakes: "#mistakes-section",
+    marked: "#marked-section",
+    signword: "#signword-section",
+  };
+  const sel = map[name];
+  if (sel) document.querySelector(sel)?.classList.remove("hidden");
+
+  if (name === "progress") await renderProgress();
+  if (name === "leaderboard") await renderOverallLeaderboard();
+  if (name === "mistakes") renderMistakesLanding();
+  if (name === "marked") await renderMarkedList();
+  if (name === "signword") await renderSignWordList();
 
   updateBackVisibility();
 };
+
 
 
   // ---------- Lesson discovery ----------
@@ -376,23 +395,21 @@ async function discoverLessons(level){
   const found = [];
   let misses = 0;
   for (let i = 1; i <= 60; i++){
-    const num = pad2(i);
+    const num = String(i).padStart(2, "0");
     const L = `Lesson-${num}`;
-
-    // Only probe Vocab canonical names to decide if a lesson exists
+    // Decide lesson existence ONLY by a small canonical vocab filename set
     const ok = await firstOk([
       `/level/${level}/${L}/Vocabulary/lesson-${num}.csv`,
       `/level/${level}/${L}/Vocabulary/Lesson-${num}.csv`,
       `/level/${level}/${L}/Vocabulary/lesson.csv`,
       `/level/${level}/${L}/Vocabulary/Lesson.csv`,
     ]);
-
     if (ok){
       found.push(L);
       misses = 0;
     } else {
       misses++;
-      if (misses >= 6) break; // early stop on empty tail
+      if (misses >= 3) break; // early stop on tail empties
     }
   }
   return found;
@@ -400,29 +417,31 @@ async function discoverLessons(level){
 
 
 
+
   // ---------- Open lesson & tabs ----------
   // REPLACE openLesson with this version
 // FULL REPLACEMENT
 async function openLesson(level, lesson){
-  try { await flushSession(); } catch {}
+  try { await flushSession?.(); } catch {}
 
-  // Right-side cleanup only
-  [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
+  // Clean right side
+  ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel=>document.querySelector(sel)?.classList.add("hidden"));
   clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
-  hideContentPanes();              // keep navbar/left area visible
+  hideContentPanes(); // keep navbar
 
-  // Set state + show right pane
-  App.level = level;
-  App.lesson = lesson;
-  setCrumbs();
+  // Set state + show lesson tabs area
+  window.App.level = level;
+  window.App.lesson = lesson;
+  document.querySelector("#crumb-level").textContent = level || "—";
+  document.querySelector("#crumb-lesson").textContent = lesson || "—";
+  document.querySelector("#crumb-mode").textContent = "—";
 
-  elLessonArea.classList.remove("hidden");
-  elLessonTitle.textContent = `${lesson.replace(/-/g," ")} — ${level}`;
-  elLessonAvail.textContent = "Loading…";
+  const area = document.querySelector("#lesson-area");
+  area?.classList.remove("hidden");
+  document.querySelector("#lesson-title").textContent = `${lesson.replace(/-/g," ")} — ${level}`;
+  document.querySelector("#lesson-availability").textContent = "Loading…";
 
   const num = lesson.split("-")[1];
-
-  // ONLY check Vocab for default tab to avoid 404 noise
   const hasVocab = await firstOk([
     `/level/${level}/${lesson}/Vocabulary/lesson-${num}.csv`,
     `/level/${level}/${lesson}/Vocabulary/Lesson-${num}.csv`,
@@ -430,99 +449,99 @@ async function openLesson(level, lesson){
     `/level/${level}/${lesson}/Vocabulary/Lesson.csv`,
   ]);
 
-  // Default to Vocab if present, otherwise Videos (we won't probe Video now)
-  const defaultTab = hasVocab ? "vocab" : "videos";
-  await openLessonTab(defaultTab);
-
-  // Avail string (lazy, don’t probe missing files)
-  elLessonAvail.textContent = hasVocab ? "Vocab: Yes" : "Vocab: No";
+  await openLessonTab(hasVocab ? "vocab" : "videos");
+  document.querySelector("#lesson-availability").textContent = hasVocab ? "Vocab: Yes" : "Vocab: No";
   updateBackVisibility();
 }
+
 
 
 
   // REPLACE openLessonTab with this version
 // FULL REPLACEMENT
 window.openLessonTab = async (tab)=>{
-  try { await flushSession(); } catch {}
-  App.tab = tab; setCrumbs();
+  try { await flushSession?.(); } catch {}
+  window.App.tab = tab;
+  document.querySelector("#crumb-mode").textContent = tab;
 
-  // Right-side cleanup only
-  [elTabVideos, elTabVocab, elTabGrammar].forEach(s => s.classList.add("hidden"));
+  // Clear all right-side panes
+  ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel=>document.querySelector(sel)?.classList.add("hidden"));
   clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
 
   if (tab === "videos") {
-    elTabVideos.classList.remove("hidden");
+    document.querySelector("#tab-videos")?.classList.remove("hidden");
     await renderVideos();
   } else if (tab === "vocab") {
-    elTabVocab.classList.remove("hidden");
+    document.querySelector("#tab-vocab")?.classList.remove("hidden");
     await ensureDeckLoaded();
-    elVocabStatus.textContent = App.deck.length ? "Pick a mode." : "No vocabulary found.";
+    const has = (window.App.deck?.length || 0) > 0;
+    document.querySelector("#vocab-status").textContent = has ? "Pick a mode." : "No vocabulary found.";
   } else if (tab === "grammar") {
-    elTabGrammar.classList.remove("hidden");
+    document.querySelector("#tab-grammar")?.classList.remove("hidden");
     wireGrammarTab();
   }
-
   updateBackVisibility();
 };
 
 
 
 
+
   // ---------- Video Module (no extra file buttons) ----------
   // REPLACE loadAllVideoRows with this minimal canonical loader
+// Load all rows from canonical Video CSV (Lesson.csv or lesson.csv)
 async function loadAllVideoRows(level, lesson){
   const base = `/level/${level}/${lesson}/Video Lecture/`;
-  const files = [];
-
-  // Only try canonical names to avoid 404 storms
-  const f = await firstOk([ base + "Lesson.csv", base + "lesson.csv" ]);
-  if (f) files.push(f.split("/").pop());
-
+  const file = await firstOk([ base + "Lesson.csv", base + "lesson.csv" ]);
+  if (!file) return [];
   const rows = [];
-  for (const name of files){
-    try{
-      const txt = await (await fetch(encodePath(base + name), { cache:"no-cache" })).text();
-      const csv = parseCSV(txt);
-      for (const r of csv){
-        if (r[0] && r[1]) rows.push({ title: r[0], url: r[1] });
-      }
-    } catch {}
-  }
+  try {
+    const txt = await (await fetch(encodePath(file), { cache:"no-cache" })).text();
+    const csv = parseCSV(txt);
+    for (const r of csv) if (r[0] && r[1]) rows.push({ title: r[0], url: r[1] });
+  } catch {}
   return rows;
 }
 
+async function renderVideos(){
+  const elVideoCards = document.querySelector("#video-cards");
+  const elVideoStatus = document.querySelector("#video-status");
+  elVideoCards.innerHTML = "";
+  elVideoStatus.textContent = "Loading videos…";
 
-  async function renderVideos(){
-    elVideoCards.innerHTML = "";
-    elVideoStatus.textContent = "Loading videos…";
+  const rows = await loadAllVideoRows(window.App.level, window.App.lesson);
+  if (!rows.length){ elVideoStatus.textContent = "No videos found (expected: Video Lecture/Lesson.csv)."; return; }
 
-    const rows = await loadAllVideoRows(App.level, App.lesson);
-    if (!rows.length){ elVideoStatus.textContent = "No videos found (expected: Video Lecture/Lesson.csv)."; return; }
-
-    elVideoStatus.textContent = `Loaded ${rows.length} lecture(s). Click a card to play.`;
-
-    for (const { title, url } of rows){
-      const id = extractYouTubeId(url);
-      const card = document.createElement("button");
-      card.className = "video-card";
-      card.innerHTML = `
-        <div class="video-thumb">
-          <img alt="${escapeHTML(title)}" loading="lazy" src="https://img.youtube.com/vi/${id}/hqdefault.jpg">
-          <span class="play-badge">▶</span>
-        </div>
-        <h4>${escapeHTML(title)}</h4>`;
-      card.addEventListener("click", ()=> openVideoLightbox(id, title));
-      elVideoCards.appendChild(card);
-    }
+  elVideoStatus.textContent = `Loaded ${rows.length} lecture(s). Click a card to play.`;
+  for (const { title, url } of rows){
+    const id = extractYouTubeId(url);
+    const card = document.createElement("button");
+    card.className = "video-card";
+    card.innerHTML = `
+      <div class="video-thumb">
+        <img alt="${escapeHTML(title)}" loading="lazy" src="https://img.youtube.com/vi/${id}/hqdefault.jpg">
+        <span class="play-badge">▶</span>
+      </div>
+      <h4>${escapeHTML(title)}</h4>`;
+    card.addEventListener("click", ()=> openVideoLightbox(id, title));
+    elVideoCards.appendChild(card);
   }
-  function extractYouTubeId(u){ try{ const url=new URL(u); if(url.hostname.includes("youtu.be")) return url.pathname.slice(1); return url.searchParams.get("v")||""; }catch{ return ""; } }
-  let videoLightboxEl = null;
+}
 
-// Open enlarged video and HIDE previous content
-function openVideoLightbox(yid, title) {
-  hideContentPanes(); // <-- hides lesson area, level list, sections
+function extractYouTubeId(u){
+  try{ const url=new URL(u);
+    if(url.hostname.includes("youtu.be")) return url.pathname.slice(1);
+    return url.searchParams.get("v") || "";
+  } catch { return ""; }
+}
+
+let videoLightboxEl = null;
+window.__videoLightboxOpen = false;
+
+function openVideoLightbox(yid, title){
+  hideContentPanes(); // hide right-side panes
   closeVideoLightbox();
+  window.__videoLightboxOpen = true;
 
   videoLightboxEl = document.createElement("div");
   videoLightboxEl.className = "lightbox";
@@ -543,11 +562,9 @@ function openVideoLightbox(yid, title) {
     </div>`;
   document.body.appendChild(videoLightboxEl);
 
-  // Back actions
   const goBack = () => {
     closeVideoLightbox();
-    // Restore to the videos tab of the current lesson
-    elLessonArea.classList.remove("hidden");
+    document.querySelector("#lesson-area")?.classList.remove("hidden");
     openLessonTab("videos");
     updateBackVisibility();
   };
@@ -558,38 +575,33 @@ function openVideoLightbox(yid, title) {
   updateBackVisibility();
 }
 
-function closeVideoLightbox() {
-  if (videoLightboxEl) { videoLightboxEl.remove(); videoLightboxEl = null; }
+function closeVideoLightbox(){
+  if (videoLightboxEl){ videoLightboxEl.remove(); videoLightboxEl = null; }
+  window.__videoLightboxOpen = false;
 }
+
 
   
   function escCloseOnce(e){ if (e.key==="Escape") closeVideoLightbox(); }
 
   // ---------- Vocabulary ----------
   async function listVocabCsvFiles(level, lesson){
-    const key = `v/${level}/${lesson}`;
-    if (App.cache.vocabCsvFiles.has(key)) return App.cache.vocabCsvFiles.get(key);
+  const key = `v/${level}/${lesson}`;
+  if (window.App.cache?.vocabCsvFiles?.has(key)) return window.App.cache.vocabCsvFiles.get(key);
 
-    const dir = `/level/${level}/${lesson}/Vocabulary/`;
-    let files = await listCsvFiles(dir);
+  const dir = `/level/${level}/${lesson}/Vocabulary/`;
+  const num = (lesson.split("-")[1] || "").padStart(2,"0");
+  const candidate = await firstOk([
+    dir + `lesson-${num}.csv`,
+    dir + `Lesson-${num}.csv`,
+    dir + `lesson.csv`,
+    dir + `Lesson.csv`,
+  ]);
+  const files = candidate ? [candidate.split("/").pop()] : [];
+  window.App.cache.vocabCsvFiles.set(key, files);
+  return files;
+}
 
-    // If we can't list, pick a small set of canonical names only (no multi-part probing)
-    if (!files.length){
-      const num = lesson.split("-")[1];
-      const candidates = [
-        `lesson-${num}.csv`, `Lesson-${num}.csv`, "lesson.csv", "Lesson.csv"
-      ];
-      const existing = [];
-      for (const f of candidates){
-        const ok = await firstOk([dir + f]);
-        if (ok) { existing.push(f); break; } // take the first that exists
-      }
-      files = existing;
-    }
-
-    App.cache.vocabCsvFiles.set(key, files);
-    return files;
-  }
 
   async function ensureDeckLoaded(){
     const key = `${App.level}/${App.lesson}`;
@@ -934,16 +946,18 @@ function closeVideoLightbox() {
 
   // ---------- Grammar ----------
   function wireGrammarTab(){
-    elOpenGrammarPDF.onclick = async ()=>{
-      const n = App.lesson.split("-")[1];
-      const u = await firstOk([
-        `/level/${App.level}/${App.lesson}/Grammar/lesson-${n}.pdf`,
-        `/level/${App.level}/${App.lesson}/Grammar/Lesson.pdf`,
-      ]);
-      if (u) window.open(u,"_blank","noopener"); else toast("PDF not found.");
-    };
-    renderGrammarPracticeFiles();
-  }
+  document.querySelector("#open-grammar-pdf").onclick = async ()=>{
+    const n = window.App.lesson.split("-")[1];
+    const u = await firstOk([
+      `/level/${window.App.level}/${window.App.lesson}/Grammar/lesson-${n}.pdf`,
+      `/level/${window.App.level}/${window.App.lesson}/Grammar/Lesson.pdf`,
+    ]);
+    if (u) window.open(u, "_blank", "noopener"); else toast("PDF not found.");
+  };
+  // Optional practice sets from /practice_grammar/ if you have them
+  renderGrammarPracticeFiles?.();
+}
+
   async function renderGrammarPracticeFiles(){
     elPgFiles.innerHTML=""; elPgStatus.textContent="(optional) choose a practice set:";
     try{
