@@ -824,19 +824,24 @@ function closeVideoLightbox(){
     elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
   }
   function showVocabRootMenu(){
-    showLessonBar();
-    document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep the title/Vocab:Yes hidden
+  // keep the top 3 tabs visible while you're inside Vocab
+  showLessonBar();
+  document.querySelector(".lesson-meta")?.classList.add("hidden");
 
-    document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
-    document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
-    document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
-    document.querySelector("#vocab-write-menu")?.classList.add("hidden");
-    // hide finals
-    document.querySelector("#learn")?.classList.add("hidden");
-    document.querySelector("#practice")?.classList.add("hidden");
-    document.querySelector("#write")?.classList.add("hidden");
-    document.querySelector("#make")?.classList.add("hidden");
-  }
+  // ✅ make sure the whole card reappears (this was missing)
+  showVocabRootCard();
+
+  // show the root buttons; hide submenus + finals
+  document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
+  document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
+  document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
+  document.querySelector("#vocab-write-menu")?.classList.add("hidden");
+  document.querySelector("#learn")?.classList.add("hidden");
+  document.querySelector("#practice")?.classList.add("hidden");
+  document.querySelector("#write")?.classList.add("hidden");
+  document.querySelector("#make")?.classList.add("hidden");
+}
+
 
   window.openVocabLearnMenu = ()=>{
     showLessonBar();
