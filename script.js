@@ -314,21 +314,21 @@ window.App = App;
   }).catch(()=>{ elAuthGate.style.display=""; });
 
   // ---------- Routing & view cleanup ----------
-  // Hide every main pane (level list, lesson tabs, sections). Used before opening video full view.
   function hideContentPanes(){
-  // Hide EVERYTHING in the right content area
-  document.querySelector("#level-shell")?.classList.add("hidden");
-  document.querySelector("#lesson-area")?.classList.add("hidden");
-  document.querySelector("#progress-section")?.classList.add("hidden");
-  document.querySelector("#leaderboard-section")?.classList.add("hidden");
-  document.querySelector("#mistakes-section")?.classList.add("hidden");
-  document.querySelector("#marked-section")?.classList.add("hidden");
-  document.querySelector("#signword-section")?.classList.add("hidden");
+  // Hide the entire level shell so non-level sections (Progress, etc.) are truly alone
+    document.querySelector("#level-shell")?.classList.add("hidden");
+    document.querySelector("#lesson-area")?.classList.add("hidden");
+    document.querySelector("#progress-section")?.classList.add("hidden");
+    document.querySelector("#leaderboard-section")?.classList.add("hidden");
+    document.querySelector("#mistakes-section")?.classList.add("hidden");
+    document.querySelector("#marked-section")?.classList.add("hidden");
+    document.querySelector("#signword-section")?.classList.add("hidden");
 
-  clearVideosPane();
-  clearVocabPane();
-  clearGrammarPane();
+    clearVideosPane();
+    clearVocabPane();
+    clearGrammarPane();
   }
+
 
   function hideVocabMenus(){
     document.querySelector("#vocab-mode-select")?.classList.add("hidden");
@@ -399,6 +399,21 @@ function clearGrammarPane(){
   if (elPgFiles) elPgFiles.innerHTML = "";
   if (elPgStatus) elPgStatus.textContent = "";
 }
+
+// Hide/show the "Level —" header + the entire Lessons card
+function hideLessonsHeaderAndList(){
+  document.querySelector(".level-head")?.classList.add("hidden");
+  document.querySelector("#lesson-list")?.closest(".card")?.classList.add("hidden");
+}
+function showLessonsHeaderAndList(){
+  document.querySelector(".level-head")?.classList.remove("hidden");
+  document.querySelector("#lesson-list")?.closest(".card")?.classList.remove("hidden");
+}
+
+// Hide/show the Lesson tab bar (Video/Vocab/Grammar)
+function hideLessonBar(){ document.querySelector("#lesson-area .lesson-bar")?.classList.add("hidden"); }
+function showLessonBar(){ document.querySelector("#lesson-area .lesson-bar")?.classList.remove("hidden"); }
+
   function hideAllSections(){
     [elLevelShell, elProgressSection, elLeaderboardSection, elMistakesSection, elMarkedSection, elSignWordSection]
       .forEach(x=>x.classList.add("hidden"));
@@ -525,6 +540,8 @@ async function openLesson(level, lesson){
   document.querySelector("#level-shell")?.classList.remove("hidden");
   const area = document.querySelector("#lesson-area");
   area?.classList.remove("hidden");
+  hideLessonsHeaderAndList();
+  showLessonBar();
 
   document.querySelector("#lesson-title").textContent = `${lesson.replace(/-/g," ")} — ${level}`;
   document.querySelector("#lesson-availability").textContent = "Loading…";
@@ -558,6 +575,10 @@ window.openLessonTab = async (tab)=>{
     const has = (App.deck?.length || 0) > 0;
     document.querySelector("#vocab-status").textContent = has ? "Pick an option." : "No vocabulary found.";
     showVocabRootMenu();
+    hideLessonsHeaderAndList();
+    showLessonBar();
+    document.querySelector("#vocab-mode-select")?.classList.remove("hidden"); // root menu
+
   } else if (tab === "grammar") {
     document.querySelector("#tab-grammar")?.classList.remove("hidden");
     wireGrammarTab();
@@ -776,6 +797,9 @@ function closeVideoLightbox(){
     App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
 
     // STRICT LINEAR: hide all menus and all other finals, then show only Learn
+    hideLessonsHeaderAndList();
+    hideLessonBar();
+    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
     hideVocabMenus();
     D("#practice")?.classList.add("hidden");
     elWrite.classList.add("hidden");
@@ -821,6 +845,10 @@ function closeVideoLightbox(){
     App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
 
     // STRICT LINEAR
+    hideLessonsHeaderAndList();
+    hideLessonBar();
+    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+
     hideVocabMenus();
     elLearn.classList.add("hidden");
     elWrite.classList.add("hidden");
@@ -935,6 +963,10 @@ function closeVideoLightbox(){
     App.write.order = App.deckFiltered.map((_,i)=>i);
     App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
 
+    hideLessonsHeaderAndList();
+    hideLessonBar();
+    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+
     hideVocabMenus();
     elLearn.classList.add("hidden");
     D("#practice")?.classList.add("hidden");
@@ -984,6 +1016,10 @@ function closeVideoLightbox(){
     App.mode = "make"; setCrumbs();
     App.make.order = shuffle(App.deck).map((_,i)=>i).slice(0, Math.min(App.deck.length, 30));
     App.make.idx = 0; App.stats = { right:0, wrong:0, skipped:0 };
+
+    hideLessonsHeaderAndList();
+    hideLessonBar();
+    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
 
     hideVocabMenus();
     elLearn.classList.add("hidden");
