@@ -2000,18 +2000,55 @@ async function learnNoteAddOrSave(){
     } catch (e){ console.error(e); elProgressLast.textContent="Failed to load progress."; }
   }
   function fmtDate(d){ try{ const dt=d instanceof Date ? d : new Date(d); return dt.toLocaleString(); }catch{ return "-"; } }
-  async function renderOverallLeaderboard(){
-    elOverallLB.innerHTML="";
-    try{
-      const fb = await whenFBReady();
-      const rows = await fb.getOverallLeaderboard({ max: 100 });
-      for (const r of rows){
-        const li=document.createElement("li");
-        li.textContent = `${r.displayName || "User"} — ${r.score || 0}`;
-        elOverallLB.appendChild(li);
+  
+
+  async function renderOverallLeaderboard() {
+      const tb = document.querySelector("#leaderboard-table tbody");
+      if (!tb) return;
+      tb.innerHTML = `<tr><td colspan="3" class="muted">Loading…</td></tr>`;
+
+      try {
+        const fb = await whenFBReady();
+        const rows = await fb.getOverallLeaderboard({ max: 100 });
+
+        const sorted = (rows || []).slice().sort((a, b) => (b.score | 0) - (a.score | 0));
+        tb.innerHTML = "";
+
+        const current = fb?.auth?.currentUser || null;
+
+        sorted.forEach((r, i) => {
+          const rank = i + 1;
+          const name = r.displayName || "Player";
+          const score = r.score | 0;
+          const isYou = current && r.uid && r.uid === current.uid;
+
+          const tr = document.createElement("tr");
+          tr.className = rank <= 3 ? `rank-${rank}` : "";
+
+          tr.innerHTML = `
+            <td class="rank">${rank}</td>
+            <td class="player">
+              ${
+                r.photoURL
+                  ? `<img class="avatar" src="${escapeHTML(r.photoURL)}" alt="">`
+                  : `<span class="avatar">${escapeHTML((name[0] || "U").toUpperCase())}</span>`
+              }
+              <span class="name">${escapeHTML(name)}${isYou ? " <span class='you-badge'>you</span>" : ""}</span>
+            </td>
+            <td class="score">${(score.toLocaleString?.() || score)}</td>
+          `;
+          tb.appendChild(tr);
+        });
+
+        if (!sorted.length) {
+          tb.innerHTML = `<tr><td colspan="3" class="muted">No scores yet — be the first!</td></tr>`;
+        }
+      } catch (e) {
+        console.error(e);
+        tb.innerHTML = `<tr><td colspan="3" class="error">Failed to load leaderboard.</td></tr>`;
       }
-    } catch { const li=document.createElement("li"); li.textContent="Failed to load leaderboard."; elOverallLB.appendChild(li); }
-  }
+    }
+
 
   // ---------- Sign Word ----------
   window.signWordAdd = async ()=>{
