@@ -276,11 +276,13 @@ window.App = App;
   // If video enlarged view open → close it and go back to videos tab
   if (window.__videoLightboxOpen) {
     closeVideoLightbox();
+    document.querySelector("#level-shell")?.classList.remove("hidden");
     document.querySelector("#lesson-area")?.classList.remove("hidden");
     openLessonTab("videos");
     updateBackVisibility();
     return;
   }
+
   // If we're in lesson tabs → go back to lesson list
   const area = document.querySelector("#lesson-area");
   if (area && !area.classList.contains("hidden")) {
@@ -514,8 +516,10 @@ async function openLesson(level, lesson){
   document.querySelector("#crumb-lesson").textContent = lesson || "—";
   document.querySelector("#crumb-mode").textContent = "—";
 
+  document.querySelector("#level-shell")?.classList.remove("hidden");
   const area = document.querySelector("#lesson-area");
   area?.classList.remove("hidden");
+
   document.querySelector("#lesson-title").textContent = `${lesson.replace(/-/g," ")} — ${level}`;
   document.querySelector("#lesson-availability").textContent = "Loading…";
 
@@ -528,6 +532,9 @@ async function openLesson(level, lesson){
 }
 
 window.openLessonTab = async (tab)=>{
+  document.querySelector("#level-shell")?.classList.remove("hidden");
+  document.querySelector("#lesson-area")?.classList.remove("hidden");
+  
   try { await flushSession?.(); } catch {}
   App.tab = tab;
   document.querySelector("#crumb-mode").textContent = tab;
@@ -627,10 +634,12 @@ function openVideoLightbox(yid, title){
 
   const goBack = () => {
     closeVideoLightbox();
+    document.querySelector("#level-shell")?.classList.remove("hidden");
     document.querySelector("#lesson-area")?.classList.remove("hidden");
     openLessonTab("videos");
     updateBackVisibility();
   };
+
   videoLightboxEl.querySelector(".lightbox-backdrop")?.addEventListener("click", goBack, { passive:true });
   videoLightboxEl.querySelector(".lightbox-close")?.addEventListener("click", goBack);
   window.addEventListener("keydown", function escOnce(e){ if(e.key==="Escape"){ goBack(); } }, { once:true });
