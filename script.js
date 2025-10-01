@@ -200,12 +200,24 @@ const App = Object.assign(window.App, {
   write: { order: [], idx: 0, variant: "en2h" },
   make: { order: [], idx: 0 },
   pg:   { rows: [], idx: 0 },
-  buffer: { points: 0 },
+  buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
   cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() }
 });
 // keep a stable global reference
 window.App = App;
+
+function attemptSig(){
+  return JSON.stringify({
+    level:  App.level || null,
+    lesson: App.lesson || null,
+    deckId: currentDeckId(),
+    mode:   App.mode || null,
+    right:  App.stats.right|0,
+    wrong:  App.stats.wrong|0,
+    skipped:App.stats.skipped|0
+  });
+}
 
 
 
@@ -1964,7 +1976,7 @@ async function learnNoteAddOrSave(){
   async function renderProgress(){
     try{
       const fb = await whenFBReady();
-      const rows = await fb.getRecentAttempts({ max: 100 });
+      const rows = await fb.getRecentAttempts({ max: 10 });
       if (rows.length){
         const last = rows[0];
         elProgressLast.textContent = `${fmtDate(last.createdAt?.toDate?.() || new Date())} — ${last.deckId || last.lesson || "deck"} — ${last.mode} — R:${last.right} W:${last.wrong} S:${last.skipped}`;
@@ -2274,26 +2286,42 @@ window.mixBuildDeck = async ()=>{
     catch{ toast("Save failed."); }
   };
   async function flushSession(){
-    const totalAttempted = (App.stats.right|0)+(App.stats.wrong|0)+(App.stats.skipped|0);
-    if (!App.mode || !totalAttempted) return false;
-    const deckTotal = App.mode.startsWith("write")
-      ? (App.write.order?.length || App.deckFiltered.length || App.deck.length || 0)
-      : (App.deckFiltered.length || App.deck.length || 0);
-    const attempt = {
-      level: App.level || null,
-      lesson: App.lesson || null,
-      deckId: currentDeckId(),
-      mode: App.mode,
-      right: App.stats.right|0, wrong: App.stats.wrong|0, skipped: App.stats.skipped|0,
-      total: deckTotal|0,
-    };
-    try{
-      const fb = await whenFBReady();
-      await fb.commitSession({ attempts: [attempt], points: App.buffer.points|0 });
-      App.buffer.points=0; App.stats={ right:0, wrong:0, skipped:0 }; updateScorePanel();
-      return true;
-    } catch (e){ console.error("[flushSession] commit failed", e); return false; }
+  const totalAttempted = (App.stats.right|0) + (App.stats.wrong|0) + (App.stats.skipped|0);
+  if (!App.mode || !totalAttempted) return false;
+
+  // prevent duplicate writes when nothing changed
+  const sig = attemptSig();
+  if (App.buffer.lastSavedSig === sig) return false;
+
+  const deckTotal = App.mode.startsWith("write")
+    ? (App.write.order?.length || App.deckFiltered.length || App.deck.length || 0)
+    : (App.deckFiltered.length || App.deck.length || 0);
+
+  const attempt = {
+    level: App.level || null,
+    lesson: App.lesson || null,
+    deckId: currentDeckId(),
+    mode: App.mode,
+    right: App.stats.right|0,
+    wrong: App.stats.wrong|0,
+    skipped: App.stats.skipped|0,
+    total: deckTotal|0,
+  };
+
+  try {
+    const fb = await whenFBReady();
+    await fb.commitSession({ attempts: [attempt], points: App.buffer.points|0 });
+    App.buffer.points = 0;
+    App.buffer.lastSavedSig = sig;       // <-- remember what we saved
+    App.stats = { right:0, wrong:0, skipped:0 }; // reset counters
+    updateScorePanel();
+    return true;
+  } catch (e){
+    console.error("[flushSession] commit failed", e);
+    return false;
   }
+}
+
 
   // quick inputs
   // quick inputs — WRITE: Enter=Submit, Ctrl+Enter=Next, Esc=Skip
