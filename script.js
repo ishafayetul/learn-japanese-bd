@@ -1786,90 +1786,7 @@ async function learnNoteAddOrSave(){
     } catch { elSWList.innerHTML = `<div class="muted">Failed to load your signed words.</div>`; }
   }
 
-  // ---------- Save / Flush ----------
-  window.saveCurrentScore = async ()=>{
-    try{ const ok = await flushSession(); toast(ok ? "Progress saved ✓" : "Nothing to save."); }
-    catch{ toast("Save failed."); }
-  };
-  async function flushSession(){
-    const totalAttempted = (App.stats.right|0)+(App.stats.wrong|0)+(App.stats.skipped|0);
-    if (!App.mode || !totalAttempted) return false;
-    const deckTotal = App.mode.startsWith("write")
-      ? (App.write.order?.length || App.deckFiltered.length || App.deck.length || 0)
-      : (App.deckFiltered.length || App.deck.length || 0);
-    const attempt = {
-      level: App.level || null,
-      lesson: App.lesson || null,
-      deckId: currentDeckId(),
-      mode: App.mode,
-      right: App.stats.right|0, wrong: App.stats.wrong|0, skipped: App.stats.skipped|0,
-      total: deckTotal|0,
-    };
-    try{
-      const fb = await whenFBReady();
-      await fb.commitSession({ attempts: [attempt], points: App.buffer.points|0 });
-      App.buffer.points=0; App.stats={ right:0, wrong:0, skipped:0 }; updateScorePanel();
-      return true;
-    } catch (e){ console.error("[flushSession] commit failed", e); return false; }
-  }
-
-  // quick inputs
-  // quick inputs — WRITE: Enter=Submit, Ctrl+Enter=Next, Esc=Skip
-elWriteInput?.addEventListener("keydown", (e) => {
-  // Ctrl + Enter → Next
-  if (e.key === "Enter" && e.ctrlKey) {
-    e.preventDefault();
-    window.writeNext();
-    return;
-  }
-  // Enter → Submit
-  if (e.key === "Enter" && !(e.ctrlKey || e.metaKey)) {
-    e.preventDefault();
-    window.writeSubmit();
-    return;
-  }
-  // Esc → Skip
-  if (e.key === "Escape") {
-    e.preventDefault();
-    window.writeSkip();
-  }
-});
-// Global shortcuts for WRITE (active only when #write is visible):
-// Ctrl+M = Mark, Ctrl+D = Show Details
-window.addEventListener("keydown", (e) => {
-  // Only when Write mode is on screen
-  if (!isVisible("#write")) return;
-
-  // Guard: require Ctrl, and ignore Alt/Meta to avoid surprises
-  if (e.ctrlKey && !e.altKey && !e.metaKey) {
-    const k = (e.key || "").toLowerCase();
-
-    // Ctrl + m → Mark current word
-    if (k === "m") {
-      e.preventDefault();           // avoid browser defaults
-      markCurrentWord();
-      return;
-    }
-
-    // Ctrl + d → Show Details
-    if (k === "d") {
-      e.preventDefault();           // avoid bookmark shortcut in some browsers
-      window.writeShowDetails();
-      return;
-    }
-  }
-});
-
-  elPgInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); window.pgSubmit(); } });
-
-  // Close lightbox when switching away
-  window.addEventListener("hashchange", closeVideoLightbox);
-  window.addEventListener("beforeunload", ()=>{ try{}catch{} });
-
-})();
-
-
-// Open the Mix picker UI
+  // Open the Mix picker UI
 window.openMixPractice = async () => {
   try { await flushSession?.(); } catch {}
   window.closeVideoLightbox?.();   // safe global
@@ -2013,4 +1930,88 @@ window.mixBuildDeck = async ()=>{
 
   updateBackVisibility();
 };
+  // ---------- Save / Flush ----------
+  window.saveCurrentScore = async ()=>{
+    try{ const ok = await flushSession(); toast(ok ? "Progress saved ✓" : "Nothing to save."); }
+    catch{ toast("Save failed."); }
+  };
+  async function flushSession(){
+    const totalAttempted = (App.stats.right|0)+(App.stats.wrong|0)+(App.stats.skipped|0);
+    if (!App.mode || !totalAttempted) return false;
+    const deckTotal = App.mode.startsWith("write")
+      ? (App.write.order?.length || App.deckFiltered.length || App.deck.length || 0)
+      : (App.deckFiltered.length || App.deck.length || 0);
+    const attempt = {
+      level: App.level || null,
+      lesson: App.lesson || null,
+      deckId: currentDeckId(),
+      mode: App.mode,
+      right: App.stats.right|0, wrong: App.stats.wrong|0, skipped: App.stats.skipped|0,
+      total: deckTotal|0,
+    };
+    try{
+      const fb = await whenFBReady();
+      await fb.commitSession({ attempts: [attempt], points: App.buffer.points|0 });
+      App.buffer.points=0; App.stats={ right:0, wrong:0, skipped:0 }; updateScorePanel();
+      return true;
+    } catch (e){ console.error("[flushSession] commit failed", e); return false; }
+  }
+
+  // quick inputs
+  // quick inputs — WRITE: Enter=Submit, Ctrl+Enter=Next, Esc=Skip
+elWriteInput?.addEventListener("keydown", (e) => {
+  // Ctrl + Enter → Next
+  if (e.key === "Enter" && e.ctrlKey) {
+    e.preventDefault();
+    window.writeNext();
+    return;
+  }
+  // Enter → Submit
+  if (e.key === "Enter" && !(e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    window.writeSubmit();
+    return;
+  }
+  // Esc → Skip
+  if (e.key === "Escape") {
+    e.preventDefault();
+    window.writeSkip();
+  }
+});
+// Global shortcuts for WRITE (active only when #write is visible):
+// Ctrl+M = Mark, Ctrl+D = Show Details
+window.addEventListener("keydown", (e) => {
+  // Only when Write mode is on screen
+  if (!isVisible("#write")) return;
+
+  // Guard: require Ctrl, and ignore Alt/Meta to avoid surprises
+  if (e.ctrlKey && !e.altKey && !e.metaKey) {
+    const k = (e.key || "").toLowerCase();
+
+    // Ctrl + m → Mark current word
+    if (k === "m") {
+      e.preventDefault();           // avoid browser defaults
+      markCurrentWord();
+      return;
+    }
+
+    // Ctrl + d → Show Details
+    if (k === "d") {
+      e.preventDefault();           // avoid bookmark shortcut in some browsers
+      window.writeShowDetails();
+      return;
+    }
+  }
+});
+
+  elPgInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); window.pgSubmit(); } });
+
+  // Close lightbox when switching away
+  window.addEventListener("hashchange", closeVideoLightbox);
+  window.addEventListener("beforeunload", ()=>{ try{}catch{} });
+
+})();
+
+
+
 
