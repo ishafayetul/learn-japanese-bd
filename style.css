@@ -329,3 +329,9 @@ code{ background:#0c1424; border:1px solid var(--border); padding:1px 6px; borde
   opacity: 0.6;
   cursor: default;
 }
+
+.mix-level { border: 1px solid var(--border, #ddd); border-radius: 10px; padding: 10px; margin: 10px 0; }
+.mix-level-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.mix-level-actions button { margin-left:6px; }
+.mix-lessons { display:grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap:6px 12px; }
+.mix-levels-wrap { margin-top:8px; }

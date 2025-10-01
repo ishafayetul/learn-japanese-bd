@@ -168,6 +168,7 @@ const App = Object.assign(window.App, {
   make: { order: [], idx: 0 },
   pg:   { rows: [], idx: 0 },
   buffer: { points: 0 },
+  mix: { active:false, selection:[], deck: [] },
   cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() }
 });
 // keep a stable global reference
@@ -201,7 +202,14 @@ window.App = App;
   function keyForWord(w){ return `${w.kanji || "—"}|${w.hira}|${w.en}`.toLowerCase(); }
   function speakJa(t){ try{ const u=new SpeechSynthesisUtterance(t); u.lang="ja-JP"; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch{} }
   function pct(a,b){ if(!b) return "0%"; return Math.round((a/b)*100)+"%"; }
-  function currentDeckId(){ return (App.level && App.lesson) ? `${App.level}/${App.lesson}` : (App.lesson || App.level || "-"); }
+  function currentDeckId(){
+    if (App.mix?.active && App.mix.selection?.length){
+      const list = App.mix.selection.map(s => `${s.level}/${s.lesson}`).join(",");
+      return `Mix:${list}`;
+    }
+    return (App.level && App.lesson) ? `${App.level}/${App.lesson}` : (App.lesson || App.level || "-");
+  }
+
   // encode segments but preserve slashes
   function encodePath(p){
     return p.split('/').map(s => s === '' ? '' : encodeURIComponent(s)).join('/')
@@ -249,6 +257,23 @@ window.App = App;
 }
 
 
+  async function loadDeckFor(level, lesson){
+    const url = await findVocabCsv(level, lesson);
+    const deck = [];
+    if (!url) return deck;
+    try{
+      const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
+      const csv = parseCSV(txt);
+      for (const r of csv){
+        const kanji = (r[0]||"").trim();
+        const hira  = (r[1]||"").trim();
+        const en    = (r[2]||"").trim();
+        if (!hira || !en) continue;
+        deck.push({ kanji, hira, en });
+      }
+    } catch {}
+    return deck;
+  }
 
 
   // Directory lister: only returns names if directory indexes are enabled (rare on Vercel)
@@ -290,77 +315,82 @@ window.App = App;
 
   // Global Back button logic
   document.querySelector("#back-btn")?.addEventListener("click", () => {
-  // 0) Video lightbox → back to Videos tab
-  if (window.__videoLightboxOpen) {
-    closeVideoLightbox();
-    document.querySelector("#level-shell")?.classList.remove("hidden");
-    document.querySelector("#lesson-area")?.classList.remove("hidden");
-    openLessonTab("videos");
-    updateBackVisibility();
-    return;
-  }
-
-  // 1) Inside Vocab tab? handle nested steps first
-  const inVocabTab = isVisible("#tab-vocab");
-  if (inVocabTab) {
-    const learnOpen    = isVisible("#learn");
-    const practiceOpen = isVisible("#practice");
-    const writeOpen    = isVisible("#write");
-    const makeOpen     = isVisible("#make");
-
-    const learnMenu = isVisible("#vocab-learn-menu");
-    const mcqMenu   = isVisible("#vocab-mcq-menu");
-    const writeMenu = isVisible("#vocab-write-menu");
-
-    const rootCardVisible = !!document.querySelector("#vocab-mode-select")
-      && !document.querySelector("#vocab-mode-select")?.closest(".card")?.classList.contains("hidden");
-
-    // final → submenu
-    if (learnOpen)    { openVocabLearnMenu(); updateBackVisibility(); return; }
-    if (practiceOpen) { openVocabMCQMenu();   updateBackVisibility(); return; }
-    if (writeOpen)    { openVocabWriteMenu(); updateBackVisibility(); return; }
-    if (makeOpen)     { showVocabRootMenu();  updateBackVisibility(); return; }
-
-    // submenu → root
-    if (learnMenu || mcqMenu || writeMenu) {
-      showVocabRootMenu(); updateBackVisibility(); return;
+    // 0) Video lightbox → back to Videos tab
+    if (window.__videoLightboxOpen) {
+      closeVideoLightbox();
+      document.querySelector("#level-shell")?.classList.remove("hidden");
+      document.querySelector("#lesson-area")?.classList.remove("hidden");
+      openLessonTab("videos");
+      updateBackVisibility();
+      return;
     }
 
-    // root → lesson tabs
-    if (rootCardVisible) {
-      // hide vocab tab content and reveal only the lesson tab bar
-      document.querySelector("#tab-vocab")?.classList.add("hidden");
+    // 1) Inside Vocab tab? handle nested steps first
+    const inVocabTab = isVisible("#tab-vocab");
+    if (inVocabTab) {
+      const learnOpen    = isVisible("#learn");
+      const practiceOpen = isVisible("#practice");
+      const writeOpen    = isVisible("#write");
+      const makeOpen     = isVisible("#make");
+
+      const learnMenu = isVisible("#vocab-learn-menu");
+      const mcqMenu   = isVisible("#vocab-mcq-menu");
+      const writeMenu = isVisible("#vocab-write-menu");
+
+      const rootCardVisible = !!document.querySelector("#vocab-mode-select")
+        && !document.querySelector("#vocab-mode-select")?.closest(".card")?.classList.contains("hidden");
+
+      // final → submenu
+      if (learnOpen)    { openVocabLearnMenu(); updateBackVisibility(); return; }
+      if (practiceOpen) { openVocabMCQMenu();   updateBackVisibility(); return; }
+      if (writeOpen)    { openVocabWriteMenu(); updateBackVisibility(); return; }
+      if (makeOpen)     { showVocabRootMenu();  updateBackVisibility(); return; }
+
+      // submenu → root
+      if (learnMenu || mcqMenu || writeMenu) {
+        showVocabRootMenu(); updateBackVisibility(); return;
+      }
+      // root → lesson tabs (or Mix picker if Mix is active)
+      if (rootCardVisible) {
+        document.querySelector("#tab-vocab")?.classList.add("hidden");
+        if (App.mix?.active){
+          // Go back to the Mix picker
+          document.querySelector("#mix-section")?.classList.remove("hidden");
+          hideLessonBar();
+        } else {
+          showLessonTabsOnly();
+        }
+        return;
+      }
+
+    }
+
+    // 2) Any other tab (Videos/Grammar) open → go back to lesson tabs
+    if (isVisible("#tab-videos") || isVisible("#tab-grammar")) {
+      ["#tab-videos","#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
       showLessonTabsOnly();
       return;
     }
-  }
 
-  // 2) Any other tab (Videos/Grammar) open → go back to lesson tabs
-  if (isVisible("#tab-videos") || isVisible("#tab-grammar")) {
-    ["#tab-videos","#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
-    showLessonTabsOnly();
-    return;
-  }
+    // 3) If lesson tabs area is visible (no tab content) → go back to lesson list
+    const lessonAreaVisible = isVisible("#lesson-area");
+    const noTabContent = !isVisible("#tab-videos") && !isVisible("#tab-vocab") && !isVisible("#tab-grammar");
+    if (lessonAreaVisible && noTabContent) {
+      showLessonListOnly();
+      return;
+    }
 
-  // 3) If lesson tabs area is visible (no tab content) → go back to lesson list
-  const lessonAreaVisible = isVisible("#lesson-area");
-  const noTabContent = !isVisible("#tab-videos") && !isVisible("#tab-vocab") && !isVisible("#tab-grammar");
-  if (lessonAreaVisible && noTabContent) {
+    // 4) If in any non-level section (Progress, etc.) → return to lesson list
+    if (isVisible("#progress-section") || isVisible("#leaderboard-section") ||
+        isVisible("#mistakes-section") || isVisible("#marked-section") || isVisible("#signword-section")) {
+      hideContentPanes();
+      showLessonListOnly();
+      return;
+    }
+
+    // 5) Fallback: ensure lesson list is visible
     showLessonListOnly();
-    return;
-  }
-
-  // 4) If in any non-level section (Progress, etc.) → return to lesson list
-  if (isVisible("#progress-section") || isVisible("#leaderboard-section") ||
-      isVisible("#mistakes-section") || isVisible("#marked-section") || isVisible("#signword-section")) {
-    hideContentPanes();
-    showLessonListOnly();
-    return;
-  }
-
-  // 5) Fallback: ensure lesson list is visible
-  showLessonListOnly();
-});
+  });
 
 
   // ---------- Auth ----------
@@ -389,7 +419,7 @@ window.App = App;
     document.querySelector("#mistakes-section")?.classList.add("hidden");
     document.querySelector("#marked-section")?.classList.add("hidden");
     document.querySelector("#signword-section")?.classList.add("hidden");
-
+    document.querySelector("#mix-section")?.classList.add("hidden");
     clearVideosPane();
     clearVocabPane();
     clearGrammarPane();
@@ -509,11 +539,15 @@ window.navigateLevel = async (level) => {
   App.tab = "videos";
   App.mode = null;
   App.stats = { right: 0, wrong: 0, skipped: 0 };
-
+  App.mix = { active:false, selection:[], deck: [] };   // <-- NEW
+  
   // crumbs
+  document.querySelector("#mix-section")?.classList.add("hidden");
   document.querySelector("#crumb-level").textContent  = level || "—";
   document.querySelector("#crumb-lesson").textContent = "—";
   document.querySelector("#crumb-mode").textContent   = "—";
+  
+  
 
   // nuke any right-side content completely
   closeVideoLightbox?.();
@@ -971,6 +1005,13 @@ function closeVideoLightbox(){
 
   async function ensureDeckLoaded(){
     const key = `${App.level}/${App.lesson}`;
+    // If Mix is active, use the prebuilt deck
+    if (App.mix?.active && App.mix.deck?.length){
+      App.deck = App.mix.deck.slice();
+      if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
+      return;
+    }
+
     if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
     elVocabStatus.textContent = "Loading vocabulary…";
 
@@ -1816,4 +1857,145 @@ window.addEventListener("keydown", (e) => {
 })();
 
 
+// Open the Mix picker UI
+window.openMixPractice = async () => {
+  try { await flushSession?.(); } catch {}
+  closeVideoLightbox?.();
+  hideContentPanes();
+
+  // reset any previous mix selection
+  App.mix = { active:false, selection:[], deck: [] };
+  document.querySelector("#mix-section")?.classList.remove("hidden");
+  document.querySelector("#lesson-area")?.classList.add("hidden");
+
+  await renderMixPicker();
+  updateBackVisibility();
+};
+
+// Render checkboxes for N5/N4/N3 using manifests
+async function renderMixPicker(){
+  const host = document.querySelector("#mix-levels");
+  if (!host) return;
+  host.innerHTML = "";
+
+  const levels = ["N5","N4","N3"];
+  for (const lvl of levels){
+    const m = await loadLevelManifest(lvl);
+    const lessons = (m?.allLessons || []);
+    const box = document.createElement("div");
+    box.className = "mix-level";
+    box.innerHTML = `
+      <div class="mix-level-head">
+        <label><input type="checkbox" class="mix-level-check" data-level="${lvl}"> <b>${lvl}</b></label>
+        <div class="mix-level-actions">
+          <button type="button" data-level="${lvl}" class="mix-sel-all">All</button>
+          <button type="button" data-level="${lvl}" class="mix-clear">Clear</button>
+        </div>
+      </div>
+      <div class="mix-lessons">
+        ${
+          lessons.length
+            ? lessons.map(ls=>`<label><input type="checkbox" class="mix-lesson-check" data-level="${lvl}" data-lesson="${ls}"> ${ls.replace(/-/g," ")}</label>`).join("")
+            : `<div class="muted">No lessons — missing or invalid manifest.json</div>`
+        }
+      </div>`;
+    host.appendChild(box);
+  }
+
+  // Wire per-level actions
+  host.querySelectorAll(".mix-level-check").forEach(cb=>{
+    cb.addEventListener("change", (e)=>{
+      const lvl = e.currentTarget.dataset.level;
+      host.querySelectorAll(`.mix-lesson-check[data-level="${lvl}"]`).forEach(ch => ch.checked = e.currentTarget.checked);
+    });
+  });
+  host.querySelectorAll(".mix-sel-all").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      const lvl = e.currentTarget.dataset.level;
+      host.querySelectorAll(`.mix-lesson-check[data-level="${lvl}"]`).forEach(ch => ch.checked = true);
+      const lc = host.querySelector(`.mix-level-check[data-level="${lvl}"]`);
+      if (lc) lc.checked = true;
+    });
+  });
+  host.querySelectorAll(".mix-clear").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      const lvl = e.currentTarget.dataset.level;
+      host.querySelectorAll(`.mix-lesson-check[data-level="${lvl}"]`).forEach(ch => ch.checked = false);
+      const lc = host.querySelector(`.mix-level-check[data-level="${lvl}"]`);
+      if (lc) lc.checked = false;
+    });
+  });
+
+  const st = document.querySelector("#mix-status");
+  if (st) st.textContent = "Select lessons, then click Build Deck.";
+}
+
+// Global select/clear helpers (buttons below the picker)
+window.mixSelectAll = ()=>{
+  document.querySelectorAll(".mix-lesson-check").forEach(ch=> ch.checked = true);
+  document.querySelectorAll(".mix-level-check").forEach(ch=> ch.checked = true);
+};
+window.mixClear = ()=>{
+  document.querySelectorAll(".mix-lesson-check,.mix-level-check").forEach(ch=> ch.checked = false);
+};
+
+// Build the combined deck and enter the Vocab root menus (no Video/Grammar)
+window.mixBuildDeck = async ()=>{
+  const picks = Array.from(document.querySelectorAll('.mix-lesson-check:checked'))
+    .map(ch => ({ level: ch.dataset.level, lesson: ch.dataset.lesson }));
+
+  const st = document.querySelector("#mix-status");
+  if (!picks.length){ if (st) st.textContent = "Pick at least one lesson."; return; }
+
+  let combined = [];
+  for (const p of picks){
+    const d = await loadDeckFor(p.level, p.lesson);
+    combined = combined.concat(d);
+  }
+  // de-duplicate
+  const seen = new Set(); const deck = [];
+  for (const w of combined){ const k=keyForWord(w); if (!seen.has(k)){ seen.add(k); deck.push(w); } }
+
+  App.mix = { active:true, selection:picks, deck };
+  App.level = "Mix"; 
+  App.lesson = `${picks.length} lesson(s)`;
+  App.tab = "vocab"; App.mode = null; App.qIndex = 0;
+
+  // Show breadcrumbs and the normal Vocab menus (root)
+  document.querySelector("#crumb-level").textContent  = App.level;
+  document.querySelector("#crumb-lesson").textContent = App.lesson;
+  document.querySelector("#crumb-mode").textContent   = "vocab";
+
+  // Go to the Vocab root UI (but hide the Video/Vocab/Grammar bar for Mix)
+  document.querySelector("#mix-section")?.classList.add("hidden");
+  document.querySelector("#level-shell")?.classList.remove("hidden");
+  document.querySelector("#lesson-area")?.classList.remove("hidden");
+  hideLessonsHeaderAndList();
+  hideLessonBar(); // <- Mix should not show the 3 tabs
+
+  ["#tab-videos","#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
+  document.querySelector("#tab-vocab")?.classList.remove("hidden");
+
+  // Ensure the Vocab root buttons are visible
+  showVocabRootMenu();
+  showVocabRootCard();
+  const vs = document.querySelector("#vocab-status");
+  if (vs){
+    vs.textContent = `Built ${deck.length} words from ${picks.length} lesson(s). Pick an option. `;
+    // small inline "Edit selection" action
+    const edit = document.createElement("button");
+    edit.style.marginLeft = "6px";
+    edit.textContent = "Edit selection";
+    edit.addEventListener("click", ()=>{
+      App.mix.active = false; // go back to picker
+      document.querySelector("#tab-vocab")?.classList.add("hidden");
+      document.querySelector("#mix-section")?.classList.remove("hidden");
+      hideLessonBar();
+      updateBackVisibility();
+    });
+    vs.appendChild(edit);
+  }
+
+  updateBackVisibility();
+};
 
