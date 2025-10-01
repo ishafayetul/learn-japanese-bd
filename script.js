@@ -242,13 +242,17 @@ function injectListActions(source){
   if (source === "mistakes"){
     row.innerHTML = `<button id="btn-clear-mistakes" class="danger">🗑️ Clear Mistakes</button>`;
     row.querySelector("#btn-clear-mistakes").addEventListener("click", ()=>{
-      setMistakes([]);                           // clear local cache
+      setMistakes([]);
       toast("Mistakes cleared");
-      App.deck = [];
-      App.deckFiltered = [];
-      showVocabRootMenu();
-      document.querySelector("#vocab-status").textContent = "No words found.";
+
+      // 👇 leave the Vocab view and hide the action row
+      removeListActions();
+      hideContentPanes();
+      document.querySelector("#mistakes-section")?.classList.remove("hidden");
+      renderMistakesLanding();
+      updateBackVisibility();
     });
+
   } else { // marked
       row.innerHTML = `<button id="btn-unmark-some" class="danger">❌ Unmark Words</button>`;
       row.querySelector("#btn-unmark-some").addEventListener("click", openUnmarkModal);
@@ -2051,6 +2055,16 @@ async function learnNoteAddOrSave(){
     toast("Removed selected words ✓");
     closeUnmarkModal();
     await renderMarkedList();
+    // If nothing remains, leave the Vocab deck and hide the action row
+    try {
+      const left = (await buildPickerRowsMerged()).length;
+      if (left === 0) {
+        removeListActions();
+        hideContentPanes();
+        document.querySelector("#marked-section")?.classList.remove("hidden");
+        updateBackVisibility();
+      }
+    } catch {}
   }, { once:true });
 
   document.querySelector("#unmark-close")?.addEventListener("click", closeUnmarkModal, { once:true });
