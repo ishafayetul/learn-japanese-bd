@@ -609,9 +609,36 @@ window.openSection = async (name) => {
   closeVideoLightbox?.();
 
   // Special handling: Mistakes / Marked should mirror the Lesson → Vocab experience
-  if (name === "mistakes" || name === "marked") {
-    await openVocabDeckFromList(name);
+  if (name === "mistakes") {
+    await enterListMode("mistake");
     return;
+  }
+  async function enterListMode(source /* "mistake" | "marked" */) {
+    try { await flushSession?.(); } catch {}
+    closeVideoLightbox?.();
+    hideContentPanes();        // hide everything on the right side
+    hideLessonsHeaderAndList();// hide lessons header
+    hideLessonBar();           // hide the top Video/Vocab/Grammar tabs
+
+    // Load deck from source
+    let deck = [];
+    if (name === "marked") {
+      await enterListMode("marked");
+      return;
+    }
+
+    App.deck = deck;
+    App.deckFiltered = deck.slice();
+    App.mode = null; App.qIndex = 0;
+    elVocabStatus.textContent = deck.length ? "Pick an option." : "No words found.";
+
+    // Reveal the same Vocabulary menus (root)
+    document.querySelector("#tab-vocab")?.classList.remove("hidden");
+    showVocabRootMenu();
+    showVocabRootCard();
+    document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
+
+    updateBackVisibility();
   }
 
   // Other sections keep their own pages
@@ -1421,24 +1448,50 @@ async function learnNoteAddOrSave(){
                .filter(x=>x.hira && x.en);
   }
   async function setupListPractice(source, mode){
-    let deck=[]; if (source==="mistake") deck=getMistakes().map(x=>({kanji:x.kanji, hira:x.hira, en:x.en}));
-    else deck=await getMarkedAsDeck();
-    if (!deck.length){ toast("No items to practice."); return; }
-    App.deck = deck; App.mode = mode; setCrumbs();
-    if (mode==="learn"){
-      App.deckFiltered=deck.slice(); App.qIndex=0;
-      D("#practice")?.classList.add("hidden"); elWrite.classList.add("hidden"); elMake.classList.add("hidden");
-      elLearn.classList.remove("hidden"); renderLearnCard();
-    } else if (mode==="write"){
-      App.deckFiltered=shuffle(deck); App.write.order=App.deckFiltered.map((_,i)=>i); App.write.idx=0;
-      elLearn.classList.add("hidden"); D("#practice")?.classList.add("hidden"); elMake.classList.add("hidden");
-      elWrite.classList.remove("hidden"); renderWriteCard();
-    } else {
-      App.deckFiltered=shuffle(deck); App.qIndex=0;
-      elLearn.classList.add("hidden"); elWrite.classList.add("hidden"); elMake.classList.add("hidden");
-      D("#practice").classList.remove("hidden"); updateDeckProgress(); renderQuestion();
+      // If App.deck is already loaded (enterListMode), prefer that.
+      let deck = (App.deck && App.deck.length) ? App.deck.slice() : [];
+      if (!deck.length) {
+        if (source === "mistake") deck = await fbListMistakesAsDeck();
+        else deck = await getMarkedAsDeck();
+      }
+      if (!deck.length){ toast("No items to practice."); return; }
+
+      App.deck = deck; App.mode = mode; setCrumbs();
+
+      // Hide root/submenus; show finals identical to Vocabulary behavior
+      hideVocabMenus();
+      elLearn.classList.add("hidden");
+      elWrite.classList.add("hidden");
+      D("#practice")?.classList.add("hidden");
+      elMake.classList.add("hidden");
+
+      if (mode==="learn"){
+        App.deckFiltered = deck.slice();
+        App.qIndex = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
+        elLearn.classList.remove("hidden");
+        renderLearnCard();
+      } else if (mode==="write"){
+        App.deckFiltered = shuffle(deck);
+        App.write.order = App.deckFiltered.map((_,i)=>i);
+        App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
+        elWrite.classList.remove("hidden");
+        renderWriteCard();
+      } else if (mode==="make"){
+        App.make.order = shuffle(deck).map((_,i)=>i).slice(0, Math.min(deck.length, 30));
+        App.make.idx   = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
+        elMake.classList.remove("hidden");
+        renderMakeCard();
+      } else {
+        // MCQ variants
+        App.deckFiltered = shuffle(filterDeckForMode(mode));
+        App.qIndex = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
+        D("#practice").classList.remove("hidden");
+        updateDeckProgress();
+        renderQuestion();
+      }
+      updateBackVisibility();
     }
-  }
+
 
   // Mark current word (available across modes)
   window.markCurrentWord = async () => {

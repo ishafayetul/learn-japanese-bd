@@ -56,9 +56,10 @@
 
   const Paths = {
     users: (uid) => `users/${uid}`,
-    userNotesCol:   (uid) => `users/${uid}/notes`,
-    userMarkedCol:  (uid) => `users/${uid}/marked`,
-    userSignCol:    (uid) => `users/${uid}/signWords`,
+    userMarkedCol: (uid) => `users/${uid}/marked`,
+    userMistakesCol: (uid) => `users/${uid}/mistakes`,
+    userNotesCol: (uid) => `users/${uid}/notes`,
+    userSignCol: (uid) => `users/${uid}/signwords`,
     attemptsCol:    ()    => `attempts`,                   // root attempts collection (doc contains uid)
     dailyScoresCol: (date) => `daily/${date}/scores`,      // subcollection for today's leaderboard
     overallLBCol:   ()    => `leaderboard_overall`,        // overall leaderboard (aggregate)
@@ -267,10 +268,12 @@
       },
 
       // Marked words
+      // Marked words
       async listMarked() {
         if (!_user) throw new Error("Not signed in");
-        // cache first
-        if (_cache.marked.size) return Array.from(_cache.marked.entries()).map(([id, v]) => ({ id, ...v }));
+        if (_cache.marked.size) {
+          return Array.from(_cache.marked.values());
+        }
         const { collection, getDocs } = await fsMods();
         const snap = await getDocs(collection(db, Paths.userMarkedCol(_user.uid)));
         const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -280,10 +283,19 @@
       async markWord(id, data) {
         if (!_user) throw new Error("Not signed in");
         const { doc, setDoc, serverTimestamp } = await fsMods();
-        const ref = doc(db, `${Paths.userMarkedCol(_user.uid)}/${safeKey(id)}`);
-        const payload = { ...data, updatedAt: serverTimestamp(), createdAt: data?.createdAt || serverTimestamp() };
+        const key = safeKey(id);
+        const ref = doc(db, `${Paths.userMarkedCol(_user.uid)}/${key}`);
+        const payload = {
+          kanji: data?.kanji || null,
+          hira:  data?.hira  || "",
+          en:    data?.en    || "",
+          front: data?.front || data?.hira || "",
+          back:  data?.back  || data?.en   || "",
+          updatedAt: serverTimestamp(),
+          createdAt: data?.createdAt || serverTimestamp(),
+        };
         await setDoc(ref, payload, { merge: true });
-        _cache.marked.set(safeKey(id), { id: safeKey(id), ...payload });
+        _cache.marked.set(key, { id: key, ...payload });
         return true;
       },
       async unmarkWord(id) {
@@ -294,6 +306,44 @@
         _cache.marked.delete(key);
         return true;
       },
+      // Mistakes (per-user)
+      async listMistakes() {
+        if (!_user) throw new Error("Not signed in");
+        if (_cache.mistakes?.size) return Array.from(_cache.mistakes.values());
+        const { collection, getDocs } = await fsMods();
+        const snap = await getDocs(collection(db, Paths.userMistakesCol(_user.uid)));
+        const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        _cache.mistakes = _cache.mistakes || new Map();
+        rows.forEach(r => _cache.mistakes.set(r.id, r));
+        return rows;
+      },
+      async addMistake({ kanji, hira, en }) {
+        if (!_user) throw new Error("Not signed in");
+        const { doc, setDoc, serverTimestamp } = await fsMods();
+        const id = safeKey(`${kanji || "—"}::${hira}::${en}`);
+        const ref = doc(db, `${Paths.userMistakesCol(_user.uid)}/${id}`);
+        const payload = {
+          kanji: kanji || null,
+          hira:  hira  || "",
+          en:    en    || "",
+          updatedAt: serverTimestamp(),
+          firstSeenAt: serverTimestamp(),
+        };
+        await setDoc(ref, payload, { merge: true });
+        _cache.mistakes = _cache.mistakes || new Map();
+        _cache.mistakes.set(id, { id, ...payload });
+        return true;
+      },
+      async clearMistakes() {
+        if (!_user) throw new Error("Not signed in");
+        const { collection, getDocs, doc, deleteDoc } = await fsMods();
+        const col = collection(db, Paths.userMistakesCol(_user.uid));
+        const snap = await getDocs(col);
+        await Promise.all(snap.docs.map(d => deleteDoc(doc(db, `${Paths.userMistakesCol(_user.uid)}/${d.id}`))));
+        if (_cache.mistakes) _cache.mistakes.clear();
+        return true;
+      },
+
 
       // Sign Word (quick personal list)
       async signWordAdd({ front, back, romaji=null }) {
@@ -308,6 +358,16 @@
         });
         const item = { id: docRef.id, front, back, romaji, createdAt: new Date() };
         _cache.signWords.set(item.id, item);
+        // after adding sign word:
+        try {
+          await FB.markWord(`${item.front}::${item.back}`, {
+            hira: item.front,
+            en: item.back,
+            front: item.front,
+            back: item.back,
+          });
+        } catch {}
+
         return item;
       },
       async signWordList() {
@@ -375,3 +435,4 @@
     console.error("[Firebase init] failed:", err);
   });
 })();
+
