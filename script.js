@@ -345,6 +345,55 @@ function attemptSig(){
     return p.split('/').map(s => s === '' ? '' : encodeURIComponent(s)).join('/')
             .replace(/%3A/g, ':');
   }
+
+  // Mirror of firebase.js safeKey so we can match Marked <-> SignWords
+function toSafeKey(s){
+  try { return btoa(unescape(encodeURIComponent(String(s)))).replace(/=+$/,""); }
+  catch { return String(s).toLowerCase().replace(/\W+/g,'_'); }
+}
+
+// Remove from Marked and also clean up Sign Words if linked
+async function cascadeUnmark({ src, id, markedId }){
+  const fb = await whenFBReady();
+
+  if (src === "remote"){
+    // 1) unmark this Marked doc
+    await fb.unmarkWord(id);
+
+    // 2) if there is a matching Sign Word (by markedId), remove it too
+    if (markedId){
+      try{
+        const mkey = toSafeKey(markedId);
+        const signs = await fb.signWordList();
+        const hit = signs.find(x => x.markedId === mkey);
+        if (hit) await fb.signWordRemove(hit.id); // also unmarks again internally; safe if already removed
+      }catch{}
+    }
+
+  } else if (src === "local"){
+    // local-only Marked
+    removeLocalMarked(id);
+
+    // best-effort: if signed in and this local item also exists in Sign Words, remove it
+    if (markedId){
+      try{
+        const mkey = toSafeKey(markedId);
+        const signs = await fb.signWordList();
+        const hit = signs.find(x => x.markedId === mkey);
+        if (hit) await fb.signWordRemove(hit.id);
+      }catch{}
+    }
+
+  } else if (src === "sign"){
+    // id looks like "sign::<signId>" — remove Sign Word; that will also unmark its Marked twin
+    const signId = id.startsWith("sign::") ? id.split("::")[1] : id;
+    if (signId) await fb.signWordRemove(signId);
+
+    // extra safety: also try to unmark the paired Marked id
+    if (markedId){ try { await fb.unmarkWord(markedId); } catch {} }
+  }
+}
+
 // ---- Manifest URL resolver (works on subpaths too) ----
   function manifestCandidates(level){
     return [`${LEVEL_BASE}/${level}/manifest.json`];
@@ -1821,26 +1870,20 @@ async function learnNoteAddOrSave(){
               data-marked-id="${escapeHTML(r._markedId || "")}">Unmark</button>`;
 
     div.querySelector("button")?.addEventListener("click", async (e) => {
-      const src = e.currentTarget.dataset.src;
-      const id  = e.currentTarget.dataset.id;
-      const markedId = e.currentTarget.dataset.markedId;
+    const src = e.currentTarget.dataset.src;
+    const id  = e.currentTarget.dataset.id;
+    const markedId = e.currentTarget.dataset.markedId;
 
-      try {
-        if (src === "remote") {
-          const fb = await whenFBReady(); await fb.unmarkWord(id);
-        } else if (src === "local") {
-          removeLocalMarked(id);
-        } else if (src === "sign") {
-          const fb = await whenFBReady(); await fb.unmarkWord(markedId);
-        }
-        toast("Unmarked ✓");
-      } catch (err) {
-        console.error(err);
-        toast("Couldn’t unmark — check console");
-      }
+    try {
+      await cascadeUnmark({ src, id, markedId });
+      toast("Removed ✓");
+    } catch (err) {
+      console.error(err);
+      toast("Couldn’t remove — check console");
+    }
+    await renderMarkedList();
+  });
 
-      await renderMarkedList(); // refresh
-    });
 
     elMarkedContainer.appendChild(div);
   }
@@ -1898,29 +1941,21 @@ async function learnNoteAddOrSave(){
       }, { once:true });
 
       document.querySelector("#unmark-remove")?.addEventListener("click", async ()=>{
-        const picks = Array.from(document.querySelectorAll(".unmark-check:checked"));
-        if (!picks.length){ toast("Nothing selected."); return; }
+      const picks = Array.from(document.querySelectorAll(".unmark-check:checked"));
+      if (!picks.length){ toast("Nothing selected."); return; }
 
-        // perform removals
-        for (const cb of picks){
-          const src = cb.dataset.src;
-          const id  = cb.dataset.id;
-          const markedId = cb.dataset.markedId;
-          try{
-            if (src === "remote"){
-              const fb = await whenFBReady(); await fb.unmarkWord(id);
-            } else if (src === "local"){
-              removeLocalMarked(id);
-            } else if (src === "sign"){
-              const fb = await whenFBReady(); await fb.unmarkWord(markedId);
-            }
-          } catch {}
-        }
+      for (const cb of picks){
+        const src = cb.dataset.src;
+        const id  = cb.dataset.id;
+        const markedId = cb.dataset.markedId;
+        try { await cascadeUnmark({ src, id, markedId }); } catch {}
+      }
 
-        toast("Removed selected words ✓");
-        closeUnmarkModal();
-        await renderMarkedList();
-      }, { once:true });
+      toast("Removed selected words ✓");
+      closeUnmarkModal();
+      await renderMarkedList();
+    }, { once:true });
+
 
       document.querySelector("#unmark-close")?.addEventListener("click", closeUnmarkModal, { once:true });
       modal.querySelector(".lightbox-backdrop")?.addEventListener("click", closeUnmarkModal, { once:true });
