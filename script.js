@@ -2032,41 +2032,61 @@ async function learnNoteAddOrSave(){
   async function renderProgress(){
     try{
       const fb = await whenFBReady();
+      // already per-user & sorted; returns last 10
       const rows = await fb.getRecentAttempts({ max: 10 });
+
+      // Top summary
       if (rows.length){
         const last = rows[0];
-        elProgressLast.textContent = `${fmtDate(last.createdAt?.toDate?.() || new Date())} — ${last.deckId || last.lesson || "deck"} — ${last.mode} — R:${last.right} W:${last.wrong} S:${last.skipped}`;
-        const same = rows.find(r => r !== last && r.deckId === last.deckId);
-        elProgressPrev.textContent = same ? `${fmtDate(same.createdAt?.toDate?.() || new Date())} — R:${same.right} W:${same.wrong} S:${same.skipped}` : "—";
-        elProgressDelta.textContent = same ? (((last.right|0)-(same.right|0))>=0 ? `+${(last.right|0)-(same.right|0)} right` : `${(last.right|0)-(same.right|0)} right`) : "—";
+        const lastDt = last.clientAtMs ? new Date(last.clientAtMs)
+                                      : (last.createdAt?.toDate?.() || new Date());
+        elProgressLast.textContent =
+          `${fmtDate(lastDt)} — ${last.deckId || last.lesson || "deck"} — ${last.mode} — R:${last.right} W:${last.wrong} S:${last.skipped}`;
+
+        const same = rows.find(r => r !== last && (r.deckId || r.lesson) === (last.deckId || last.lesson));
+        if (same){
+          const sameDt = same.clientAtMs ? new Date(same.clientAtMs)
+                                        : (same.createdAt?.toDate?.() || new Date());
+          elProgressPrev.textContent =
+            `${fmtDate(sameDt)} — R:${same.right|0} W:${same.wrong|0} S:${same.skipped|0}`;
+          elProgressDelta.textContent =
+            ((last.right|0)-(same.right|0) >= 0)
+              ? `+${(last.right|0)-(same.right|0)} right`
+              : `${(last.right|0)-(same.right|0)} right`;
+        } else {
+          elProgressPrev.textContent = "—";
+          elProgressDelta.textContent = "—";
+        }
       } else {
-        elProgressLast.textContent="No attempts yet."; elProgressPrev.textContent="—"; elProgressDelta.textContent="—";
+        elProgressLast.textContent="No attempts yet.";
+        elProgressPrev.textContent="—";
+        elProgressDelta.textContent="—";
       }
+
+      // Recent Attempts table
       elProgressTable.innerHTML="";
       for (const r of rows){
+        const dt = r.clientAtMs ? new Date(r.clientAtMs)
+                                : (r.createdAt?.toDate?.() || new Date());
         const tr=document.createElement("tr");
         tr.innerHTML = `
-          <td>${fmtDate(r.createdAt?.toDate?.() || new Date())}</td>
+          <td>${fmtDate(dt)}</td>
           <td>${escapeHTML(r.deckId || r.lesson || "-")}</td>
           <td>${escapeHTML(r.mode || "-")}</td>
           <td>${r.right|0}</td><td>${r.wrong|0}</td><td>${r.skipped|0}</td><td>${r.total|0}</td>`;
         elProgressTable.appendChild(tr);
       }
-      const best = await fb.getWriteBestByDeck({ max: 300 });
-      elWriteProgressTable.innerHTML="";
-      for (const b of best){
-        const tr=document.createElement("tr");
-        const attempted=(b.right|0)+(b.wrong|0)+(b.skipped|0);
-        tr.innerHTML = `
-          <td>${escapeHTML(b.deckId || b.lesson || "-")}</td>
-          <td>${attempted}</td>
-          <td>${b.total|0}</td>
-          <td>${pct(attempted, b.total||Math.max(attempted,1))}</td>
-          <td>${fmtDate(b.createdAt?.toDate?.() || new Date())}</td>`;
-        elWriteProgressTable.appendChild(tr);
-      }
-    } catch (e){ console.error(e); elProgressLast.textContent="Failed to load progress."; }
+
+      // Removed: best-per-deck write section
+      // if (window.elWriteProgressTable) {
+      //   try { document.querySelector("#write-progress-card")?.remove(); } catch {}
+      // }
+    } catch (e){
+      console.error(e);
+      elProgressLast.textContent="Failed to load progress.";
+    }
   }
+
   function fmtDate(d){ try{ const dt=d instanceof Date ? d : new Date(d); return dt.toLocaleString(); }catch{ return "-"; } }
 
 // when building each row:
