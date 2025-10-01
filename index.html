@@ -363,6 +363,28 @@
             </div>
           </div>
         </section>
+        <!-- Unmark modal -->
+        <div id="unmark-modal" class="lightbox hidden" aria-hidden="true">
+          <div class="lightbox-backdrop"></div>
+          <div class="lightbox-inner card" style="max-height:80vh; overflow:auto;">
+            <div class="lightbox-head">
+              <h4 style="margin:0;">Select words to unmark</h4>
+              <button id="unmark-close" class="lightbox-close" aria-label="Close">✕</button>
+            </div>
+
+            <div id="unmark-list" class="unmark-list">
+              <!-- checkboxes rendered by JS -->
+            </div>
+
+            <div class="unmark-actions">
+              <div>
+                <button id="unmark-select-all" class="chip">Select All</button>
+                <button id="unmark-clear" class="chip">Clear</button>
+              </div>
+              <button id="unmark-remove" class="danger">Remove Selected Words</button>
+            </div>
+          </div>
+        </div>
 
         <!-- Toast -->
         <div id="toast" class="toast"></div>

@@ -165,20 +165,10 @@ function injectListActions(source){
       document.querySelector("#vocab-status").textContent = "No words found.";
     });
   } else { // marked
-    row.innerHTML = `<button id="btn-unmark-all" class="danger">❌ Unmark Words</button>`;
-    row.querySelector("#btn-unmark-all").addEventListener("click", async ()=>{
-      try{
-        const fb = await whenFBReady();
-        const rows = await fb.listMarked();
-        for (const r of rows) await fb.unmarkWord(r.id);
-        toast("All words unmarked ✓");
-      } catch { toast("Sign in first"); }
-      App.deck = [];
-      App.deckFiltered = [];
-      showVocabRootMenu();
-      document.querySelector("#vocab-status").textContent = "No words found.";
-    });
-  }
+      row.innerHTML = `<button id="btn-unmark-some" class="danger">❌ Unmark Words</button>`;
+      row.querySelector("#btn-unmark-some").addEventListener("click", openUnmarkModal);
+    }
+
 
   // place the toolbar just above the vocab card
   hostCard.parentNode.insertBefore(row, hostCard);
@@ -1675,59 +1665,141 @@ async function learnNoteAddOrSave(){
 
   // ---------- Marked ----------
   async function renderMarkedList(){
-      elMarkedContainer.innerHTML = "";
-
-      let remote = [];
-      try {
-        const fb = await whenFBReady();
-        remote = await fb.listMarked();
-      } catch {}
-
-      const local = getLocalMarked();
-
-      let signed = [];
-      try {
-        const fb = await whenFBReady();
-        signed = await fb.signWordList();
-      } catch {}
-
       const rows = [
-        ...remote.map(r => ({...r, _src: "remote"})),
-        ...local.map(r => ({...r, _src: "local"})),
-        ...signed.map(r => ({ id: `sign::${r.id}`, kanji: r.kanji, hira: r.front, en: r.back, front: r.front, back: r.back, _src: "sign" }))
-      ];
+  ...remote.map(r => ({...r, _src: "remote"})),
+  ...local.map(r => ({...r, _src: "local"})),
+  ...signed.map(r => ({
+    id: `sign::${r.id}`,
+    kanji: r.kanji,
+    hira: r.front, en: r.back, front: r.front, back: r.back,
+    _src: "sign",
+    _markedId: `${r.front}::${r.back}` // how it was stored in Marked collection
+  }))
+];
 
-      elMarkedStatus.textContent = `${rows.length} item(s).`;
+    elMarkedStatus.textContent = `${rows.length} item(s).`;
 
-      for (const r of rows){
-        const div = document.createElement("div");
-        div.className = "marked-item";
-        div.innerHTML = `
-          <div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} — <span class="muted">${escapeHTML(r.back || r.en || "")}</span></div>
-           <button data-id="${r.id}">Unmark</button>`;
-        div.querySelector("button").addEventListener("click", async (e) => {
-          const src = e.currentTarget.dataset.src;
-          const id  = e.currentTarget.dataset.id;
-          try {
-            if (src === "remote") {
-              const fb = await whenFBReady();
-              await fb.unmarkWord(id);
-            } else if (src === "local") {
-              removeLocalMarked(id);
-            } else if (src === "sign") {
-              const fb = await whenFBReady();
-              await fb.signWordRemove(id.replace(/^sign::/, ""));
-            }
-          } catch {}
-          await renderMarkedList();
-        });
-        elMarkedContainer.appendChild(div);
-      }
+    for (const r of rows){
+      const div = document.createElement("div");
+      div.className = "marked-item";
+      div.innerHTML = `
+        <div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} — <span class="muted">${escapeHTML(r.back || r.en || "")}</span></div>
+        <button data-id="${r.id}" data-src="${r._src}" data-marked-id="${r._markedId || ""}">Unmark</button>`;
+      div.querySelector("button").addEventListener("click", async (e) => {
+        const src = e.currentTarget.dataset.src;
+        const id  = e.currentTarget.dataset.id;
+        const markedId = e.currentTarget.dataset.markedId;
+        try {
+          if (src === "remote") {
+            const fb = await whenFBReady(); await fb.unmarkWord(id);
+          } else if (src === "local") {
+            removeLocalMarked(id);
+          } else if (src === "sign") {
+            // only unmark (do not delete from Sign Words here)
+            const fb = await whenFBReady(); await fb.unmarkWord(markedId);
+          }
+          toast("Unmarked ✓");
+        } catch {}
+        await renderMarkedList();
+      });
+      elMarkedContainer.appendChild(div);
+    }
+
     }
 
   window.startMarkedLearn = async()=> setupListPractice("marked","learn");
   window.startMarkedPractice = async(m)=> setupListPractice("marked", m);
   window.startMarkedWrite = async()=> setupListPractice("marked","write");
+  
+  async function fetchAllMarkedForPicker(){
+      let remote = [], local = [], signed = [];
+      try { const fb = await whenFBReady(); remote = await fb.listMarked(); } catch {}
+      try { local = getLocalMarked(); } catch {}
+      try { const fb = await whenFBReady(); signed = await fb.signWordList(); } catch {}
+
+      return [
+        ...remote.map(r => ({ id:r.id, front:r.front || r.hira, back:r.back || r.en, src:"remote" })),
+        ...local .map(r => ({ id:r.id, front:r.front || r.hira, back:r.back || r.en, src:"local"  })),
+        ...signed.map(r => ({
+          id:`sign::${r.id}`, front:r.front, back:r.back, src:"sign",
+          markedId:`${r.front}::${r.back}`
+        }))
+      ];
+    }
+
+    async function openUnmarkModal(){
+      const modal = document.querySelector("#unmark-modal");
+      const list  = document.querySelector("#unmark-list");
+      if (!modal || !list) return;
+      list.innerHTML = "<div class='muted'>Loading…</div>";
+
+      const rows = await fetchAllMarkedForPicker();
+      if (!rows.length){
+        list.innerHTML = "<div class='muted'>No marked words.</div>";
+      } else {
+        list.innerHTML = rows.map(r => `
+          <label>
+            <input type="checkbox" class="unmark-check"
+                  data-id="${escapeHTML(r.id)}"
+                  data-src="${r.src}"
+                  data-marked-id="${escapeHTML(r.markedId || "")}">
+            <b>${escapeHTML(r.front)}</b> — <span class="muted">${escapeHTML(r.back || "")}</span>
+          </label>
+        `).join("");
+      }
+
+      // wire modal controls (once)
+      document.querySelector("#unmark-select-all")?.addEventListener("click", ()=>{
+        document.querySelectorAll(".unmark-check").forEach(ch => ch.checked = true);
+      }, { once:true });
+
+      document.querySelector("#unmark-clear")?.addEventListener("click", ()=>{
+        document.querySelectorAll(".unmark-check").forEach(ch => ch.checked = false);
+      }, { once:true });
+
+      document.querySelector("#unmark-remove")?.addEventListener("click", async ()=>{
+        const picks = Array.from(document.querySelectorAll(".unmark-check:checked"));
+        if (!picks.length){ toast("Nothing selected."); return; }
+
+        // perform removals
+        for (const cb of picks){
+          const src = cb.dataset.src;
+          const id  = cb.dataset.id;
+          const markedId = cb.dataset.markedId;
+          try{
+            if (src === "remote"){
+              const fb = await whenFBReady(); await fb.unmarkWord(id);
+            } else if (src === "local"){
+              removeLocalMarked(id);
+            } else if (src === "sign"){
+              const fb = await whenFBReady(); await fb.unmarkWord(markedId);
+            }
+          } catch {}
+        }
+
+        toast("Removed selected words ✓");
+        closeUnmarkModal();
+        await renderMarkedList();
+      }, { once:true });
+
+      document.querySelector("#unmark-close")?.addEventListener("click", closeUnmarkModal, { once:true });
+      modal.querySelector(".lightbox-backdrop")?.addEventListener("click", closeUnmarkModal, { once:true });
+      modal.classList.remove("hidden");
+      modal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeUnmarkModal(){
+      const modal = document.querySelector("#unmark-modal");
+      if (!modal) return;
+      modal.classList.add("hidden");
+      modal.setAttribute("aria-hidden", "true");
+      // clean handlers so we don’t double-bind next time
+      const fresh = modal.cloneNode(true);
+      modal.replaceWith(fresh);
+    }
+    window.openUnmarkModal = openUnmarkModal;
+
+
 
   async function getMarkedAsDeck(){
   // Remote (if signed in)

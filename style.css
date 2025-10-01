@@ -337,3 +337,22 @@ code{ background:#0c1424; border:1px solid var(--border); padding:1px 6px; borde
 .mix-levels-wrap { margin-top:8px; }
 .action-row{display:flex; gap:.5rem; justify-content:flex-end; margin:0 0 .5rem;}
 .action-row .danger{background:#3a1a1a;}
+
+/* Unmark modal */
+.unmark-list{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:8px;
+  padding:6px 2px;
+  max-height:60vh;
+  overflow:auto;
+}
+.unmark-list label{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 10px; border:1px solid var(--border);
+  background:#0e1524; border-radius:10px;
+}
+.unmark-actions{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-top:10px;
+}
