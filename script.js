@@ -1190,24 +1190,34 @@ async function learnNoteAddOrSave(){
       setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 350);
     }
 
-    for (const val of pickSetLeft){
-      const b=document.createElement("button"); b.textContent=val;
-      b.addEventListener("click", ()=>{
-        A(".dual-grid > :first-child button").forEach(x=>x.classList.add("disabled"));
-        b.classList.add(val===correctLeft ? "is-correct" : "is-wrong");
-        pickedLeft = val; finalize();
-      });
-      leftCol.appendChild(b);
-    }
-    for (const val of pickSetRight){
-      const b=document.createElement("button"); b.textContent=val;
-      b.addEventListener("click", ()=>{
-        A(".dual-grid > :last-child button").forEach(x=>x.classList.add("disabled"));
-        b.classList.add(val===correctRight ? "is-correct" : "is-wrong");
-        pickedRight = val; finalize();
-      });
-      rightCol.appendChild(b);
-    }
+      for (const val of pickSetLeft){
+    const b = document.createElement("button");
+    b.textContent = val;
+    b.addEventListener("click", ()=>{
+      // disable entire left column via attribute so CSS picks it up
+      A(".dual-grid > :first-child button").forEach(x => x.disabled = true);
+      // color THIS pick based on correctness
+      b.classList.add(val === correctLeft ? "is-correct" : "is-wrong");
+      pickedLeft = val;
+      finalize();
+    }, { once:true });
+    leftCol.appendChild(b);
+  }
+
+  for (const val of pickSetRight){
+    const b = document.createElement("button");
+    b.textContent = val;
+    b.addEventListener("click", ()=>{
+      // disable entire right column via attribute so CSS picks it up
+      A(".dual-grid > :last-child button").forEach(x => x.disabled = true);
+      // color THIS pick based on correctness
+      b.classList.add(val === correctRight ? "is-correct" : "is-wrong");
+      pickedRight = val;
+      finalize();
+    }, { once:true });
+    rightCol.appendChild(b);
+  }
+
   }
   window.startDualMCQ = (variant)=> window.startPractice(variant);
 

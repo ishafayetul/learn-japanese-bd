@@ -314,3 +314,18 @@ code{ background:#0c1424; border:1px solid var(--border); padding:1px 6px; borde
   font-size: 1.25rem;
   opacity: 0.85;
 }
+/* Dual MCQ coloring (match single-MCQ styles) */
+#options .dual-grid button.is-correct {
+  background: var(--ok, #12b886);
+  color: #fff;
+  border-color: var(--ok, #12b886);
+}
+#options .dual-grid button.is-wrong {
+  background: var(--err, #e03131);
+  color: #fff;
+  border-color: var(--err, #e03131);
+}
+#options .dual-grid button[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
