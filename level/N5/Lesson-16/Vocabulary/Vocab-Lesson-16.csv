@@ -1,25 +1,25 @@
 乗ります,のります,"ride, get on"
-—,でんしゃにのります,"ride, get on a train"
+?,でんしゃにのります,"ride, get on a train"
 降ります,おります,get off
-—,でんしゃをおります,get off a train
+?,でんしゃをおります,get off a train
 乗り換えます,のりかえます,"change (trains, etc.)"
-—,シャワーをあびます,take a shower
+?,シャワーをあびます,take a shower
 入れます,いれます,"put in, insert"
 出します,だします,"take out, withdraw"
 入ります,はいります,enter
-—,だいがくにはいります,enter a university
+?,だいがくにはいります,enter a university
 出ます,でます,graduate
-—,だいがくをでます,graduate from a university
+?,だいがくをでます,graduate from a university
 辞めます,やめます,"quit or retire from, stop, give up"
-—,かいしゃをやめます,quit or retire from a company
+?,かいしゃをやめます,quit or retire from a company
 押します,おします,"press, push"
 若い,わかい,young
 長い,ながい,long
 短い,みじかい,short
 明るい,あかるい,"bright, light"
 暗い,くらい,dark
-—,せがたかい,tall (referring to person)
-—,あたまがいい,"clever, smart"
+?,せがたかい,tall (referring to person)
+?,あたまがいい,"clever, smart"
 体,からだ,body
 頭,あたま,head
 髪,かみ,hair
@@ -32,28 +32,28 @@
 足,あし,"leg, foot"
 サービス,サービス,service
 ジョギング,ジョギング,jogging
-—,ジョギングをします,jog
+?,ジョギングをします,jog
 シャワー,シャワー,shower
 緑,みどり,"green, greenery"
 寺,てら,Buddhist temple
 神社,じんじゃ,Shinto shrine
 留学生,りゅうがくせい,foreign student
-—,～ばん,number ~
-—,どうやって,"in what way, how"
-—,どの～,which ~ (used for three or more)
-—,いいえまだまだです,"No, I still have a long way to go"
-—,おひきだしですか,Are you making a withdrawl?
-—,まず,first of all
-—,キャッシュカード,cash dispensing card
-—,あんしょうばんごう,"personal identification number, PIN"
-—,つぎに,"next, as a next step"
-—,きんがく,amount of money
-—,かくにん,confirmation
-—,かくにんします,confirm
-—,ボタン,button
-—,アジア,Asia
-—,バンドン,Bandung (in Indonesia)
-—,,Veracruz (in Mexico)
-—,フランケン,Franken (in Germany)
-—,ベトナム,Vietnam
-—,フエ,Hue (in Vietnam)
+?,～ばん,number ~
+?,どうやって,"in what way, how"
+?,どの～,which ~ (used for three or more)
+?,いいえまだまだです,"No, I still have a long way to go"
+?,おひきだしですか,Are you making a withdrawl?
+?,まず,first of all
+?,キャッシュカード,cash dispensing card
+?,あんしょうばんごう,"personal identification number, PIN"
+?,つぎに,"next, as a next step"
+?,きんがく,amount of money
+?,かくにん,confirmation
+?,かくにんします,confirm
+?,ボタン,button
+?,アジア,Asia
+?,バンドン,Bandung (in Indonesia)
+?,,Veracruz (in Mexico)
+?,フランケン,Franken (in Germany)
+?,ベトナム,Vietnam
+?,フエ,Hue (in Vietnam)

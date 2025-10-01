@@ -21,8 +21,8 @@
 林檎,りんご,apple
 蜜柑,みかん,mandarin orange
 サンドイッチ,サンドイッチ,sandwich
-—,カレー,curry
-—,カレーライス,curry and rice
+?,カレー,curry
+?,カレーライス,curry and rice
 アイスクリーム,アイスクリーム,ice cream
 切手,きって,postage stamp
 葉書,はがき,post card
@@ -30,7 +30,7 @@
 速達,そくたつ,special delivery
 書留,かきとめ,registered mail
 航空便,こうくうびん,airmail
-—,エヤメール,airmail
+?,エヤメール,airmail
 船便,ふなびん,sea mail
 両親,りょうしん,parents
 兄弟,きょうだい,brothers and sisters
@@ -48,15 +48,15 @@
 〜か月,～かげつ,~ months
 〜年,～ねん,~ years
 〜ぐらい,～ぐらい,about ~
-—,どのくらい,how long
+?,どのくらい,how long
 全部で,ぜんぶで,in total
 皆,みんな,"all, everything"
 〜だけ,～だけ,only ~
-—,いらしゃいませ,"Welcome, May I help you? (a greeting to a customer or a guest entering a shop, etc.)"
-—,いいてんきですね,"Nice weather, isn't it?"
+?,いらしゃいませ,"Welcome, May I help you? (a greeting to a customer or a guest entering a shop, etc.)"
+?,いいてんきですね,"Nice weather, isn't it?"
 お出かけですか,おでかけですか,Are you going out?
-—,ちょっと～まで,I'm just going to ~
+?,ちょっと～まで,I'm just going to ~
 行っていらっしゃい,いっていらっしゃい,So long. (lit. Go and come back.)
 行ってまいります,いってまいります,So long. (lit. I'm going and coming back.)
-—,それから,"and, furthermore"
-—,オーストラリア,Australia
+?,それから,"and, furthermore"
+?,オーストラリア,Australia

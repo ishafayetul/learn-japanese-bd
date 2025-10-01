@@ -1,245 +1,256 @@
-/home/sib/N5-Vocab-Japanese/
-├── 1. _fb.txt
-├── 2. _sturcture.txt
+N5-Vocab-Japanese/
 ├── api/
 │   └── grammar-review.js
+├── fb.txt
 ├── firebase.js
 ├── index.html
 ├── level/
 │   ├── N3/
+│   │   ├── Lesson-01/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-02/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-03/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-04/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-05/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-06/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-07/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-08/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   └── menifest.json
 │   ├── N4/
+│   │   ├── Lesson-01/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-02/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-03/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-04/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-05/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-06/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-07/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   ├── Lesson-08/
+│   │   │   ├── Grammar/
+│   │   │   │   ├── Lesson.pdf
+│   │   │   │   └── menifest.json
+│   │   │   ├── Video Lecture/
+│   │   │   │   └── menifest.json
+│   │   │   ├── Vocabulary/
+│   │   │   │   ├── Lesson.csv
+│   │   │   │   └── menifest.json
+│   │   │   └── menifest.json
+│   │   └── menifest.json
 │   └── N5/
 │       ├── Lesson-01/
 │       │   ├── Grammar/
-│       │   │   ├── Grammar-Lesson-01.pdf
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
 │       │   ├── Video Lecture/
-│       │   │   └── video.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-01.csv
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
 │       ├── Lesson-02/
 │       │   ├── Grammar/
-│       │   │   └── Grammar-Lesson-02.pdf
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
 │       │   ├── Video Lecture/
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-02.csv
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
 │       ├── Lesson-03/
 │       │   ├── Grammar/
-│       │   │   ├── Grammar-Lesson-03.pdf
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
 │       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-03.csv
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
 │       ├── Lesson-04/
 │       │   ├── Grammar/
-│       │   │   ├── Grammar-Lesson-04.pdf
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
 │       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-04.csv
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
 │       ├── Lesson-05/
 │       │   ├── Grammar/
-│       │   │   ├── Grammar-Lesson-05.pdf
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
 │       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-05.csv
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
 │       ├── Lesson-06/
 │       │   ├── Grammar/
-│       │   │   ├── Grammar-Lesson-06.pdf
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
 │       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-06.csv
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
 │       ├── Lesson-07/
 │       │   ├── Grammar/
-│       │   │   ├── Grammar-Lesson-07.pdf
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
 │       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-07.csv
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
 │       ├── Lesson-08/
 │       │   ├── Grammar/
-│       │   │   ├── Grammar-Lesson-08.pdf
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
+│       │   │   ├── Lesson.pdf
+│       │   │   └── menifest.json
 │       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-08.csv
-│       ├── Lesson-09/
-│       │   ├── Grammar/
-│       │   │   ├── Grammar-Lesson-09.pdf
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-09.csv
-│       ├── Lesson-10/
-│       │   ├── Grammar/
-│       │   │   ├── Grammar-Lesson-10.pdf
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-10.csv
-│       ├── Lesson-11/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-11.csv
-│       ├── Lesson-12/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-12.csv
-│       ├── Lesson-13/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-13.csv
-│       ├── Lesson-14/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-14.csv
-│       ├── Lesson-15/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-15.csv
-│       ├── Lesson-16/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-16.csv
-│       ├── Lesson-17/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-17.csv
-│       ├── Lesson-18/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-18.csv
-│       ├── Lesson-19/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-19.csv
-│       ├── Lesson-20/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-20.csv
-│       ├── Lesson-21/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-21.csv
-│       ├── Lesson-22/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-22.csv
-│       ├── Lesson-23/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-23.csv
-│       ├── Lesson-24/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-24.csv
-│       ├── Lesson-25/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Lesson-25.csv
-│       ├── Lesson-Numbers/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Numbers.csv
-│       ├── Lesson-Phrases/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Phrases.csv
-│       ├── Lesson-Time/
-│       │   ├── Grammar/
-│       │   │   ├── Lesson-01.csv
-│       │   │   └── Lesson-02.csv
-│       │   ├── Video Lecture/
-│       │   │   └── Lesson.csv
-│       │   └── Vocabulary/
-│       │       └── Vocab-Times.csv
-│       └── manifest.json
+│       │   │   └── menifest.json
+│       │   ├── Vocabulary/
+│       │   │   ├── Lesson.csv
+│       │   │   └── menifest.json
+│       │   └── menifest.json
+│       └── menifest.json
 ├── script.js
+├── sturcture.txt
 └── style.css

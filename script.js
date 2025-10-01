@@ -446,7 +446,15 @@ window.App = App;
   const elBack = document.querySelector("#back-btn");
   const onLessonList = !document.querySelector("#level-shell")?.classList.contains("hidden")
                     &&  document.querySelector("#lesson-area")?.classList.contains("hidden")
-                    &&  ["#progress-section","#leaderboard-section","#mistakes-section","#marked-section","#signword-section"]
+                    &&  
+                      [
+                        "#progress-section",
+                        "#leaderboard-section",
+                        "#mistakes-section",
+                        "#marked-section",
+                        "#signword-section",
+                        "#mix-section"
+                      ]
                           .every(sel => document.querySelector(sel)?.classList.contains("hidden"));
   if (elBack) elBack.classList.toggle("hidden", onLessonList && !window.__videoLightboxOpen);
 }
@@ -984,6 +992,9 @@ function closeVideoLightbox(){
   if (videoLightboxEl){ videoLightboxEl.remove(); videoLightboxEl = null; }
   window.__videoLightboxOpen = false;
 }
+// make lightbox helpers available globally for other modules/handlers
+window.openVideoLightbox = openVideoLightbox;
+window.closeVideoLightbox = closeVideoLightbox;
 
 
   
