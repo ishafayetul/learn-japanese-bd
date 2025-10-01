@@ -1,6 +1,6 @@
 /* =========================================================
    Learn Japanese — App Script (no-manifest, folder scan)
-   - Scans /level/{N5|N4|N3}/Lesson-XX/
+   - Scans ${LEVEL_BASE}/{N5|N4|N3}/Lesson-XX/
    - Video: loads ALL CSV rows into cards; click → large player
    - Vocab: loads canonical CSV(s) only (no part-* probing)
    - Grammar: lesson-XX.pdf or Lesson.pdf
@@ -217,7 +217,7 @@ window.App = App;
   function buildVocabCandidates(level, lesson){
     const num2 = (lesson.split("-")[1] || "").padStart(2, "0"); // "01"
     const num  = String(Number(num2));                           // "1"
-    const dir  = `/level/${level}/${lesson}/Vocabulary/`;
+    const dir  = `${LEVEL_BASE}/${level}/${lesson}/Vocabulary/`;
 
     const names = [
       // canonical
@@ -235,7 +235,7 @@ window.App = App;
 
     // Try inside Vocabulary/ first, then also at lesson root (some repos put CSV there)
     const inFolder = names.map(n => dir + n);
-    const atRoot   = names.map(n => `/level/${level}/${lesson}/` + n);
+    const atRoot   = names.map(n => `${LEVEL_BASE}/${level}/${lesson}/` + n);
     return [...inFolder, ...atRoot];
   }
 
@@ -557,13 +557,16 @@ window.navigateLevel = async (level) => {
   await showLessonList(level);
   // If manifest didn't load, tell the user exactly what's missing
   const m = App.cache.manifest?.get?.(`m/${level}`);
+const st = document.querySelector("#lesson-status");
+if (st) {
   if (!m) {
-    const st = document.querySelector("#lesson-status");
-    if (st) {
-      st.textContent = `manifest.json not found at: ${manifestCandidates(level).join("  or  ")}`;
-      st.classList.remove("coming-soon");
-    }
+    st.textContent = `manifest.json not found at: ${manifestCandidates(level).join("  or  ")}`;
+  } else if (!Array.isArray(m.allLessons) || !m.lessons) {
+    st.textContent = `manifest.json loaded but missing "allLessons" or "lessons" keys`;
   }
+  st.classList.remove("coming-soon");
+}
+
 
   updateBackVisibility?.();
   // bring viewport up for fresh context
