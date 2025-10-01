@@ -221,7 +221,7 @@ window.App = App;
       // space variants
       `lesson ${num2}.csv`, `Lesson ${num2}.csv`,
       // generic names
-      `vocabulary.csv`, `Vocabulary.csv`, `vocab.csv`, `Vocab.csv`,
+      `Vocab-Lesson-${num2}.csv`, `Vocabulary.csv`, `vocab.csv`, `Vocab.csv`,
       `words.csv`, `Words.csv`
     ];
 
@@ -1507,17 +1507,30 @@ async function learnNoteAddOrSave(){
 
   // ---------- Grammar ----------
   function wireGrammarTab(){
-  document.querySelector("#open-grammar-pdf").onclick = async ()=>{
-    const n = window.App.lesson.split("-")[1];
-    const u = await firstOk([
-      `/level/${window.App.level}/${window.App.lesson}/Grammar/lesson-${n}.pdf`,
-      `/level/${window.App.level}/${window.App.lesson}/Grammar/Lesson.pdf`,
-    ]);
-    if (u) window.open(u, "_blank", "noopener"); else toast("PDF not found.");
-  };
-  // Optional practice sets from /practice_grammar/ if you have them
-  renderGrammarPracticeFiles?.();
-}
+    document.querySelector("#open-grammar-pdf").onclick = async ()=>{
+      const n  = (window.App.lesson || "").split("-")[1] || "01";   // "01"
+      const n1 = String(Number(n));                                  // "1"
+      const n2 = n.padStart(2, "0");                                 // "01"
+
+      const base = `/level/${window.App.level}/${window.App.lesson}/Grammar/`;
+      const u = await firstOk([
+        // existing
+        `${base}lesson-${n2}.pdf`,
+        `${base}Lesson.pdf`,
+        // NEW: support "Grammar-Lesson-1.pdf" and friends
+        `${base}Grammar-Lesson-${n1}.pdf`,
+        `${base}grammar-lesson-${n1}.pdf`,
+        // (optional but helpful) zero-padded variants
+        `${base}Grammar-Lesson-${n2}.pdf`,
+        `${base}grammar-lesson-${n2}.pdf`,
+      ]);
+
+      if (u) window.open(u, "_blank", "noopener"); else toast("PDF not found.");
+    };
+    // Optional practice sets (unchanged)
+    renderGrammarPracticeFiles?.();
+  }
+
 
   async function renderGrammarPracticeFiles(){
     elPgFiles.innerHTML=""; elPgStatus.textContent="(optional) choose a practice set:";
