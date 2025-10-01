@@ -2068,6 +2068,11 @@ async function learnNoteAddOrSave(){
     } catch (e){ console.error(e); elProgressLast.textContent="Failed to load progress."; }
   }
   function fmtDate(d){ try{ const dt=d instanceof Date ? d : new Date(d); return dt.toLocaleString(); }catch{ return "-"; } }
+
+// when building each row:
+  const dt = r.clientAtMs ? new Date(r.clientAtMs) : (r.createdAt?.toDate?.() || new Date());
+  tdDate.textContent = fmtDate(dt);
+
   
 
   async function renderOverallLeaderboard() {
