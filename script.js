@@ -27,35 +27,6 @@ async function whenFBReady(timeout = 15000) {
 
 (() => {
   "use strict";
-// Mobile nav controls
-const elSidebar   = D("#sidebar");
-const elNavToggle = D("#nav-toggle");
-const elNavScrim  = D("#nav-scrim");
-
-function setNavOpen(open){
-  if (!elSidebar) return;
-  const on = !!open;
-  document.body.classList.toggle("nav-open", on);
-  elSidebar.classList.toggle("open", on);
-  if (elNavToggle) elNavToggle.setAttribute("aria-expanded", on ? "true" : "false");
-}
-
-elNavToggle?.addEventListener("click", () => {
-  setNavOpen(!document.body.classList.contains("nav-open"));
-});
-
-elNavScrim?.addEventListener("click", () => setNavOpen(false));
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") setNavOpen(false); });
-
-// Close the menu after a nav click (any button inside the sidebar)
-elSidebar?.addEventListener("click", (e) => {
-  const btn = e.target.closest("button");
-  if (btn) setNavOpen(false);
-});
-
-// If the viewport crosses the breakpoint, ensure the drawer is closed
-window.matchMedia("(max-width: 900px)")
-  .addEventListener("change", () => setNavOpen(false));
 
   // ---------- DOM ----------
   const D = (sel) => document.querySelector(sel);
@@ -161,6 +132,35 @@ window.matchMedia("(max-width: 900px)")
 
   // Toast
   const elToast = D("#toast");
+// Mobile nav controls
+const elSidebar   = D("#sidebar");
+const elNavToggle = D("#nav-toggle");
+const elNavScrim  = D("#nav-scrim");
+
+function setNavOpen(open){
+  if (!elSidebar) return;
+  const on = !!open;
+  document.body.classList.toggle("nav-open", on);
+  elSidebar.classList.toggle("open", on);
+  if (elNavToggle) elNavToggle.setAttribute("aria-expanded", on ? "true" : "false");
+}
+
+elNavToggle?.addEventListener("click", () => {
+  setNavOpen(!document.body.classList.contains("nav-open"));
+});
+
+elNavScrim?.addEventListener("click", () => setNavOpen(false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setNavOpen(false); });
+
+// Close the menu after a nav click (any button inside the sidebar)
+elSidebar?.addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (btn) setNavOpen(false);
+});
+
+// If the viewport crosses the breakpoint, ensure the drawer is closed
+window.matchMedia("(max-width: 900px)")
+  .addEventListener("change", () => setNavOpen(false));
 
   // --- Landing page helpers (auth gate) ---
 function landingGreeting() {
