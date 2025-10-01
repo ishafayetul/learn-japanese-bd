@@ -1946,11 +1946,30 @@ async function learnNoteAddOrSave(){
     const front=(elSWFront.value||"").trim(); const back=(elSWBack.value||"").trim(); const romaji=(elSWRomaji.value||"").trim();
     if (!front || !back){ toast("Please enter Front and Back."); return; }
     try{
-      const fb = await whenFBReady();
-      await fb.signWordAdd({ front, back, romaji: romaji || null });
-      elSWFront.value=""; elSWBack.value=""; elSWRomaji.value="";
-      await renderSignWordList(); toast("Added ✓");
-    } catch { toast("Sign in to save."); }
+        const fb = await whenFBReady();
+
+        // 1) save in Sign Words
+        await fb.signWordAdd({ front, back, romaji: romaji || null });
+
+        // 2) also save in Marked Words (id = "front::back")
+        const markedId = `${front}::${back}`;
+        await fb.markWord(markedId, {
+          // normalize into the shape your Marked deck expects
+          kanji: "—",
+          hira: front,
+          en: back,
+          front,
+          back,
+          romaji: romaji || null
+        });
+
+        elSWFront.value=""; elSWBack.value=""; elSWRomaji.value="";
+        await renderSignWordList(); 
+        toast("Added ✓");
+      } catch { 
+        toast("Sign in to save."); 
+      }
+
   };
   async function renderSignWordList(){
     elSWList.innerHTML="";
@@ -1965,8 +1984,28 @@ async function learnNoteAddOrSave(){
           <div><b>${escapeHTML(r.front)}</b>${rom} — <span class="muted">${escapeHTML(r.back || "")}</span></div>
           <button data-id="${r.id}">Remove</button>`;
         div.querySelector("button").addEventListener("click", async()=>{
-          const fb2 = await whenFBReady(); await fb2.signWordRemove(r.id); await renderSignWordList();
+          try{
+            const fb2 = await whenFBReady();
+            // remove from Sign Words collection
+            await fb2.signWordRemove(r.id);
+
+            // also remove from Marked Words using the deterministic id "front::back"
+            if (r.front && r.back) {
+              const markedId = `${r.front}::${r.back}`;
+              await fb2.unmarkWord(markedId);
+            }
+            toast("Removed ✓");
+          } catch {
+            toast("Failed to remove.");
+          }
+
+          // refresh lists that might be visible
+          await renderSignWordList();
+          if (!document.querySelector("#marked-section")?.classList.contains("hidden")) {
+            await renderMarkedList();
+          }
         });
+
         elSWList.appendChild(div);
       }
     } catch { elSWList.innerHTML = `<div class="muted">Failed to load your signed words.</div>`; }
