@@ -629,12 +629,18 @@ window.openLessonTab = async (tab)=>{
     document.querySelector("#tab-videos")?.classList.remove("hidden");
     await renderVideos();
   } else if (tab === "vocab") {
-    document.querySelector("#tab-vocab")?.classList.remove("hidden");
-    await ensureDeckLoaded();
-    const has = (App.deck?.length || 0) > 0;
-    document.querySelector("#vocab-status").textContent = has ? "Pick an option." : "No vocabulary found.";
-    // show the Vocab root choices first
-    document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
+      document.querySelector("#tab-vocab")?.classList.remove("hidden");
+
+      // keep the tabs visible on Vocab
+      showLessonBar();
+      document.querySelector(".lesson-meta")?.classList.add("hidden");
+
+      await ensureDeckLoaded();
+      const has = (App.deck?.length || 0) > 0;
+      document.querySelector("#vocab-status").textContent = has ? "Pick an option." : "No vocabulary found.";
+      showVocabRootMenu();
+      showVocabRootCard();
+      document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
   } else if (tab === "grammar") {
     document.querySelector("#tab-grammar")?.classList.remove("hidden");
     wireGrammarTab();
@@ -779,6 +785,9 @@ function closeVideoLightbox(){
     elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
   }
   function showVocabRootMenu(){
+    showLessonBar();
+    document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep the title/Vocab:Yes hidden
+
     document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
     document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
@@ -791,6 +800,9 @@ function closeVideoLightbox(){
   }
 
   window.openVocabLearnMenu = ()=>{
+    showLessonBar();
+    document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep meta hidden
+
     hideVocabRootCard();
     document.querySelector("#vocab-learn-menu")?.classList.remove("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
@@ -804,6 +816,9 @@ function closeVideoLightbox(){
   };
 
   window.openVocabMCQMenu = ()=>{
+    showLessonBar();
+    document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep meta hidden
+
     hideVocabRootCard();
     document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.remove("hidden");
@@ -817,6 +832,9 @@ function closeVideoLightbox(){
   };
 
   window.openVocabWriteMenu = ()=>{
+    showLessonBar();
+    document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep meta hidden
+
     hideVocabRootCard();
     document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
