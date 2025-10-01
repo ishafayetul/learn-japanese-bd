@@ -424,6 +424,7 @@ window.App = App;
     clearVocabPane();
     clearGrammarPane();
   }
+  window.hideContentPanes = hideContentPanes;          // ← add this
 
 
   function hideVocabMenus(){
@@ -458,7 +459,7 @@ window.App = App;
                           .every(sel => document.querySelector(sel)?.classList.contains("hidden"));
   if (elBack) elBack.classList.toggle("hidden", onLessonList && !window.__videoLightboxOpen);
 }
-
+window.updateBackVisibility = updateBackVisibility;
   function clearVideosPane(){ 
     const elVideoCards = document.querySelector("#video-cards");
     const elVideoStatus = document.querySelector("#video-status");
@@ -1871,17 +1872,22 @@ window.addEventListener("keydown", (e) => {
 // Open the Mix picker UI
 window.openMixPractice = async () => {
   try { await flushSession?.(); } catch {}
-  closeVideoLightbox?.();
-  hideContentPanes();
+  window.closeVideoLightbox?.();   // safe global
+  window.hideContentPanes?.();     // safe global
 
-  // reset any previous mix selection
-  App.mix = { active:false, selection:[], deck: [] };
   document.querySelector("#mix-section")?.classList.remove("hidden");
-  document.querySelector("#lesson-area")?.classList.add("hidden");
 
-  await renderMixPicker();
-  updateBackVisibility();
+  // breadcrumbs / state
+  App.level = "Mix";
+  App.lesson = "—";
+  App.tab = "vocab";
+  App.mode = null;
+  setCrumbs();
+
+  await renderMixPicker?.();       // build the multi-select UI
+  window.updateBackVisibility?.(); // safe global
 };
+
 
 // Render checkboxes for N5/N4/N3 using manifests
 async function renderMixPicker(){
