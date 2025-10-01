@@ -898,44 +898,60 @@ function closeVideoLightbox(){
   };
 
   function filterDeckForMode(mode){
-    const hasKanji = (w) => w.kanji && w.kanji !== "—";
-    switch (mode){
-      case "kanji-hira":
-      case "hira-kanji":
-      case "k2h-e":
-      case "he2k":
-      case "write-k2h":
-        return App.deck.filter(hasKanji);
-      default:
-        return App.deck.slice();
-    }
+  const hasKanji = (w) => {
+    const k = (w.kanji || "").trim();
+    return k && k !== "—" && k !== "?";
+  };
+  switch (mode){
+    case "kanji-hira":
+    case "hira-kanji":
+    case "k2h-e":
+    case "he2k":
+    case "write-k2h":
+      return App.deck.filter(hasKanji);
+    default:
+      return App.deck.slice();
   }
+}
+
 
   // --- Learn Mode (sequential) ---
   window.startLearnMode = async (variant = "k2h") => {
-    await ensureDeckLoaded();
-    App.learnVariant = (variant === "h2e") ? "h2e" : "k2h";
-    try{ await flushSession(); }catch{}
-    App.mode = "learn"; setCrumbs();
+  await ensureDeckLoaded();
+  App.learnVariant = (variant === "h2e") ? "h2e" : "k2h";
+  try{ await flushSession(); }catch{}
+  App.mode = "learn"; setCrumbs();
+
+  // ⬇️ Only include words that actually have Kanji when doing Kanji→Hiragana
+  if (App.learnVariant === "k2h") {
+    const hasKanji = (w) => {
+      const k = (w.kanji || "").trim();
+      return k && k !== "—" && k !== "?";
+    };
+    App.deckFiltered = App.deck.filter(hasKanji);
+  } else {
     App.deckFiltered = App.deck.slice();
-    App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
+  }
 
-    hideLessonsHeaderAndList();
-    hideLessonBar();
-    hideVocabRootCard();
-    hideVocabMenus();
+  App.qIndex = 0;
+  App.stats = { right: 0, wrong: 0, skipped: 0 };
+  updateScorePanel();
 
-    D("#practice")?.classList.add("hidden");
-    elWrite.classList.add("hidden");
-    elMake.classList.add("hidden");
+  hideLessonsHeaderAndList();
+  hideLessonBar();
+  hideVocabRootCard();
+  hideVocabMenus();
 
-    // ensure notes are hidden at start
-    hideLearnNoteCard();
+  document.querySelector("#practice")?.classList.add("hidden");
+  document.querySelector("#write")?.classList.add("hidden");
+  document.querySelector("#make")?.classList.add("hidden");
 
-    elLearn.classList.remove("hidden");
-    renderLearnCard();
-    updateBackVisibility();
-  };
+  hideLearnNoteCard();
+  document.querySelector("#learn").classList.remove("hidden");
+  renderLearnCard();
+  updateBackVisibility();
+};
+
 
   function renderLearnCard(){
   const w = App.deckFiltered[App.qIndex];
