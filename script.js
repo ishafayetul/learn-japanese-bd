@@ -340,6 +340,52 @@ function attemptSig(){
     return (App.level && App.lesson) ? `${App.level}/${App.lesson}` : (App.lesson || App.level || "-");
   }
 
+  async function buildPickerRowsMerged(){
+  let remote = [], local = [], signed = [];
+  const fb = await whenFBReady().catch(()=>null);
+
+  try { if (fb) remote = await fb.listMarked(); } catch {}
+  try { local = getLocalMarked() || []; } catch {}
+  try { if (fb) signed = await fb.signWordList(); } catch {}
+
+  const byKey = new Map();
+  const ensure = (k) => {
+    if (!byKey.has(k)){
+      byKey.set(k, { key:k, front:"", back:"", signId:null, hasRemote:false, hasLocal:false, localId:null });
+    }
+    return byKey.get(k);
+  };
+
+  // Firestore Marked (ids are already safe)
+  for (const r of remote){
+    const row = ensure(r.id);
+    row.hasRemote = true;
+    row.front ||= r.front || r.hira || "";
+    row.back  ||= r.back  || r.en   || "";
+  }
+
+  // Sign Words (share the same safe key via markedId)
+  for (const s of signed){
+    const k = s.markedId || toSafeKey(`${s.front}::${s.back}`);
+    const row = ensure(k);
+    row.signId = s.id;
+    if (!row.front){ row.front = s.front; row.back = s.back; }
+  }
+
+  // Local Marked (offline)
+  for (const l of local){
+    const f = l.front || l.hira || "";
+    const b = l.back  || l.en   || "";
+    const k = toSafeKey(`${f}::${b}`);
+    const row = ensure(k);
+    row.hasLocal = true;
+    row.localId = l.id || row.localId;
+    if (!row.front){ row.front = f; row.back = b; }
+  }
+
+  return Array.from(byKey.values());
+}
+
   // encode segments but preserve slashes
   function encodePath(p){
     return p.split('/').map(s => s === '' ? '' : encodeURIComponent(s)).join('/')
@@ -1954,57 +2000,66 @@ async function learnNoteAddOrSave(){
     }
 
     async function openUnmarkModal(){
-      const modal = document.querySelector("#unmark-modal");
-      const list  = document.querySelector("#unmark-list");
-      if (!modal || !list) return;
-      list.innerHTML = "<div class='muted'>Loading…</div>";
+  const modal = document.querySelector("#unmark-modal");
+  const list  = document.querySelector("#unmark-list");
+  if (!modal || !list) return;
 
-      const rows = await fetchAllMarkedForPicker();
-      if (!rows.length){
-        list.innerHTML = "<div class='muted'>No marked words.</div>";
-      } else {
-        list.innerHTML = rows.map(r => `
-          <label>
-            <input type="checkbox" class="unmark-check"
-                  data-id="${escapeHTML(r.id)}"
-                  data-src="${r.src}"
-                  data-marked-id="${escapeHTML(r.markedId || "")}">
-            <b>${escapeHTML(r.front)}</b> — <span class="muted">${escapeHTML(r.back || "")}</span>
-          </label>
-        `).join("");
-      }
+  list.innerHTML = "<div class='muted'>Loading…</div>";
+  const rows = await buildPickerRowsMerged();
 
-      // wire modal controls (once)
-      document.querySelector("#unmark-select-all")?.addEventListener("click", ()=>{
-        document.querySelectorAll(".unmark-check").forEach(ch => ch.checked = true);
-      }, { once:true });
+  if (!rows.length){
+    list.innerHTML = "<div class='muted'>No marked words.</div>";
+  } else {
+    list.innerHTML = rows.map(r => `
+      <label>
+        <input type="checkbox" class="unmark-check"
+               data-key="${escapeHTML(r.key)}"
+               data-sign-id="${escapeHTML(r.signId || "")}"
+               data-has-remote="${r.hasRemote ? "1":"0"}"
+               data-has-local="${r.hasLocal ? "1":"0"}"
+               data-local-id="${escapeHTML(r.localId || "")}">
+        <b>${escapeHTML(r.front)}</b> — <span class="muted">${escapeHTML(r.back || "")}</span>
+        ${r.signId ? "<span class='badge'>signed</span>" : ""} 
+        ${r.hasRemote ? "<span class='badge'>cloud</span>" : ""} 
+        ${r.hasLocal ? "<span class='badge'>local</span>" : ""}
+      </label>
+    `).join("");
+  }
 
-      document.querySelector("#unmark-clear")?.addEventListener("click", ()=>{
-        document.querySelectorAll(".unmark-check").forEach(ch => ch.checked = false);
-      }, { once:true });
+  document.querySelector("#unmark-select-all")?.addEventListener("click", ()=>{
+    document.querySelectorAll(".unmark-check").forEach(ch => ch.checked = true);
+  }, { once:true });
 
-      document.querySelector("#unmark-remove")?.addEventListener("click", async ()=>{
-      const picks = Array.from(document.querySelectorAll(".unmark-check:checked"));
-      if (!picks.length){ toast("Nothing selected."); return; }
+  document.querySelector("#unmark-clear")?.addEventListener("click", ()=>{
+    document.querySelectorAll(".unmark-check").forEach(ch => ch.checked = false);
+  }, { once:true });
 
-      for (const cb of picks){
-        const src = cb.dataset.src;
-        const id  = cb.dataset.id;
-        const markedId = cb.dataset.markedId;
-        try { await cascadeUnmark({ src, id, markedId }); } catch {}
-      }
+  // ✅ Use the same cascade remover as the main list
+  document.querySelector("#unmark-remove")?.addEventListener("click", async ()=>{
+    const picks = Array.from(document.querySelectorAll(".unmark-check:checked"));
+    if (!picks.length){ toast("Nothing selected."); return; }
 
-      toast("Removed selected words ✓");
-      closeUnmarkModal();
-      await renderMarkedList();
-    }, { once:true });
-
-
-      document.querySelector("#unmark-close")?.addEventListener("click", closeUnmarkModal, { once:true });
-      modal.querySelector(".lightbox-backdrop")?.addEventListener("click", closeUnmarkModal, { once:true });
-      modal.classList.remove("hidden");
-      modal.setAttribute("aria-hidden", "false");
+    for (const cb of picks){
+      const key       = cb.dataset.key;
+      const signId    = cb.dataset.signId || null;
+      const hasRemote = cb.dataset.hasRemote === "1";
+      const hasLocal  = cb.dataset.hasLocal  === "1";
+      const localId   = cb.dataset.localId || null;
+      try { await cascadeRemoveByKey({ key, signId, hasRemote, hasLocal, localId }); } catch {}
     }
+
+    toast("Removed selected words ✓");
+    closeUnmarkModal();
+    await renderMarkedList();
+  }, { once:true });
+
+  document.querySelector("#unmark-close")?.addEventListener("click", closeUnmarkModal, { once:true });
+  modal.querySelector(".lightbox-backdrop")?.addEventListener("click", closeUnmarkModal, { once:true });
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden","false");
+}
+
 
     function closeUnmarkModal(){
       const modal = document.querySelector("#unmark-modal");
