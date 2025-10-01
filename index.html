@@ -134,13 +134,13 @@
           <span id="crumb-mode">—</span>
         </div>
         <div class="topbar-right">
-          <div id="score">
-            ✅ Correct: <span id="correct">0</span>
-            ❌ Wrong: <span id="wrong">0</span>
-            ➖ Skipped: <span id="skipped">0</span>
+          <div id="score" class="score" role="status" aria-live="polite">
+            <div class="kpi ok"   data-label="Correct"><span class="kpi-ico">✅</span><span id="correct">0</span></div>
+            <div class="kpi bad"  data-label="Wrong"><span class="kpi-ico">❌</span><span id="wrong">0</span></div>
+            <div class="kpi skip" data-label="Skipped"><span class="kpi-ico">➖</span><span id="skipped">0</span></div>
           </div>
-          
         </div>
+
       </header>
 
       <main>
