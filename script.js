@@ -312,6 +312,20 @@ window.App = App;
   }
   async function anyExists(urls){ return !!(await firstOk(urls)); }
 
+  document.querySelector("#mistakes-clear-all")
+    ?.addEventListener("click", () => {
+      window.clearMistakes();
+      // If the user was inside a Mistakes practice deck, bounce back to the landing
+      try {
+        document.querySelector("#learn")?.classList.add("hidden");
+        document.querySelector("#practice")?.classList.add("hidden");
+        document.querySelector("#write")?.classList.add("hidden");
+        document.querySelector("#make")?.classList.add("hidden");
+        document.querySelector("#mistakes-section")?.classList.remove("hidden");
+        renderMistakesLanding();
+        toast("Mistakes cleared");
+      } catch {}
+    });
 
   // Global Back button logic
   document.querySelector("#back-btn")?.addEventListener("click", () => {
@@ -514,6 +528,21 @@ function clearGrammarPane(){
   if (elPgFiles) elPgFiles.innerHTML = "";
   if (elPgStatus) elPgStatus.textContent = "";
 }
+
+  window.unmarkAllMarked = async () => {
+    try {
+      const fb = await whenFBReady();
+      const rows = await fb.listMarked();
+      for (const r of rows) { await fb.unmarkWord(r.id); }
+      await renderMarkedList();
+      toast("All marked words have been unmarked.");
+    } catch (e) {
+      console.error(e);
+      toast("Failed to unmark all.");
+    }
+  };
+  document.querySelector("#marked-unmark-all")
+    ?.addEventListener("click", () => window.unmarkAllMarked());
 
 // Hide/show the "Level —" header + the entire Lessons card
 function hideLessonsHeaderAndList(){
@@ -1630,7 +1659,7 @@ async function learnNoteAddOrSave(){
         div.className = "marked-item";
         div.innerHTML = `
           <div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} — <span class="muted">${escapeHTML(r.back || r.en || "")}</span></div>
-          <button data-id="${r.id}" data-src="${r._src}">Remove</button>`;
+           <button data-id="${r.id}">Unmark</button>`;
         div.querySelector("button").addEventListener("click", async (e) => {
           const src = e.currentTarget.dataset.src;
           const id  = e.currentTarget.dataset.id;
