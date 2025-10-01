@@ -740,6 +740,19 @@ window.openSection = async (name) => {
       .filter(x => x.hira && x.en);
   }
   window.fbListMistakesAsDeck = fbListMistakesAsDeck;
+// ---- Local Marked (offline/signed-out) ----
+const LMKEY = "lj_marked_v1";
+function getLocalMarked(){ try { return JSON.parse(localStorage.getItem(LMKEY)) || []; } catch { return []; } }
+function setLocalMarked(a){ try { localStorage.setItem(LMKEY, JSON.stringify(a)); } catch {} }
+function addLocalMarked(w){
+  const list = getLocalMarked();
+  const id = (w.kanji && w.kanji !== "—" ? w.kanji : w.hira) + "::" + w.en;
+  if (!list.some(x => x.id === id)) list.push({ id, ...w });
+  setLocalMarked(list);
+}
+function removeLocalMarked(id){
+  setLocalMarked(getLocalMarked().filter(x => x.id !== id));
+}
 
 // ===== Manifest helpers =====
 // Cache manifests per level + keep fetch/parse status
@@ -1537,22 +1550,56 @@ async function learnNoteAddOrSave(){
 
   // ---------- Marked ----------
   async function renderMarkedList(){
-    try{
-      const fb = await whenFBReady();
-      const rows = await fb.listMarked();
-      elMarkedStatus.textContent = `${rows.length} marked item(s).`;
-      elMarkedContainer.innerHTML="";
+      elMarkedContainer.innerHTML = "";
+
+      let remote = [];
+      try {
+        const fb = await whenFBReady();
+        remote = await fb.listMarked();
+      } catch {}
+
+      const local = getLocalMarked();
+
+      let signed = [];
+      try {
+        const fb = await whenFBReady();
+        signed = await fb.signWordList();
+      } catch {}
+
+      const rows = [
+        ...remote.map(r => ({...r, _src: "remote"})),
+        ...local.map(r => ({...r, _src: "local"})),
+        ...signed.map(r => ({ id: `sign::${r.id}`, kanji: r.kanji, hira: r.front, en: r.back, front: r.front, back: r.back, _src: "sign" }))
+      ];
+
+      elMarkedStatus.textContent = `${rows.length} item(s).`;
+
       for (const r of rows){
-        const div=document.createElement("div"); div.className="marked-item";
-        div.innerHTML = `<div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} — <span class="muted">${escapeHTML(r.back || r.en || "")}</span></div>
-          <button data-id="${r.id}">Remove</button>`;
-        div.querySelector("button").addEventListener("click", async()=>{
-          await fb.unmarkWord(r.id); await renderMarkedList();
+        const div = document.createElement("div");
+        div.className = "marked-item";
+        div.innerHTML = `
+          <div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} — <span class="muted">${escapeHTML(r.back || r.en || "")}</span></div>
+          <button data-id="${r.id}" data-src="${r._src}">Remove</button>`;
+        div.querySelector("button").addEventListener("click", async (e) => {
+          const src = e.currentTarget.dataset.src;
+          const id  = e.currentTarget.dataset.id;
+          try {
+            if (src === "remote") {
+              const fb = await whenFBReady();
+              await fb.unmarkWord(id);
+            } else if (src === "local") {
+              removeLocalMarked(id);
+            } else if (src === "sign") {
+              const fb = await whenFBReady();
+              await fb.signWordRemove(id.replace(/^sign::/, ""));
+            }
+          } catch {}
+          await renderMarkedList();
         });
         elMarkedContainer.appendChild(div);
       }
-    } catch { elMarkedStatus.textContent = "Failed to load marked words."; }
-  }
+    }
+
   window.startMarkedLearn = async()=> setupListPractice("marked","learn");
   window.startMarkedPractice = async(m)=> setupListPractice("marked", m);
   window.startMarkedWrite = async()=> setupListPractice("marked","write");
@@ -1618,7 +1665,11 @@ async function learnNoteAddOrSave(){
       const fb = await whenFBReady();
       await fb.markWord(id, { kanji: w.kanji, hira: w.hira, en: w.en, front: w.hira, back: w.en });
       toast("Marked ✓");
-    } catch { toast("Sign in to mark"); }
+    } catch {
+        // Signed out or Firebase failed → store locally so Marked Words still works
+        addLocalMarked(w);
+        toast("Marked locally ✓ (sign in to sync)");
+      }
   };
 
   // ---------- Grammar ----------
