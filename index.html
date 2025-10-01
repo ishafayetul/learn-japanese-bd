@@ -77,10 +77,11 @@
           <!-- Lesson area -->
           <div id="lesson-area" class="hidden">
             <div class="lesson-bar card">
-              <div class="lesson-meta">
+              <div class="lesson-meta hidden">
                 <b id="lesson-title">Lesson —</b>
                 <span id="lesson-availability" class="muted"></span>
               </div>
+
             <div class="lesson-tabs" role="tablist" aria-label="Lesson content tabs">
                 <button id="tabbtn-videos" class="tab-btn" role="tab" aria-controls="tab-videos" aria-selected="true" onclick="openLessonTab('videos')">🎬 Video Lectures</button>
                 <button id="tabbtn-vocab"  class="tab-btn" role="tab" aria-controls="tab-vocab"  aria-selected="false" onclick="openLessonTab('vocab')">🗂 Vocabulary</button>
@@ -137,7 +138,7 @@
                     <button onclick="startPractice('hira-kanji')">Hiragana → Kanji</button>
                     <button onclick="startDualMCQ('k2h-e')">Kanji → (Hiragana & English)</button>
                     <button onclick="startDualMCQ('he2k')">Hiragana, English → Kanji</button>
-                    <button class="chip" onclick="showVocabRootMenu()">← Back to Vocab Menu</button>
+                    
                   </div>
                 </div>
               </section>
@@ -150,7 +151,7 @@
                     <button onclick="startWriteK2H()">Kanji given → write Hiragana</button>
                     <button onclick="startWriteEN2H()">English given → write Hiragana</button>
                     <span class="muted">Shortcuts: Enter=Submit, Ctrl+Enter=Next, Esc=Skip</span>
-                    <button class="chip" onclick="showVocabRootMenu()">← Back to Vocab Menu</button>
+                    
                   </div>
                 </div>
               </section>
