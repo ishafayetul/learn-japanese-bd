@@ -1009,38 +1009,89 @@ window.closeVideoLightbox = closeVideoLightbox;
 
 
 
+  // async function ensureDeckLoaded(){
+  //   const key = `${App.level}/${App.lesson}`;
+  //   // If Mix is active, use the prebuilt deck
+  //   if (App.mix?.active && App.mix.deck?.length){
+  //     App.deck = App.mix.deck.slice();
+  //     if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
+  //     return;
+  //   }
+
+  //   if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
+  //   elVocabStatus.textContent = "Loading vocabulary…";
+
+  //   const files = await listVocabCsvFiles(App.level, App.lesson); // absolute URLs
+  //   const deck = [];
+  //   for (const url of files){
+  //     try{
+  //       const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
+  //       const csv = parseCSV(txt);
+  //       for (const r of csv){
+  //         const kanji = (r[0]||"").trim();
+  //         const hira  = (r[1]||"").trim();
+  //         const en    = (r[2]||"").trim();
+  //         if (!hira || !en) continue;
+  //         deck.push({ kanji, hira, en });
+  //       }
+  //     } catch {}
+  //   }
+
+  //   App.deck = deck;
+  //   App.cache.vocab.set(key, deck);
+  //   elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
+  // }
+
   async function ensureDeckLoaded(){
-    const key = `${App.level}/${App.lesson}`;
-    // If Mix is active, use the prebuilt deck
-    if (App.mix?.active && App.mix.deck?.length){
-      App.deck = App.mix.deck.slice();
-      if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
-      return;
+      // If Mix deck is active, just use it.
+      if (App.mix?.active && App.mix.deck?.length){
+        App.deck = App.mix.deck.slice();
+        if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
+        return;
+      }
+
+      // If user is on Mistakes/Marked, prefer in-memory or load from their sources.
+      if (App.level === "Mistakes"){
+        if (!App.deck?.length) App.deck = await fbListMistakesAsDeck();
+        if (elVocabStatus) elVocabStatus.textContent = App.deck.length
+          ? `Loaded ${App.deck.length} words.`
+          : "No words found.";
+        return;
+      }
+      if (App.level === "Marked"){
+        if (!App.deck?.length) App.deck = await getMarkedAsDeck(); // merged sources below
+        if (elVocabStatus) elVocabStatus.textContent = App.deck.length
+          ? `Loaded ${App.deck.length} words.`
+          : "No words found.";
+        return;
+      }
+
+      // Normal lesson path (CSV by manifest)
+      const key = `${App.level}/${App.lesson}`;
+      if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
+      elVocabStatus.textContent = "Loading vocabulary…";
+
+      const files = await listVocabCsvFiles(App.level, App.lesson); // absolute URLs
+      const deck = [];
+      for (const url of files){
+        try{
+          const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
+          const csv = parseCSV(txt);
+          for (const r of csv){
+            const kanji = (r[0]||"").trim();
+            const hira  = (r[1]||"").trim();
+            const en    = (r[2]||"").trim();
+            if (!hira || !en) continue;
+            deck.push({ kanji, hira, en });
+          }
+        } catch {}
+      }
+
+      App.deck = deck;
+      App.cache.vocab.set(key, deck);
+      elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
     }
 
-    if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
-    elVocabStatus.textContent = "Loading vocabulary…";
-
-    const files = await listVocabCsvFiles(App.level, App.lesson); // absolute URLs
-    const deck = [];
-    for (const url of files){
-      try{
-        const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
-        const csv = parseCSV(txt);
-        for (const r of csv){
-          const kanji = (r[0]||"").trim();
-          const hira  = (r[1]||"").trim();
-          const en    = (r[2]||"").trim();
-          if (!hira || !en) continue;
-          deck.push({ kanji, hira, en });
-        }
-      } catch {}
-    }
-
-    App.deck = deck;
-    App.cache.vocab.set(key, deck);
-    elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
-  }
   function showVocabRootMenu(){
   // keep the top 3 tabs visible while you're inside Vocab
   showLessonBar();
@@ -1605,11 +1656,40 @@ async function learnNoteAddOrSave(){
   window.startMarkedWrite = async()=> setupListPractice("marked","write");
 
   async function getMarkedAsDeck(){
+  // Remote (if signed in)
+  let remote = [];
+  try {
     const fb = await whenFBReady();
-    const rows = await fb.listMarked();
-    return rows.map(r=>({ kanji:r.kanji || "—", hira:r.hira || r.front || "", en:r.en || r.back || "" }))
-               .filter(x=>x.hira && x.en);
+    remote = await fb.listMarked();
+  } catch {}
+
+  // Local (offline)
+  const local = getLocalMarked(); // [{id, kanji?, hira/front, en/back}]
+
+  // Signed Words (treat like marked)
+  let signed = [];
+  try {
+    const fb = await whenFBReady();
+    signed = await fb.signWordList(); // {id, front, back, romaji?}
+  } catch {}
+
+  // Map all to {kanji,hira,en}
+  const combined = [
+    ...remote.map(r => ({ kanji: r.kanji || "—", hira: r.hira || r.front || "", en: r.en || r.back || "" })),
+    ...local .map(r => ({ kanji: r.kanji || "—", hira: r.hira || r.front || "", en: r.en || r.back || "" })),
+    ...signed.map(r => ({ kanji: r.kanji || "—", hira: r.front || "", en: r.back || "" })),
+  ].filter(x => x.hira && x.en);
+
+  // De-dupe
+  const seen = new Set();
+  const deck = [];
+  for (const w of combined){
+    const k = keyForWord(w);
+    if (!seen.has(k)){ seen.add(k); deck.push(w); }
   }
+  return deck;
+}
+
   async function setupListPractice(source, mode){
       // If App.deck is already loaded (enterListMode), prefer that.
       let deck = (App.deck && App.deck.length) ? App.deck.slice() : [];
