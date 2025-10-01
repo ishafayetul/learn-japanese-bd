@@ -612,25 +612,53 @@ code{ background:#0c1424; border:1px solid var(--border); padding:1px 6px; borde
 @keyframes dsGlow { from{opacity:0} to{opacity:.25} }
 
 /* ===== Mobile dropdown sidebar ===== */
-.nav-toggle{ display:none; border:1px solid var(--border); background:var(--panel);
-  padding:6px 10px; border-radius:12px; align-items:center; gap:6px; }
-.nav-toggle .bar{ display:block; width:18px; height:2px; background:var(--muted); border-radius:4px; }
+.nav-toggle{
+  display:none;
+  border:1px solid var(--border);
+  background:var(--panel);
+  padding:6px 10px;
+  border-radius:12px;
+  align-items:center;
+  gap:6px;
+}
+.nav-toggle .bar{
+  display:block;
+  width:18px;
+  height:2px;
+  background:var(--muted);
+  border-radius:4px;
+}
 .nav-toggle:focus{ outline:2px solid var(--link); outline-offset:2px; }
 
-.scrim{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.38); backdrop-filter:blur(2px); z-index:1000; }
+/* overlay behind the drawer (no blur) */
+.scrim{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);   /* darker, solid overlay */
+  /* removed: backdrop-filter */
+  z-index:1000;
+}
 
 /* Desktop unchanged; switch at 900px */
 @media (max-width: 900px){
   .layout{ grid-template-columns: 1fr; }
   .nav-toggle{ display:inline-flex; }
+
   .sidebar{
-    position:fixed; top:0; bottom:0; left:0; width:80vw; max-width:320px;
-    transform:translateX(-100%); transition:transform .2s ease;
-    z-index:1001; min-height:auto; background:var(--bg);
+    position:fixed; top:0; bottom:0; left:0;
+    width:80vw; max-width:320px;
+    transform:translateX(-100%);
+    transition:transform .20s ease;
+    z-index:1001;
+    min-height:auto;
+    background:var(--bg-soft);     /* solid panel so it isn’t see-through */
     box-shadow:0 10px 40px rgba(0,0,0,.45);
+    border-right:1px solid var(--border);
   }
+
   /* open states */
   .sidebar.open{ transform:translateX(0); }
   body.nav-open .scrim{ display:block; }
-  body.nav-open .sidebar{ transform:translateX(0); }
+  body.nav-open{ overflow:hidden; } /* prevent background scroll */
 }
