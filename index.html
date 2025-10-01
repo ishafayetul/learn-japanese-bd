@@ -100,7 +100,8 @@
   <!-- ========== App ========== -->
   <div id="app-root" class="layout hidden">
     <!-- Sidebar -->
-    <nav class="sidebar" aria-label="Main">
+    <nav id="sidebar" class="sidebar" aria-label="Main">
+      <div id="nav-scrim" class="scrim"></div>
       <h2>📘 Menu</h2>
       <button onclick="navigateLevel('N5')">Learn N5</button>
       <button onclick="navigateLevel('N4')">Learn N4</button>
@@ -120,6 +121,9 @@
     <!-- Main content -->
     <div class="main-content">
       <header class="topbar">
+        <button id="nav-toggle" class="nav-toggle" aria-expanded="false" aria-controls="sidebar" aria-label="Open menu">
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        </button>
         <button id="back-btn" class="back hidden">← Back</button>
         <!-- <button onclick="saveCurrentScore()">💾 Save</button> -->
         <div class="crumbs" aria-live="polite">
