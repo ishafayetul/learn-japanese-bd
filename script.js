@@ -541,7 +541,8 @@ window.navigateLevel = async (level) => {
   // keep using the same App object everywhere
   if (!window.App) window.App = {};
   const App = window.App;
-
+  closeVideoLightbox?.();
+  hideContentPanes?.(); 
   // reset high-level state
   App.level = level;
   App.lesson = null;
