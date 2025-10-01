@@ -133,104 +133,86 @@
       },
 
       /* --------------- SESSIONS / PROGRESS (per-user) --------------- */
+      // ---- Firestore Helpers ----
       async commitSession({ attempts, points, date = todayKey() }) {
         if (!_user) throw new Error("Not signed in");
-
-        // batch setup
         const batch = writeBatch(db);
 
-        const attemptsRef = collection(db, Paths.userAttemptsCol(_user.uid));
+        const attemptsRef = collection(db, Paths.attemptsCol());
         const dailyRef    = doc(collection(db, Paths.dailyScoresCol(date)), _user.uid);
         const overallRef  = doc(collection(db, Paths.overallLBCol()), _user.uid);
 
-        // ---- Attempts (batched) ----
-        // one server timestamp (same for the batch), plus a unique per-row client time
-        const now     = serverTimestamp();   // server clock for indexing
-        const batchMs = Date.now();          // client clock base to make rows unique & ordered
+        // One server timestamp for the batch (for indexing),
+        // plus a unique client time for each row (for stable display order).
+        const now = serverTimestamp();
+        const batchMs = Date.now();
 
         (attempts || []).forEach((a, i) => {
-          const clientAtMs = batchMs + i;    // ensure strictly increasing times within the batch
-
+          const clientAtMs = batchMs + i;
           const payload = {
             uid: _user.uid,
             displayName: _user.displayName || null,
             photoURL: _user.photoURL || null,
-
-            level:  a.level  || null,
+            level: a.level || null,
             lesson: a.lesson || null,
             deckId: a.deckId || null,
-            mode:   a.mode   || null,
+            mode: a.mode || null,
+            right: a.right|0, wrong: a.wrong|0, skipped: a.skipped|0, total: a.total|0,
 
-            right:   a.right   | 0,
-            wrong:   a.wrong   | 0,
-            skipped: a.skipped | 0,
-            total:   a.total   | 0,
-
-            createdAt:  now,                              // same for whole batch
-            clientAtMs,                                   // unique per row (for display/order)
+            // timestamps
+            createdAt: now,                 // server time (same for the whole batch)
+            clientAtMs,                     // unique client time (millis)
             clientAtISO: new Date(clientAtMs).toISOString()
           };
-
-          const ref = doc(attemptsRef);                   // auto-id
+          const ref = doc(attemptsRef);     // auto-id
           batch.set(ref, payload);
         });
 
-        // ---- Leaderboards (same as before) ----
         const delta = Number(points || 0);
 
-        batch.set(
-          dailyRef,
-          {
-            uid: _user.uid,
-            displayName: _user.displayName || null,
-            photoURL: _user.photoURL || null,
-            score: increment(delta),
-            updatedAt: now,
-            date
-          },
-          { merge: true }
-        );
+        // Leaderboards
+        batch.set(dailyRef, {
+          uid: _user.uid,
+          displayName: _user.displayName || null,
+          photoURL: _user.photoURL || null,
+          score: increment(delta),
+          updatedAt: now,
+          date,
+        }, { merge: true });
 
-        batch.set(
-          overallRef,
-          {
-            uid: _user.uid,
-            displayName: _user.displayName || null,
-            photoURL: _user.photoURL || null,
-            score: increment(delta),
-            updatedAt: now
-          },
-          { merge: true }
-        );
+        batch.set(overallRef, {
+          uid: _user.uid,
+          displayName: _user.displayName || null,
+          photoURL: _user.photoURL || null,
+          score: increment(delta),
+          updatedAt: now,
+        }, { merge: true });
 
         await batch.commit();
         return { ok: true };
       },
 
+      // Attempts — recent list (per current user)
       async getRecentAttempts({ max = 10 } = {}) {
         if (!_user) throw new Error("Not signed in");
-        const { collection, query, orderBy, limit, getDocs } = await fsMods();
+        const { collection, query, where, getDocs } = await fsMods();
 
-        // Per-user attempts; no cross-user merge
-        const q = query(
-          collection(db, Paths.userAttemptsCol(_user.uid)),
-          orderBy("createdAt", "desc"),
-          limit(max)
-        );
+        // Fetch only your docs; we’ll sort by clientAtMs/createdAt locally.
+        const col = collection(db, Paths.attemptsCol());
+        const snap = await getDocs(query(col, where("uid", "==", _user.uid)));
 
-        const snap = await getDocs(q);
         const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Stable ordering when server timestamps are identical (same batch)
+        // Prefer clientAtMs (stable, unique), else createdAt
         rows.sort((a, b) => {
-          const sa = a.createdAt?.toMillis?.() || 0;
-          const sb = b.createdAt?.toMillis?.() || 0;
-          if (sa !== sb) return sb - sa;
-          return (b.clientAtMs || 0) - (a.clientAtMs || 0);
+          const ta = (a.clientAtMs || (a.createdAt?.toMillis?.() || 0));
+          const tb = (b.clientAtMs || (b.createdAt?.toMillis?.() || 0));
+          return tb - ta;
         });
 
-        return rows;
+        return rows.slice(0, max);
       },
+
 
       async getWriteBestByDeck({ max = 300 } = {}) {
         if (!_user) throw new Error("Not signed in");
