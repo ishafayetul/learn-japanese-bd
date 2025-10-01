@@ -557,16 +557,13 @@ window.navigateLevel = async (level) => {
   await showLessonList(level);
   // If manifest didn't load, tell the user exactly what's missing
   const m = App.cache.manifest?.get?.(`m/${level}`);
-const st = document.querySelector("#lesson-status");
-if (st) {
   if (!m) {
-    st.textContent = `manifest.json not found at: ${manifestCandidates(level).join("  or  ")}`;
-  } else if (!Array.isArray(m.allLessons) || !m.lessons) {
-    st.textContent = `manifest.json loaded but missing "allLessons" or "lessons" keys`;
+    const st = document.querySelector("#lesson-status");
+    if (st) {
+      st.textContent = `manifest.json not found at: ${manifestCandidates(level).join("  or  ")}`;
+      st.classList.remove("coming-soon");
+    }
   }
-  st.classList.remove("coming-soon");
-}
-
 
   updateBackVisibility?.();
   // bring viewport up for fresh context
