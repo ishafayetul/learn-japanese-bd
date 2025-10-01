@@ -130,6 +130,25 @@ async function whenFBReady(timeout = 15000) {
 
   // Toast
   const elToast = D("#toast");
+// visibility helper
+const isVisible = (sel) => !document.querySelector(sel)?.classList.contains("hidden");
+
+// show only the lesson tabs (no tab content)
+function showLessonTabsOnly(){
+  ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
+  document.querySelector("#lesson-area")?.classList.remove("hidden");
+  hideLessonsHeaderAndList();
+  showLessonBar();
+  updateBackVisibility();
+}
+
+// show only the lesson list (default right pane)
+function showLessonListOnly(){
+  showLessonsHeaderAndList();
+  document.querySelector("#lesson-area")?.classList.add("hidden");
+  document.querySelector("#level-shell")?.classList.remove("hidden");
+  updateBackVisibility();
+}
 
 // ---------- State (safe bootstrap) ----------
 const App = Object.assign(window.App, {
@@ -251,29 +270,7 @@ window.App = App;
 
   // Global Back button logic
   document.querySelector("#back-btn")?.addEventListener("click", () => {
-      // --- Nested Vocab back paths ---
-  const inVocabTab = !document.querySelector("#tab-vocab")?.classList.contains("hidden");
-  if (inVocabTab) {
-    const learnOpen = !document.querySelector("#learn")?.classList.contains("hidden");
-    const practiceOpen = !document.querySelector("#practice")?.classList.contains("hidden");
-    const writeOpen = !document.querySelector("#write")?.classList.contains("hidden");
-    const makeOpen = !document.querySelector("#make")?.classList.contains("hidden");
-    const learnMenu = !document.querySelector("#vocab-learn-menu")?.classList.contains("hidden");
-    const mcqMenu   = !document.querySelector("#vocab-mcq-menu")?.classList.contains("hidden");
-    const writeMenu = !document.querySelector("#vocab-write-menu")?.classList.contains("hidden");
-
-    // Final → submenu
-    if (learnOpen)      { openVocabLearnMenu(); updateBackVisibility(); return; }
-    if (practiceOpen)   { openVocabMCQMenu();   updateBackVisibility(); return; }
-    if (writeOpen)      { openVocabWriteMenu(); updateBackVisibility(); return; }
-    if (makeOpen)       { showVocabRootMenu();  updateBackVisibility(); return; }
-
-    // Submenu → Vocab root
-    if (learnMenu || mcqMenu || writeMenu) {
-      showVocabRootMenu(); updateBackVisibility(); return;
-    }
-  }
-  // If video enlarged view open → close it and go back to videos tab
+  // 0) Video lightbox → back to Videos tab
   if (window.__videoLightboxOpen) {
     closeVideoLightbox();
     document.querySelector("#level-shell")?.classList.remove("hidden");
@@ -283,19 +280,68 @@ window.App = App;
     return;
   }
 
-  // If we're in lesson tabs → go back to lesson list
-  const area = document.querySelector("#lesson-area");
-  if (area && !area.classList.contains("hidden")) {
-    area.classList.add("hidden");
-    document.querySelector("#level-shell")?.classList.remove("hidden");
-    updateBackVisibility();
+  // 1) Inside Vocab tab? handle nested steps first
+  const inVocabTab = isVisible("#tab-vocab");
+  if (inVocabTab) {
+    const learnOpen    = isVisible("#learn");
+    const practiceOpen = isVisible("#practice");
+    const writeOpen    = isVisible("#write");
+    const makeOpen     = isVisible("#make");
+
+    const learnMenu = isVisible("#vocab-learn-menu");
+    const mcqMenu   = isVisible("#vocab-mcq-menu");
+    const writeMenu = isVisible("#vocab-write-menu");
+
+    const rootCardVisible = !!document.querySelector("#vocab-mode-select")
+      && !document.querySelector("#vocab-mode-select")?.closest(".card")?.classList.contains("hidden");
+
+    // final → submenu
+    if (learnOpen)    { openVocabLearnMenu(); updateBackVisibility(); return; }
+    if (practiceOpen) { openVocabMCQMenu();   updateBackVisibility(); return; }
+    if (writeOpen)    { openVocabWriteMenu(); updateBackVisibility(); return; }
+    if (makeOpen)     { showVocabRootMenu();  updateBackVisibility(); return; }
+
+    // submenu → root
+    if (learnMenu || mcqMenu || writeMenu) {
+      showVocabRootMenu(); updateBackVisibility(); return;
+    }
+
+    // root → lesson tabs
+    if (rootCardVisible) {
+      // hide vocab tab content and reveal only the lesson tab bar
+      document.querySelector("#tab-vocab")?.classList.add("hidden");
+      showLessonTabsOnly();
+      return;
+    }
+  }
+
+  // 2) Any other tab (Videos/Grammar) open → go back to lesson tabs
+  if (isVisible("#tab-videos") || isVisible("#tab-grammar")) {
+    ["#tab-videos","#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
+    showLessonTabsOnly();
     return;
   }
-  // If in any other section → back to lesson list
-  hideContentPanes();
-  document.querySelector("#level-shell")?.classList.remove("hidden");
-  updateBackVisibility();
+
+  // 3) If lesson tabs area is visible (no tab content) → go back to lesson list
+  const lessonAreaVisible = isVisible("#lesson-area");
+  const noTabContent = !isVisible("#tab-videos") && !isVisible("#tab-vocab") && !isVisible("#tab-grammar");
+  if (lessonAreaVisible && noTabContent) {
+    showLessonListOnly();
+    return;
+  }
+
+  // 4) If in any non-level section (Progress, etc.) → return to lesson list
+  if (isVisible("#progress-section") || isVisible("#leaderboard-section") ||
+      isVisible("#mistakes-section") || isVisible("#marked-section") || isVisible("#signword-section")) {
+    hideContentPanes();
+    showLessonListOnly();
+    return;
+  }
+
+  // 5) Fallback: ensure lesson list is visible
+  showLessonListOnly();
 });
+
 
   // ---------- Auth ----------
   elAuthBtn.addEventListener("click", async () => {
@@ -570,6 +616,7 @@ window.openLessonTab = async (tab)=>{
 
   try { await flushSession?.(); } catch {}
   App.tab = tab;
+  showLessonBar(); // ensure the tabs bar is shown when entering any tab
   document.querySelector("#crumb-mode").textContent = tab;
 
   // Clear all right-side panes
