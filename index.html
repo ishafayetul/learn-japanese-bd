@@ -103,20 +103,58 @@
             <!-- Tab: Vocab -->
             <section id="tab-vocab" class="tab-pane hidden">
               <div class="card">
-                <h3>Vocab Modes</h3>
+                <h3>Vocabulary</h3>
+                <!-- Stage 2.b — ROOT -->
                 <div id="vocab-mode-select" class="practice-actions">
-                  <button onclick="startLearnMode()">🧠 Learn</button>
-                  <button onclick="startPractice('jp-en')">Hiragana → English</button>
-                  <button onclick="startPractice('en-jp')">English → Hiragana</button>
-                  <button onclick="startPractice('kanji-hira')" id="btn-k2h">Kanji → Hiragana</button>
-                  <button onclick="startPractice('hira-kanji')" id="btn-h2k">Hiragana → Kanji</button>
-                  <button onclick="startDualMCQ('k2h-e')" id="btn-k2h-e">Kanji → (Hiragana & English)</button>
-                  <button onclick="startDualMCQ('he2k')" id="btn-he2k">Hiragana, English → Kanji</button>
-                  <button onclick="startWriteWords()">✍️ Write (type Hiragana)</button>
+                  <button onclick="openVocabLearnMenu()">🧠 Learn</button>
+                  <button onclick="openVocabMCQMenu()">❓ MCQ</button>
+                  <button onclick="openVocabWriteMenu()">✍️ Write Words</button>
                   <button onclick="startMakeSentence()">📝 Make Sentence</button>
                 </div>
-                <p id="vocab-status" class="muted" style="margin-top:6px;">Pick a mode.</p>
+                <p id="vocab-status" class="muted" style="margin-top:6px;">Pick an option.</p>
               </div>
+
+              <!-- Stage 3.b — LEARN submenu -->
+              <section id="vocab-learn-menu" class="hidden">
+                <div class="card">
+                  <h3>Learn — choose a direction</h3>
+                  <div class="practice-actions">
+                    <button onclick="startLearnMode('k2h')">Kanji → Hiragana (Learn)</button>
+                    <button onclick="startLearnMode('h2e')">Hiragana → English (Learn)</button>
+                    <button class="chip" onclick="showVocabRootMenu()">← Back to Vocab Menu</button>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Stage 3.b — MCQ submenu -->
+              <section id="vocab-mcq-menu" class="hidden">
+                <div class="card">
+                  <h3>MCQ — choose a mode</h3>
+                  <div class="practice-actions">
+                    <button onclick="startPractice('jp-en')">Hiragana → English</button>
+                    <button onclick="startPractice('en-jp')">English → Hiragana</button>
+                    <button onclick="startPractice('kanji-hira')">Kanji → Hiragana</button>
+                    <button onclick="startPractice('hira-kanji')">Hiragana → Kanji</button>
+                    <button onclick="startDualMCQ('k2h-e')">Kanji → (Hiragana & English)</button>
+                    <button onclick="startDualMCQ('he2k')">Hiragana, English → Kanji</button>
+                    <button class="chip" onclick="showVocabRootMenu()">← Back to Vocab Menu</button>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Stage 3.b — WRITE submenu -->
+              <section id="vocab-write-menu" class="hidden">
+                <div class="card">
+                  <h3>Write — choose a mode</h3>
+                  <div class="practice-actions">
+                    <button onclick="startWriteK2H()">Kanji given → write Hiragana</button>
+                    <button onclick="startWriteEN2H()">English given → write Hiragana</button>
+                    <span class="muted">Shortcuts: Enter=Submit, Ctrl+Enter=Next, Esc=Skip</span>
+                    <button class="chip" onclick="showVocabRootMenu()">← Back to Vocab Menu</button>
+                  </div>
+                </div>
+              </section>
+
 
               <!-- Flashcard Learn -->
               <section id="learn" class="hidden">

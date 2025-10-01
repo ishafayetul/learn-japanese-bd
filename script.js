@@ -134,6 +134,7 @@ async function whenFBReady(timeout = 15000) {
 // ---------- State (safe bootstrap) ----------
 const App = Object.assign(window.App, {
   level: null, lesson: null, tab: "videos", mode: null,
+  learnVariant: null,
   deck: [], deckFiltered: [], qIndex: 0,
   stats: { right: 0, wrong: 0, skipped: 0 },
   write: { order: [], idx: 0, variant: "en2h" },
@@ -219,6 +220,28 @@ window.App = App;
 
   // Global Back button logic
   document.querySelector("#back-btn")?.addEventListener("click", () => {
+      // --- Nested Vocab back paths ---
+  const inVocabTab = !document.querySelector("#tab-vocab")?.classList.contains("hidden");
+  if (inVocabTab) {
+    const learnOpen = !document.querySelector("#learn")?.classList.contains("hidden");
+    const practiceOpen = !document.querySelector("#practice")?.classList.contains("hidden");
+    const writeOpen = !document.querySelector("#write")?.classList.contains("hidden");
+    const makeOpen = !document.querySelector("#make")?.classList.contains("hidden");
+    const learnMenu = !document.querySelector("#vocab-learn-menu")?.classList.contains("hidden");
+    const mcqMenu   = !document.querySelector("#vocab-mcq-menu")?.classList.contains("hidden");
+    const writeMenu = !document.querySelector("#vocab-write-menu")?.classList.contains("hidden");
+
+    // Final → submenu
+    if (learnOpen)      { openVocabLearnMenu(); updateBackVisibility(); return; }
+    if (practiceOpen)   { openVocabMCQMenu();   updateBackVisibility(); return; }
+    if (writeOpen)      { openVocabWriteMenu(); updateBackVisibility(); return; }
+    if (makeOpen)       { showVocabRootMenu();  updateBackVisibility(); return; }
+
+    // Submenu → Vocab root
+    if (learnMenu || mcqMenu || writeMenu) {
+      showVocabRootMenu(); updateBackVisibility(); return;
+    }
+  }
   // If video enlarged view open → close it and go back to videos tab
   if (window.__videoLightboxOpen) {
     closeVideoLightbox();
@@ -260,6 +283,8 @@ window.App = App;
   // ---------- Routing & view cleanup ----------
   // Hide every main pane (level list, lesson tabs, sections). Used before opening video full view.
   function hideContentPanes(){
+  // Hide EVERYTHING in the right content area
+  document.querySelector("#level-shell")?.classList.add("hidden");
   document.querySelector("#lesson-area")?.classList.add("hidden");
   document.querySelector("#progress-section")?.classList.add("hidden");
   document.querySelector("#leaderboard-section")?.classList.add("hidden");
@@ -270,7 +295,8 @@ window.App = App;
   clearVideosPane();
   clearVocabPane();
   clearGrammarPane();
-}
+  }
+
 
   // Show/hide the global Back button depending on what's visible
   function updateBackVisibility(){
@@ -298,7 +324,10 @@ window.App = App;
   if (learn) learn.classList.add("hidden");
   if (write) write.classList.add("hidden");
   if (make) make.classList.add("hidden");
-  const elVocabStatus = document.querySelector("#vocab-status");
+  const elVocabStatus = document.querySelector("#vocab-status"); 
+  const subA = document.querySelector("#vocab-learn-menu"); 
+  const subB = document.querySelector("#vocab-mcq-menu"); 
+  const subC = document.querySelector("#vocab-write-menu");
   if (elVocabStatus) elVocabStatus.textContent = "";
   const elQuestionBox = document.querySelector("#question-box");
   const elOptions = document.querySelector("#options");
@@ -310,7 +339,13 @@ window.App = App;
   if (elExtraInfo) elExtraInfo.textContent = "";
   if (elWriteFeedback) elWriteFeedback.textContent = "";
   if (elMakeFeedback) elMakeFeedback.textContent = "";
-}
+  // hide any vocab submenus
+  subA?.classList.add("hidden");
+  subB?.classList.add("hidden");
+  subC?.classList.add("hidden");
+  document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
+  }
+
 function clearGrammarPane(){
   const elPgArea = document.querySelector("#pg-area");
   const elPgCard = document.querySelector("#pg-card");
@@ -487,7 +522,8 @@ window.openLessonTab = async (tab)=>{
     document.querySelector("#tab-vocab")?.classList.remove("hidden");
     await ensureDeckLoaded();
     const has = (App.deck?.length || 0) > 0;
-    document.querySelector("#vocab-status").textContent = has ? "Pick a mode." : "No vocabulary found.";
+    document.querySelector("#vocab-status").textContent = has ? "Pick an option." : "No vocabulary found.";
+    showVocabRootMenu();
   } else if (tab === "grammar") {
     document.querySelector("#tab-grammar")?.classList.remove("hidden");
     wireGrammarTab();
@@ -635,6 +671,50 @@ function closeVideoLightbox(){
     App.cache.vocab.set(key, deck);
     elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
   }
+  function showVocabRootMenu(){
+    document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
+    document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
+    document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
+    document.querySelector("#vocab-write-menu")?.classList.add("hidden");
+    // hide finals
+    document.querySelector("#learn")?.classList.add("hidden");
+    document.querySelector("#practice")?.classList.add("hidden");
+    document.querySelector("#write")?.classList.add("hidden");
+    document.querySelector("#make")?.classList.add("hidden");
+  }
+
+  window.openVocabLearnMenu = ()=>{
+    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    document.querySelector("#vocab-learn-menu")?.classList.remove("hidden");
+    document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
+    document.querySelector("#vocab-write-menu")?.classList.add("hidden");
+    document.querySelector("#learn")?.classList.add("hidden");
+    document.querySelector("#practice")?.classList.add("hidden");
+    document.querySelector("#write")?.classList.add("hidden");
+    document.querySelector("#make")?.classList.add("hidden");
+  };
+
+  window.openVocabMCQMenu = ()=>{
+    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
+    document.querySelector("#vocab-mcq-menu")?.classList.remove("hidden");
+    document.querySelector("#vocab-write-menu")?.classList.add("hidden");
+    document.querySelector("#learn")?.classList.add("hidden");
+    document.querySelector("#practice")?.classList.add("hidden");
+    document.querySelector("#write")?.classList.add("hidden");
+    document.querySelector("#make")?.classList.add("hidden");
+  };
+
+  window.openVocabWriteMenu = ()=>{
+    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
+    document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
+    document.querySelector("#vocab-write-menu")?.classList.remove("hidden");
+    document.querySelector("#learn")?.classList.add("hidden");
+    document.querySelector("#practice")?.classList.add("hidden");
+    document.querySelector("#write")?.classList.add("hidden");
+    document.querySelector("#make")?.classList.add("hidden");
+  };
 
   function filterDeckForMode(mode){
     const hasKanji = (w) => w.kanji && w.kanji !== "—";
@@ -651,8 +731,10 @@ function closeVideoLightbox(){
   }
 
   // --- Learn Mode (sequential) ---
-  window.startLearnMode = async () => {
-    await ensureDeckLoaded(); try{ await flushSession(); }catch{}
+  window.startLearnMode = async (variant = "k2h") => {
+    await ensureDeckLoaded(); 
+    App.learnVariant = (variant === "h2e") ? "h2e" : "k2h";
+    try{ await flushSession(); }catch{}
     App.mode = "learn"; setCrumbs();
     App.deckFiltered = App.deck.slice(); // sequential
     App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
@@ -668,11 +750,16 @@ function closeVideoLightbox(){
   function renderLearnCard(){
     const w = App.deckFiltered[App.qIndex];
     if (!w){ elLearnBox.textContent = "No words."; return; }
+    const isK2H = App.learnVariant !== "h2e";
+    const head  = isK2H ? "Kanji → Hiragana (Learn)" : "Hiragana → English (Learn)";
+    const big   = isK2H ? (w.kanji && w.kanji!=="—" ? w.kanji : w.hira) : w.hira;
+    const sub   = isK2H ? w.hira : w.en;
+
     elLearnBox.innerHTML = `
       <div class="flashcard">
-        <div class="muted" style="font-size:1.1em;">Kanji → Hiragana / Hiragana → English</div>
-        <div style="margin:8px 0;font-size:2em;">${escapeHTML(w.kanji && w.kanji!=="—" ? w.kanji : w.hira)}</div>
-        <div class="muted" style="margin-top:6px;">${escapeHTML(w.hira)} · ${escapeHTML(w.en)}</div>
+        <div class="muted" style="font-size:1.1em;">${escapeHTML(head)}</div>
+        <div style="margin:8px 0;font-size:2em;">${escapeHTML(big)}</div>
+        <div class="muted" style="margin-top:6px;">${escapeHTML(sub)}</div>
         <div style="margin-top:10px; display:flex; gap:8px; justify-content:center;">
           <button id="btn-audio" title="Play audio">🔊</button>
           <button id="btn-mark" title="Mark word">📌 Mark</button>
@@ -680,6 +767,7 @@ function closeVideoLightbox(){
           <button id="btn-next">Next</button>
         </div>
       </div>`;
+
     D("#btn-audio").addEventListener("click", ()=>speakJa(w.hira), { passive:true });
     D("#btn-mark").addEventListener("click", markCurrentWord);
     D("#btn-prev").addEventListener("click", ()=>{ if (App.qIndex>0) { App.qIndex--; renderLearnCard(); } });
