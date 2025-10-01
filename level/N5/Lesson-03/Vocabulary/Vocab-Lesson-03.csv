@@ -1,42 +1,42 @@
-ここ,"here, this place",koko
-そこ,"there, that place near you",soko
-あそこ,that place over there,asoko
-どこ,"where, what place?",doko
-こちら,"this way, this place (polite)",kochira
-そちら,"that way, that place near you (polite)",sochira
-あちら,"that way, that place over there (polite)",achira
-どちら,"which way, where (polite)",dochira
-きょうしつ,classroom,kyoushitsu
-しょくどう,"dining hall, canteen",shokudou
-じむしょ,office,jimusho
-かいぎしつ,"conference room, assembly room",kaigishitsu
-うけつけ,reception desk,uketsuke
-ロビー,lobby,robī
-へや,room,heya
-トイレ,"toilet, restroom",toire
-おてあらい,"toilet, restroom",otearai
-かいだん,staircase,kaidan
-エレベーター,"elevator, lift",erebētā
-エスカレーター,escalator,esukarētā
-くに,country,kuni
-かいしゃ,company,kaisha
-うち,"house, home",uchi
-でんわ,"telephone, telephone call",denwa
-くつ,shoes,kutsu
-ネクタイ,necktie,nekutai
-ワイン,wine,wain
-たばこ,"tobacco, cigarette",tabako
-うりば,"department, counter (in a department store)",uriba
-ちか,basement,chika
-～かい,~th floor,～kai
-なんがい,what floor,nangai
-～えん,yen,～en
-いくら,how much,ikura
-ひゃく,hundred,hyaku
-せん,thousand,sen
-まん,ten thousand,man
-すみません,Excuse me,sumimasen
-～でございます,"(polite form of ""desu"")",～degozaimasu
-～をみせてください,Please show me ~,～omisetekudasai
-じゃ,"well, then, in that case",ja
-～をください,"Give me ~, please.",～okudasai
+—,ここ,here (near the speaker)
+—,そこ,there (near the listener)
+—,あそこ,over there (away from both speaker and listener)
+何処,どこ,where
+—,こちら,"this way \ this place \ this person (formal for ここ, わたし, etc.)"
+—,そちら,that way \ that place \ that person (formal for そこ)
+—,あちら,over that way \ over there \ that person (formal for あそこ)
+—,どちら,which way \ where \ which person (formal for どこ)
+教室,きょうしつ,classroom
+食堂,しょくどう,cafeteria \ dining hall
+事務所,じむしょ,office
+会議室,かいぎしつ,meeting room \ conference room
+受付,うけつけ,reception \ reception desk
+ロビー,ロビー,lobby
+部屋,へや,room
+トイレ,トイレ,toilet \ restroom
+お手洗い,おてあらい,restroom \ washroom” (polite)
+階段,かいだん,stairs
+エレベーター,エレベーター,elevator \ lift
+エスカレーター,エスカレーター,escalator
+—,くに,country
+会社,かいしゃ,company \ workplace
+家,うち,home \ house \ one’s own place
+電話,でんわ,telephone
+靴,くつ,shoes
+ネクタイ,ネクタイ,necktie
+ワイン,ワイン,wine
+煙草,たばこ,tobacco \ cigarette
+売り場,うりば,sales counter \ department in a store
+地下,ちか,basement \ underground
+—,～かい,~th floor
+何階,なんがい,what floor?
+〜円,～えん,~yen (currency)
+幾ら,いくら,how much?
+百,ひゃく,hundred (100)
+千,せん,thousand (1000)
+万,まん,"ten thousand (10,000)"
+—,すみません,excuse me \ sorry \ thank you (polite)
+—,～でございます,it is (very polite)
+〜を見せてください,～をみせてください,please show me ~
+—,じゃ,well then \ so \ in that case
+〜をください,～をください,please give me ~
