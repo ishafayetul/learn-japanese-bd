@@ -297,9 +297,18 @@
       },
       async unmarkWord(id) {
         if (!_user) throw new Error("Not signed in");
-        const key = safeKey(id);
-        await deleteDoc(doc(db, `${Paths.userMarkedCol(_user.uid)}/${key}`));
-        _cache.marked.delete(key);
+        const raw = String(id);
+        const key1 = raw;                 // maybe already the doc id (safe)
+        const key2 = safeKey(raw);        // definitely the doc id if raw was "front::back"
+
+        const path = (key) => doc(db, `${Paths.userMarkedCol(_user.uid)}/${key}`);
+
+        // Firestore delete is idempotent; deleting a non-existent doc is fine.
+        try { await deleteDoc(path(key1)); } catch {}
+        try { if (key2 !== key1) await deleteDoc(path(key2)); } catch {}
+
+        _cache.marked.delete(key1);
+        _cache.marked.delete(key2);
         return true;
       },
 

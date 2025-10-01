@@ -352,6 +352,14 @@ function toSafeKey(s){
   catch { return String(s).toLowerCase().replace(/\W+/g,'_'); }
 }
 
+async function cascadeRemoveByKey({ key, signId=null, hasRemote=false, hasLocal=false, localId=null }){
+  try {
+    const fb = await whenFBReady().catch(()=>null);
+    if (signId && fb)   { try { await fb.signWordRemove(signId); } catch {} }
+    if (hasRemote && fb){ try { await fb.unmarkWord(key); } catch {} }
+    if (hasLocal)       { try { removeLocalMarked(localId || key); } catch {} }
+  } catch (e) { console.error(e); }
+}
 // Remove from Marked and also clean up Sign Words if linked
 async function cascadeUnmark({ src, id, markedId }){
   const fb = await whenFBReady();
@@ -1831,63 +1839,98 @@ async function learnNoteAddOrSave(){
 
   // ---------- Marked ----------
   async function renderMarkedList(){
-  // clear UI first
   if (elMarkedContainer) elMarkedContainer.innerHTML = "";
 
-  // 1) load all sources safely
   let remote = [], local = [], signed = [];
-  try { const fb = await whenFBReady(); remote = await fb.listMarked(); } catch {}
-  try { local = getLocalMarked(); } catch {}
-  try { const fb = await whenFBReady(); signed = await fb.signWordList(); } catch {}
+  const fb = await whenFBReady().catch(()=>null);
 
-  // 2) normalize to one shape
-  const rows = [
-    ...remote.map(r => ({ ...r, _src: "remote" })),
-    ...local.map(r  => ({ ...r, _src: "local"  })),
-    ...signed.map(r => ({
-      id: `sign::${r.id}`,
-      kanji: r.kanji,
-      hira: r.front,
-      en: r.back,
-      front: r.front,
-      back: r.back,
-      _src: "sign",
-      _markedId: `${r.front}::${r.back}` // how it was stored in Marked collection
-    }))
-  ];
+  try { if (fb) remote = await fb.listMarked(); } catch {}
+  try { local  = getLocalMarked() || []; } catch {}
+  try { if (fb) signed = await fb.signWordList(); } catch {}
 
+  // Merge by single key = safe(front::back)
+  const byKey = new Map();
+
+  const ensureRow = (key) => {
+    if (!byKey.has(key)){
+      byKey.set(key, { id: key, front:"", back:"", hira:"", en:"", kanji:null,
+                       hasRemote:false, hasLocal:false, localId:null, signId:null, markedId:key });
+    }
+    return byKey.get(key);
+  };
+
+  // Remote Marked (Firestore rows) — r.id is already the safe doc id
+  for (const r of remote){
+    const key = r.id;
+    const row = ensureRow(key);
+    Object.assign(row, {
+      front: r.front || r.hira || row.front,
+      back:  r.back  || r.en   || row.back,
+      hira:  r.hira  || row.hira,
+      en:    r.en    || row.en,
+      kanji: r.kanji ?? row.kanji,
+      hasRemote: true
+    });
+  }
+
+  // Sign Words — s.markedId is the same safe key used by Marked
+  for (const s of signed){
+    const key = s.markedId || toSafeKey(`${s.front}::${s.back}`);
+    const row = ensureRow(key);
+    row.signId = s.id;
+    if (!row.front) { row.front = s.front; row.back = s.back; }
+  }
+
+  // Local Marked (your localStorage copy)
+  for (const l of local){
+    const f = l.front || l.hira || "";
+    const b = l.back  || l.en   || "";
+    const key = toSafeKey(`${f}::${b}`);
+    const row = ensureRow(key);
+    row.hasLocal = true;
+    row.localId  = l.id || row.localId;
+    if (!row.front){ row.front = f; row.back = b; row.hira = l.hira || ""; row.en = l.en || ""; row.kanji = l.kanji ?? row.kanji; }
+  }
+
+  const rows = Array.from(byKey.values());
   elMarkedStatus.textContent = `${rows.length} item(s).`;
 
-  // 3) render + hook unmark
   for (const r of rows){
+    const badges = [
+      r.hasRemote ? "cloud" : null,
+      r.hasLocal  ? "local" : null,
+      r.signId    ? "signed" : null
+    ].filter(Boolean).map(x=>`<span class="badge">${x}</span>`).join(" ");
+
     const div = document.createElement("div");
     div.className = "marked-item";
     div.innerHTML = `
-      <div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} — 
-        <span class="muted">${escapeHTML(r.back || r.en || "")}</span>
+      <div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} —
+        <span class="muted">${escapeHTML(r.back || r.en || "")}</span> ${badges}
       </div>
-      <button data-id="${escapeHTML(r.id)}" data-src="${escapeHTML(r._src)}"
-              data-marked-id="${escapeHTML(r._markedId || "")}">Unmark</button>`;
+      <button
+        data-key="${escapeHTML(r.markedId)}"
+        data-sign-id="${escapeHTML(r.signId || "")}"
+        data-has-remote="${r.hasRemote ? "1" : "0"}"
+        data-has-local="${r.hasLocal ? "1" : "0"}"
+        data-local-id="${escapeHTML(r.localId || "")}"
+      >Unmark</button>`;
 
     div.querySelector("button")?.addEventListener("click", async (e) => {
-    const src = e.currentTarget.dataset.src;
-    const id  = e.currentTarget.dataset.id;
-    const markedId = e.currentTarget.dataset.markedId;
-
-    try {
-      await cascadeUnmark({ src, id, markedId });
+      const key       = e.currentTarget.dataset.key;
+      const signId    = e.currentTarget.dataset.signId || null;
+      const hasRemote = e.currentTarget.dataset.hasRemote === "1";
+      const hasLocal  = e.currentTarget.dataset.hasLocal  === "1";
+      const localId   = e.currentTarget.dataset.localId || null;
+      await cascadeRemoveByKey({ key, signId, hasRemote, hasLocal, localId });
       toast("Removed ✓");
-    } catch (err) {
-      console.error(err);
-      toast("Couldn’t remove — check console");
-    }
-    await renderMarkedList();
-  });
-
+      await renderMarkedList();
+    });
 
     elMarkedContainer.appendChild(div);
   }
 }
+
 
 
   window.startMarkedLearn = async()=> setupListPractice("marked","learn");
