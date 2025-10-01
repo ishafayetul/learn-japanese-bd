@@ -180,6 +180,37 @@ window.App = App;
   return p.split('/').map(s => s === '' ? '' : encodeURIComponent(s)).join('/')
           .replace(/%3A/g, ':');
 }
+// Build many possible filename variants for the vocab CSV
+  function buildVocabCandidates(level, lesson){
+    const num2 = (lesson.split("-")[1] || "").padStart(2, "0"); // "01"
+    const num  = String(Number(num2));                           // "1"
+    const dir  = `/level/${level}/${lesson}/Vocabulary/`;
+
+    const names = [
+      // canonical
+      `lesson-${num2}.csv`, `Lesson-${num2}.csv`, `lesson.csv`, `Lesson.csv`,
+      // no zero-pad
+      `lesson-${num}.csv`, `Lesson-${num}.csv`,
+      // glued number
+      `lesson${num2}.csv`, `Lesson${num2}.csv`,
+      // space variants
+      `lesson ${num2}.csv`, `Lesson ${num2}.csv`,
+      // generic names
+      `vocabulary.csv`, `Vocabulary.csv`, `vocab.csv`, `Vocab.csv`,
+      `words.csv`, `Words.csv`
+    ];
+
+    // Try inside Vocabulary/ first, then also at lesson root (some repos put CSV there)
+    const inFolder = names.map(n => dir + n);
+    const atRoot   = names.map(n => `/level/${level}/${lesson}/` + n);
+    return [...inFolder, ...atRoot];
+  }
+
+  // Try all candidates until one exists
+  async function findVocabCsv(level, lesson){
+    const urls = buildVocabCandidates(level, lesson);
+    return await firstOk(urls); // returns the first existing URL or null
+  }
 
   // Directory lister: only returns names if directory indexes are enabled (rare on Vercel)
   async function listCsvFiles(dirUrl){
@@ -458,19 +489,14 @@ async function discoverLessons(level){
   const found = [];
   let misses = 0;
   for (let i = 1; i <= 60; i++){
-    const num = String(i).padStart(2, "0");
-    const L = `Lesson-${num}`;
-    const ok = await firstOk([
-      `/level/${level}/${L}/Vocabulary/lesson-${num}.csv`,
-      `/level/${level}/${L}/Vocabulary/Lesson-${num}.csv`,
-      `/level/${level}/${L}/Vocabulary/lesson.csv`,
-      `/level/${level}/${L}/Vocabulary/Lesson.csv`,
-    ]);
-    if (ok){ found.push(L); misses = 0; }
+    const L = `Lesson-${String(i).padStart(2, "0")}`;
+    const okUrl = await findVocabCsv(level, L);
+    if (okUrl){ found.push(L); misses = 0; }
     else { if (++misses >= 3) break; } // early stop on empty tail
   }
   return found;
 }
+
 
   // ---------- Open lesson & tabs ----------
 async function openLesson(level, lesson){
@@ -493,16 +519,11 @@ async function openLesson(level, lesson){
   document.querySelector("#lesson-title").textContent = `${lesson.replace(/-/g," ")} — ${level}`;
   document.querySelector("#lesson-availability").textContent = "Loading…";
 
-  const num = lesson.split("-")[1];
-  const hasVocab = await firstOk([
-    `/level/${level}/${lesson}/Vocabulary/lesson-${num}.csv`,
-    `/level/${level}/${lesson}/Vocabulary/Lesson-${num}.csv`,
-    `/level/${level}/${lesson}/Vocabulary/lesson.csv`,
-    `/level/${level}/${lesson}/Vocabulary/Lesson.csv`,
-  ]);
+  const hasVocabUrl = await findVocabCsv(level, lesson);
 
-  await openLessonTab(hasVocab ? "vocab" : "videos");
-  document.querySelector("#lesson-availability").textContent = hasVocab ? "Vocab: Yes" : "Vocab: No";
+  await openLessonTab(hasVocabUrl ? "vocab" : "videos");
+  document.querySelector("#lesson-availability").textContent = hasVocabUrl ? "Vocab: Yes" : "Vocab: No";
+
   updateBackVisibility();
 }
 
@@ -627,22 +648,16 @@ function closeVideoLightbox(){
   function escCloseOnce(e){ if (e.key==="Escape") closeVideoLightbox(); }
 
   // ---------- Vocabulary ----------
- async function listVocabCsvFiles(level, lesson){
-  const key = `v/${level}/${lesson}`;
-  if (App.cache.vocabCsvFiles.has(key)) return App.cache.vocabCsvFiles.get(key);
+ 
+  async function listVocabCsvFiles(level, lesson){
+    const key = `v/${level}/${lesson}`;
+    if (App.cache.vocabCsvFiles.has(key)) return App.cache.vocabCsvFiles.get(key);
 
-  const dir = `/level/${level}/${lesson}/Vocabulary/`;
-  const num = (lesson.split("-")[1] || "").padStart(2,"0");
-  const candidate = await firstOk([
-    dir + `lesson-${num}.csv`,
-    dir + `Lesson-${num}.csv`,
-    dir + `lesson.csv`,
-    dir + `Lesson.csv`,
-  ]);
-  const files = candidate ? [candidate.split("/").pop()] : [];
-  App.cache.vocabCsvFiles.set(key, files);
-  return files;
-}
+    const url = await findVocabCsv(level, lesson);
+    const files = url ? [url] : [];       // cache the **absolute URL**
+    App.cache.vocabCsvFiles.set(key, files);
+    return files;
+  }
 
 
 
@@ -651,12 +666,11 @@ function closeVideoLightbox(){
     if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
     elVocabStatus.textContent = "Loading vocabulary…";
 
-    const files = await listVocabCsvFiles(App.level, App.lesson);
+    const files = await listVocabCsvFiles(App.level, App.lesson); // absolute URLs
     const deck = [];
-    for (const f of files){
+    for (const url of files){
       try{
-        const path = `/level/${App.level}/${App.lesson}/Vocabulary/${f}`;
-        const txt = await (await fetch(encodePath(path), { cache:"no-cache" })).text();
+        const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
         const csv = parseCSV(txt);
         for (const r of csv){
           const kanji = (r[0]||"").trim();
@@ -667,6 +681,7 @@ function closeVideoLightbox(){
         }
       } catch {}
     }
+
     App.deck = deck;
     App.cache.vocab.set(key, deck);
     elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
