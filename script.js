@@ -330,6 +330,12 @@ window.App = App;
   clearGrammarPane();
   }
 
+  function hideVocabMenus(){
+    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
+    document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
+    document.querySelector("#vocab-write-menu")?.classList.add("hidden");
+  }
 
   // Show/hide the global Back button depending on what's visible
   function updateBackVisibility(){
@@ -534,7 +540,7 @@ async function openLesson(level, lesson){
 window.openLessonTab = async (tab)=>{
   document.querySelector("#level-shell")?.classList.remove("hidden");
   document.querySelector("#lesson-area")?.classList.remove("hidden");
-  
+
   try { await flushSession?.(); } catch {}
   App.tab = tab;
   document.querySelector("#crumb-mode").textContent = tab;
@@ -716,6 +722,8 @@ function closeVideoLightbox(){
     document.querySelector("#practice")?.classList.add("hidden");
     document.querySelector("#write")?.classList.add("hidden");
     document.querySelector("#make")?.classList.add("hidden");
+    updateBackVisibility();
+
   };
 
   window.openVocabMCQMenu = ()=>{
@@ -727,6 +735,8 @@ function closeVideoLightbox(){
     document.querySelector("#practice")?.classList.add("hidden");
     document.querySelector("#write")?.classList.add("hidden");
     document.querySelector("#make")?.classList.add("hidden");
+    updateBackVisibility();
+
   };
 
   window.openVocabWriteMenu = ()=>{
@@ -738,6 +748,8 @@ function closeVideoLightbox(){
     document.querySelector("#practice")?.classList.add("hidden");
     document.querySelector("#write")?.classList.add("hidden");
     document.querySelector("#make")?.classList.add("hidden");
+    updateBackVisibility();
+
   };
 
   function filterDeckForMode(mode){
@@ -763,13 +775,16 @@ function closeVideoLightbox(){
     App.deckFiltered = App.deck.slice(); // sequential
     App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
 
-    // hide everything else from this tab
+    // STRICT LINEAR: hide all menus and all other finals, then show only Learn
+    hideVocabMenus();
     D("#practice")?.classList.add("hidden");
     elWrite.classList.add("hidden");
     elMake.classList.add("hidden");
 
     elLearn.classList.remove("hidden");
     renderLearnCard();
+    updateBackVisibility();
+
   };
   function renderLearnCard(){
     const w = App.deckFiltered[App.qIndex];
@@ -805,7 +820,8 @@ function closeVideoLightbox(){
     App.deckFiltered = shuffle(filterDeckForMode(mode)); // randomized
     App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
 
-    // hide everything else
+    // STRICT LINEAR
+    hideVocabMenus();
     elLearn.classList.add("hidden");
     elWrite.classList.add("hidden");
     elMake.classList.add("hidden");
@@ -813,6 +829,8 @@ function closeVideoLightbox(){
     D("#practice").classList.remove("hidden");
     elQuestionBox.textContent=""; elOptions.innerHTML=""; elExtraInfo.textContent="";
     updateDeckProgress(); renderQuestion();
+    updateBackVisibility();
+
   };
   function updateDeckProgress(){
     const cur = Math.min(App.qIndex, App.deckFiltered.length);
@@ -906,6 +924,7 @@ function closeVideoLightbox(){
   // ---------- Write Mode ----------
   window.startWriteEN2H = async ()=> startWriteWords("en2h");
   window.startWriteK2H  = async ()=> startWriteWords("k2h");
+
   async function startWriteWords(variant="en2h"){
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
     App.mode = (variant==="k2h") ? "write-k2h" : "write-en2h";
@@ -916,12 +935,15 @@ function closeVideoLightbox(){
     App.write.order = App.deckFiltered.map((_,i)=>i);
     App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
 
+    hideVocabMenus();
     elLearn.classList.add("hidden");
     D("#practice")?.classList.add("hidden");
     elMake.classList.add("hidden");
 
     elWrite.classList.remove("hidden");
     renderWriteCard();
+    updateBackVisibility();
+
   }
   function renderWriteCard(){
     const i = App.write.order[App.write.idx] ?? -1;
@@ -963,12 +985,15 @@ function closeVideoLightbox(){
     App.make.order = shuffle(App.deck).map((_,i)=>i).slice(0, Math.min(App.deck.length, 30));
     App.make.idx = 0; App.stats = { right:0, wrong:0, skipped:0 };
 
+    hideVocabMenus();
     elLearn.classList.add("hidden");
     elWrite.classList.add("hidden");
     D("#practice")?.classList.add("hidden");
 
     elMake.classList.remove("hidden");
     renderMakeCard();
+    updateBackVisibility();
+
   };
   function renderMakeCard(){
     const i = App.make.order[App.make.idx] ?? -1;
