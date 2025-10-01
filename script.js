@@ -331,10 +331,18 @@ window.App = App;
 
 
   function hideVocabMenus(){
-    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    hideVocabRootCard();
     document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
     document.querySelector("#vocab-write-menu")?.classList.add("hidden");
+  }
+
+  // Hide/show the whole Vocabulary root card (not just the buttons)
+  function hideVocabRootCard(){
+    document.querySelector("#vocab-mode-select")?.closest(".card")?.classList.add("hidden");
+  }
+  function showVocabRootCard(){
+    document.querySelector("#vocab-mode-select")?.closest(".card")?.classList.remove("hidden");
   }
 
   // Show/hide the global Back button depending on what's visible
@@ -382,7 +390,9 @@ window.App = App;
   subA?.classList.add("hidden");
   subB?.classList.add("hidden");
   subC?.classList.add("hidden");
+  showVocabRootCard();
   document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
+
   }
 
 function clearGrammarPane(){
@@ -577,6 +587,7 @@ window.openLessonTab = async (tab)=>{
     showVocabRootMenu();
     hideLessonsHeaderAndList();
     showLessonBar();
+    showVocabRootCard();
     document.querySelector("#vocab-mode-select")?.classList.remove("hidden"); // root menu
 
   } else if (tab === "grammar") {
@@ -735,7 +746,7 @@ function closeVideoLightbox(){
   }
 
   window.openVocabLearnMenu = ()=>{
-    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    hideVocabRootCard();
     document.querySelector("#vocab-learn-menu")?.classList.remove("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
     document.querySelector("#vocab-write-menu")?.classList.add("hidden");
@@ -748,7 +759,7 @@ function closeVideoLightbox(){
   };
 
   window.openVocabMCQMenu = ()=>{
-    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    hideVocabRootCard();
     document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.remove("hidden");
     document.querySelector("#vocab-write-menu")?.classList.add("hidden");
@@ -761,7 +772,7 @@ function closeVideoLightbox(){
   };
 
   window.openVocabWriteMenu = ()=>{
-    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    hideVocabRootCard();
     document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
     document.querySelector("#vocab-write-menu")?.classList.remove("hidden");
@@ -799,8 +810,9 @@ function closeVideoLightbox(){
     // STRICT LINEAR: hide all menus and all other finals, then show only Learn
     hideLessonsHeaderAndList();
     hideLessonBar();
-    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    hideVocabRootCard();
     hideVocabMenus();
+
     D("#practice")?.classList.add("hidden");
     elWrite.classList.add("hidden");
     elMake.classList.add("hidden");
@@ -847,7 +859,7 @@ function closeVideoLightbox(){
     // STRICT LINEAR
     hideLessonsHeaderAndList();
     hideLessonBar();
-    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    hideVocabRootCard();
 
     hideVocabMenus();
     elLearn.classList.add("hidden");
@@ -965,7 +977,7 @@ function closeVideoLightbox(){
 
     hideLessonsHeaderAndList();
     hideLessonBar();
-    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    hideVocabRootCard();
 
     hideVocabMenus();
     elLearn.classList.add("hidden");
@@ -1019,7 +1031,7 @@ function closeVideoLightbox(){
 
     hideLessonsHeaderAndList();
     hideLessonBar();
-    document.querySelector("#vocab-mode-select")?.classList.add("hidden");
+    hideVocabRootCard();
 
     hideVocabMenus();
     elLearn.classList.add("hidden");
