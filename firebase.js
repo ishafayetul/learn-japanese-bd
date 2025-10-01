@@ -57,6 +57,12 @@
     overallLBCol:    ()    => `leaderboard_overall`,        // shared overall leaderboard
   };
 
+  // Normalize attempts collection path (handles both function or string)
+  const attemptsPath = () =>
+    (typeof Paths.attemptsCol === "function"
+      ? Paths.attemptsCol()
+      : (Paths.attemptsCol || "attempts"));
+
   // Utilities
   const todayKey = () => {
     const d = new Date();
@@ -138,7 +144,7 @@
         if (!_user) throw new Error("Not signed in");
         const batch = writeBatch(db);
 
-        const attemptsRef = collection(db, Paths.attemptsCol());
+        const attemptsRef = collection(db, attemptsPath());
         const dailyRef    = doc(collection(db, Paths.dailyScoresCol(date)), _user.uid);
         const overallRef  = doc(collection(db, Paths.overallLBCol()), _user.uid);
 
@@ -198,7 +204,7 @@
         const { collection, query, where, getDocs } = await fsMods();
 
         // Fetch only your docs; we’ll sort by clientAtMs/createdAt locally.
-        const col = collection(db, Paths.attemptsCol());
+        const col = collection(db, attemptsPath());
         const snap = await getDocs(query(col, where("uid", "==", _user.uid)));
 
         const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
