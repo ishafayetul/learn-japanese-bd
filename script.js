@@ -233,9 +233,21 @@ window.App = App;
 
   // Try all candidates until one exists
   async function findVocabCsv(level, lesson){
-    const urls = buildVocabCandidates(level, lesson);
-    return await firstOk(urls); // returns the first existing URL or null
+  // 1) Manifest first
+  const ent = getManifestEntry(level, lesson);
+  if (ent && ent.vocab){
+    const list = Array.isArray(ent.vocab) ? ent.vocab : [ent.vocab];
+    // manifest entries are relative to lesson folder:
+    // e.g. "Vocabulary/lesson-01.csv"
+    const absolutized = list.map(p => `/level/${level}/${lesson}/${p}`);
+    const hit = await firstOk(absolutized);
+    if (hit) return hit;
   }
+  // 2) Fallback to filename candidates
+  const urls = buildVocabCandidates(level, lesson);
+  return await firstOk(urls);
+}
+
 
   // Directory lister: only returns names if directory indexes are enabled (rare on Vercel)
   async function listCsvFiles(dirUrl){
@@ -689,20 +701,56 @@ window.openSection = async (name) => {
       elLessonList.appendChild(item);
     }
   }
-  // REPLACE discoverLessons with this version
-// FULL REPLACEMENT
+  // ===== Manifest helpers =====
+async function loadLevelManifest(level){
+  const key = `m/${level}`;
+  if (App.cache.manifest?.get && App.cache.manifest.has(key)) {
+    return App.cache.manifest.get(key);
+  }
+  App.cache.manifest = App.cache.manifest || new Map();
+  const url = `/level/${level}/manifest.json`;
+  // HEAD→GET like firstOk, but for a single URL
+  let txt = null;
+  try {
+    let r = await fetch(url, { method:"HEAD", cache:"no-cache" });
+    if (!r.ok && r.status !== 405) throw new Error();
+    r = await fetch(url, { method:"GET", cache:"no-cache" });
+    if (r.ok) txt = await r.text();
+  } catch {}
+  let data = null;
+  try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
+  App.cache.manifest.set(key, data);
+  return data;
+}
+
+function getManifestEntry(level, lesson){
+  const m = App.cache.manifest?.get?.(`m/${level}`);
+  if (!m || !m.lessons) return null;
+  // Allow both "Lesson-01" and "lesson-01"
+  const k1 = lesson;
+  const k2 = lesson.toLowerCase();
+  return m.lessons[k1] || m.lessons[k2] || null;
+}
+
 // Only check canonical vocab filenames to decide if a lesson exists
+// Fast path via manifest; fallback to slow scan if manifest missing
 async function discoverLessons(level){
+  const m = await loadLevelManifest(level);
+  if (m && Array.isArray(m.allLessons) && m.allLessons.length){
+    return m.allLessons.slice(); // already ordered
+  }
+  // Fallback: your previous probing logic
   const found = [];
   let misses = 0;
   for (let i = 1; i <= 60; i++){
     const L = `Lesson-${String(i).padStart(2, "0")}`;
     const okUrl = await findVocabCsv(level, L);
     if (okUrl){ found.push(L); misses = 0; }
-    else { if (++misses >= 3) break; } // early stop on empty tail
+    else { if (++misses >= 3) break; }
   }
   return found;
 }
+
 
 // --- Replace openLesson with this ---
 async function openLesson(level, lesson){
@@ -778,6 +826,29 @@ window.openLessonTab = async (tab)=>{
 };
   // ---------- Video Module (no extra file buttons) ----------
 async function loadAllVideoRows(level, lesson){
+  // Manifest first
+  const ent = getManifestEntry(level, lesson);
+  if (ent){
+    // Option A: videos array [{title,url},...]
+    if (Array.isArray(ent.videos) && ent.videos.length){
+      return ent.videos
+        .filter(v => v && v.title && v.url)
+        .map(v => ({ title: v.title, url: v.url }));
+    }
+    // Option B: videoCsv path like "Video Lecture/Lesson.csv"
+    if (ent.videoCsv){
+      const file = `/level/${level}/${lesson}/${ent.videoCsv}`;
+      try {
+        const txt = await (await fetch(encodePath(file), { cache:"no-cache" })).text();
+        const csv = parseCSV(txt);
+        const rows = [];
+        for (const r of csv) if (r[0] && r[1]) rows.push({ title: r[0], url: r[1] });
+        if (rows.length) return rows;
+      } catch {}
+    }
+  }
+
+  // Fallback: your original heuristic
   const base = `/level/${level}/${lesson}/Video Lecture/`;
   const file = await firstOk([ base + "Lesson.csv", base + "lesson.csv" ]);
   if (!file) return [];
@@ -789,6 +860,7 @@ async function loadAllVideoRows(level, lesson){
   } catch {}
   return rows;
 }
+
 
 async function renderVideos(){
   const elVideoCards = document.querySelector("#video-cards");
@@ -1507,29 +1579,38 @@ async function learnNoteAddOrSave(){
 
   // ---------- Grammar ----------
   function wireGrammarTab(){
-    document.querySelector("#open-grammar-pdf").onclick = async ()=>{
-      const n  = (window.App.lesson || "").split("-")[1] || "01";   // "01"
-      const n1 = String(Number(n));                                  // "1"
-      const n2 = n.padStart(2, "0");                                 // "01"
+  document.querySelector("#open-grammar-pdf").onclick = async ()=>{
+    const level = window.App.level;
+    const lesson = window.App.lesson;
+    const n   = (lesson || "").split("-")[1] || "01";   // "01"
+    const n1  = String(Number(n));                      // "1"
+    const n2  = n.padStart(2, "0");                     // "01"
+    const base = `/level/${level}/${lesson}/`;
 
-      const base = `/level/${window.App.level}/${window.App.lesson}/Grammar/`;
-      const u = await firstOk([
-        // existing
-        `${base}lesson-${n2}.pdf`,
-        `${base}Lesson.pdf`,
-        // NEW: support "Grammar-Lesson-1.pdf" and friends
-        `${base}Grammar-Lesson-${n1}.pdf`,
-        `${base}grammar-lesson-${n1}.pdf`,
-        // (optional but helpful) zero-padded variants
-        `${base}Grammar-Lesson-${n2}.pdf`,
-        `${base}grammar-lesson-${n2}.pdf`,
-      ]);
+    // Manifest first
+    const ent = getManifestEntry(level, lesson);
+    if (ent && ent.grammar){
+      const list = Array.isArray(ent.grammar) ? ent.grammar : [ent.grammar];
+      const abs  = list.map(p => base + p);
+      const u = await firstOk(abs);
+      if (u) { window.open(u, "_blank", "noopener"); return; }
+    }
 
-      if (u) window.open(u, "_blank", "noopener"); else toast("PDF not found.");
-    };
-    // Optional practice sets (unchanged)
-    renderGrammarPracticeFiles?.();
-  }
+    // Fallbacks (including your new accepted spellings)
+    const u = await firstOk([
+      `${base}Grammar/lesson-${n2}.pdf`,
+      `${base}Grammar/Lesson.pdf`,
+      `${base}Grammar/Grammar-Lesson-${n1}.pdf`,
+      `${base}Grammar/grammar-lesson-${n1}.pdf`,
+      `${base}Grammar/Grammar-Lesson-${n2}.pdf`,
+      `${base}Grammar/grammar-lesson-${n2}.pdf`,
+    ]);
+    if (u) window.open(u, "_blank", "noopener"); else toast("PDF not found.");
+  };
+
+  renderGrammarPracticeFiles?.();
+}
+
 
 
   async function renderGrammarPracticeFiles(){
