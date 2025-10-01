@@ -1753,47 +1753,54 @@ async function learnNoteAddOrSave(){
 
   // ---------- Marked ----------
   async function renderMarkedList(){
+      // clear container
+      if (elMarkedContainer) elMarkedContainer.innerHTML = "";
+
+      // gather sources
+      let remote = [], local = [], signed = [];
+      try { const fb = await whenFBReady(); remote = await fb.listMarked(); } catch {}
+      try { local = getLocalMarked(); } catch {}
+      try { const fb = await whenFBReady(); signed = await fb.signWordList(); } catch {}
+
+      // normalize to a single shape the UI expects
       const rows = [
-  ...remote.map(r => ({...r, _src: "remote"})),
-  ...local.map(r => ({...r, _src: "local"})),
-  ...signed.map(r => ({
-    id: `sign::${r.id}`,
-    kanji: r.kanji,
-    hira: r.front, en: r.back, front: r.front, back: r.back,
-    _src: "sign",
-    _markedId: `${r.front}::${r.back}` // how it was stored in Marked collection
-  }))
-];
+        ...remote.map(r => ({ id: r.id, front: r.front || r.hira, back: r.back || r.en, _src: "remote" })),
+        ...local .map(r => ({ id: r.id, front: r.front || r.hira, back: r.back || r.en, _src: "local"  })),
+        ...signed.map(r => ({
+          id: `sign::${r.id}`,
+          front: r.front, back: r.back, _src: "sign",
+          _markedId: `${r.front}::${r.back}`
+        }))
+      ];
 
-    elMarkedStatus.textContent = `${rows.length} item(s).`;
+      elMarkedStatus.textContent = `${rows.length} item(s).`;
 
-    for (const r of rows){
-      const div = document.createElement("div");
-      div.className = "marked-item";
-      div.innerHTML = `
-        <div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} — <span class="muted">${escapeHTML(r.back || r.en || "")}</span></div>
-        <button data-id="${r.id}" data-src="${r._src}" data-marked-id="${r._markedId || ""}">Unmark</button>`;
-      div.querySelector("button").addEventListener("click", async (e) => {
-        const src = e.currentTarget.dataset.src;
-        const id  = e.currentTarget.dataset.id;
-        const markedId = e.currentTarget.dataset.markedId;
-        try {
-          if (src === "remote") {
-            const fb = await whenFBReady(); await fb.unmarkWord(id);
-          } else if (src === "local") {
-            removeLocalMarked(id);
-          } else if (src === "sign") {
-            // only unmark (do not delete from Sign Words here)
-            const fb = await whenFBReady(); await fb.unmarkWord(markedId);
-          }
-          toast("Unmarked ✓");
-        } catch {}
-        await renderMarkedList();
-      });
-      elMarkedContainer.appendChild(div);
+      for (const r of rows){
+        const div = document.createElement("div");
+        div.className = "marked-item";
+        div.innerHTML = `
+          <div>${escapeHTML(r.front)} — <span class="muted">${escapeHTML(r.back || "")}</span></div>
+          <button data-id="${escapeHTML(r.id)}" data-src="${r._src}" data-marked-id="${escapeHTML(r._markedId || "")}">Unmark</button>`;
+        div.querySelector("button")?.addEventListener("click", async (e) => {
+          const src = e.currentTarget.dataset.src;
+          const id  = e.currentTarget.dataset.id;
+          const markedId = e.currentTarget.dataset.markedId;
+          try {
+            if (src === "remote") {
+              const fb = await whenFBReady(); await fb.unmarkWord(id);
+            } else if (src === "local") {
+              removeLocalMarked(id);
+            } else if (src === "sign") {
+              const fb = await whenFBReady(); await fb.unmarkWord(markedId);
+            }
+            toast("Unmarked ✓");
+          } catch {}
+          await renderMarkedList();
+        });
+        elMarkedContainer.appendChild(div);
+      }
     }
 
-    }
 
   window.startMarkedLearn = async()=> setupListPractice("marked","learn");
   window.startMarkedPractice = async(m)=> setupListPractice("marked", m);
@@ -2108,12 +2115,6 @@ async function learnNoteAddOrSave(){
   }
 
   function fmtDate(d){ try{ const dt=d instanceof Date ? d : new Date(d); return dt.toLocaleString(); }catch{ return "-"; } }
-
-// when building each row:
-  const dt = r.clientAtMs ? new Date(r.clientAtMs) : (r.createdAt?.toDate?.() || new Date());
-  tdDate.textContent = fmtDate(dt);
-
-  
 
   async function renderOverallLeaderboard() {
       const tb = document.querySelector("#leaderboard-table tbody");
