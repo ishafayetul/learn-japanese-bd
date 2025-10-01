@@ -13,6 +13,8 @@
 // Wait until firebase.js finished and window.FB is ready
 // --- bootstrap so navigateLevel() never touches undefined ---
 window.App = window.App || {};
+// Relative base for all lesson assets
+const LEVEL_BASE = window.APP_LEVEL_BASE || "level";
 
 async function whenFBReady(timeout = 15000) {
   const start = Date.now();
@@ -206,14 +208,10 @@ window.App = App;
             .replace(/%3A/g, ':');
   }
 // ---- Manifest URL resolver (works on subpaths too) ----
-  const LEVEL_BASE = window.APP_LEVEL_BASE || "/level"; 
   function manifestCandidates(level){
-    // Tries both absolute and relative, so /app/ works too.
-    return [
-      `${LEVEL_BASE}/${level}/manifest.json`,
-      `level/${level}/manifest.json`
-    ];
+    return [`${LEVEL_BASE}/${level}/manifest.json`];
   }
+
 
 // Build many possible filename variants for the vocab CSV
   function buildVocabCandidates(level, lesson){
@@ -244,12 +242,12 @@ window.App = App;
   // Try all candidates until one exists
   // Return ONE absolute CSV path or null, based solely on manifest.json
   async function findVocabCsv(level, lesson){
-    const ent = getManifestEntry(level, lesson);
-    if (!ent || !ent.vocab) return null;
-    // ent.vocab can be a string or an array; we use the first one
-    const rel = Array.isArray(ent.vocab) ? ent.vocab[0] : ent.vocab;
-    return `/level/${level}/${lesson}/${rel}`;
-  }
+  const ent = getManifestEntry(level, lesson);
+  if (!ent || !ent.vocab) return null;
+  const rel = Array.isArray(ent.vocab) ? ent.vocab[0] : ent.vocab;
+  return `${LEVEL_BASE}/${level}/${lesson}/${rel}`;
+}
+
 
 
 
@@ -717,43 +715,38 @@ window.openSection = async (name) => {
   // ===== Manifest helpers =====
 // Cache manifests per level
 async function loadLevelManifest(level){
-  App.cache.manifest = App.cache.manifest || new Map();
   const key = `m/${level}`;
+  App.cache.manifest = App.cache.manifest || new Map();
   if (App.cache.manifest.has(key)) return App.cache.manifest.get(key);
 
-  let data = null;
-  const urls = manifestCandidates(level);
-  for (const raw of urls){
-    const url = encodePath(raw) + `?v=${Date.now()}`; // cache-bust while dev
-    try{
-      const r = await fetch(url, { method:"GET", cache:"no-cache" });
-      if (!r.ok) continue;
-      const txt = await r.text();
-      data = JSON.parse(txt);
-      break;
-    }catch(_e){ /* try next candidate */ }
-  }
-
-  App.cache.manifest.set(key, data); // may be null (we store that too)
+  const [url] = manifestCandidates(level);
+  let txt = null;
+  try {
+    // Direct GET (most hosts block HEAD on static)
+    const r = await fetch(url, { cache: "no-cache" });
+    if (r.ok) txt = await r.text();
+  } catch {}
+  const data = txt ? JSON.parse(txt) : null;
+  App.cache.manifest.set(key, data);
   return data;
 }
+
 
 function getManifestEntry(level, lesson){
   const m = App.cache.manifest?.get?.(`m/${level}`);
   if (!m || !m.lessons) return null;
-  // Accept exact or lowercased lesson keys
   const k1 = lesson;
-  const k2 = String(lesson || "").toLowerCase();
+  const k2 = lesson.toLowerCase();
   return m.lessons[k1] || m.lessons[k2] || null;
 }
+
 
 // Lessons come ONLY from manifest; otherwise show "Coming soon"
 async function discoverLessons(level){
   const m = await loadLevelManifest(level);
-  return (m && Array.isArray(m.allLessons) && m.allLessons.length)
-    ? m.allLessons.slice()
-    : [];
+  return (m && Array.isArray(m.allLessons) && m.allLessons.length) ? m.allLessons.slice() : [];
 }
+
 
 
 
@@ -835,16 +828,14 @@ async function loadAllVideoRows(level, lesson){
   const ent = getManifestEntry(level, lesson);
   if (!ent) return [];
 
-  // Option 1: embedded array of videos
+  // Option A: inline videos in manifest
   if (Array.isArray(ent.videos) && ent.videos.length){
-    return ent.videos
-      .filter(v => v && v.title && v.url)
-      .map(v => ({ title: v.title, url: v.url }));
+    return ent.videos.filter(v => v && v.title && v.url).map(v => ({ title: v.title, url: v.url }));
   }
 
-  // Option 2: CSV path in manifest (your filename: "Video Lecture/video.csv")
+  // Option B: CSV path in manifest (e.g., "Video Lecture/video.csv")
   if (ent.videoCsv){
-    const file = `/level/${level}/${lesson}/${ent.videoCsv}`;
+    const file = `${LEVEL_BASE}/${level}/${lesson}/${ent.videoCsv}`;
     try {
       const txt = await (await fetch(file, { cache:"no-cache" })).text();
       const csv = parseCSV(txt);
@@ -853,9 +844,9 @@ async function loadAllVideoRows(level, lesson){
       return rows;
     } catch { return []; }
   }
-
   return [];
 }
+
 
 
 
@@ -1583,15 +1574,15 @@ async function learnNoteAddOrSave(){
 
     if (ent && ent.grammar){
       const rel = Array.isArray(ent.grammar) ? ent.grammar[0] : ent.grammar;
-      const u = `/level/${level}/${lesson}/${rel}`;
+      const u = `${LEVEL_BASE}/${level}/${lesson}/${rel}`;
       window.open(u, "_blank", "noopener");
     } else {
       toast("PDF not configured in manifest.");
     }
   };
-  // Optional practice sets UI stays as-is if you use it; otherwise do nothing.
   renderGrammarPracticeFiles?.();
 }
+
 
 
 
