@@ -576,94 +576,70 @@ async function discoverLessons(level){
   return found;
 }
 
-
-  // ---------- Open lesson & tabs ----------
+// --- Replace openLesson with this ---
 async function openLesson(level, lesson){
   try { await flushSession?.(); } catch {}
 
-  // Clean right side
+  // Blank out all right-side tab panes
   ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel=>document.querySelector(sel)?.classList.add("hidden"));
   clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
-  hideContentPanes(); // keep navbar visible
+  hideContentPanes(); // keep sidebar/topbar visible
 
-  // Set state + show lesson tabs area
+  // Set state + reveal the lesson tabs area
   App.level = level;
   App.lesson = lesson;
-  document.querySelector("#crumb-level").textContent = level || "—";
+  document.querySelector("#crumb-level").textContent  = level || "—";
   document.querySelector("#crumb-lesson").textContent = lesson || "—";
-  document.querySelector("#crumb-mode").textContent = "—";
+  document.querySelector("#crumb-mode").textContent   = "—";
 
   document.querySelector("#level-shell")?.classList.remove("hidden");
-  const area = document.querySelector("#lesson-area");
-  area?.classList.remove("hidden");
+  document.querySelector("#lesson-area")?.classList.remove("hidden");
   hideLessonsHeaderAndList();
-  showLessonBar();
+  showLessonBar(); // <-- show the three choices
 
+  // Header text above the tabs
   document.querySelector("#lesson-title").textContent = `${lesson.replace(/-/g," ")} — ${level}`;
-  document.querySelector("#lesson-availability").textContent = "Loading…";
 
+  // Just show availability info; DO NOT navigate to a tab automatically
   const hasVocabUrl = await findVocabCsv(level, lesson);
-
-  await openLessonTab(hasVocabUrl ? "vocab" : "videos");
   document.querySelector("#lesson-availability").textContent = hasVocabUrl ? "Vocab: Yes" : "Vocab: No";
 
   updateBackVisibility();
 }
-window.openLessonTab = async (tab) => {
-  // make the right pane visible
+
+// --- Replace openLessonTab with this ---
+window.openLessonTab = async (tab)=>{
+  // Keep lesson area + tabs visible for all tabs
   document.querySelector("#level-shell")?.classList.remove("hidden");
   document.querySelector("#lesson-area")?.classList.remove("hidden");
+  showLessonBar();
 
   try { await flushSession?.(); } catch {}
   App.tab = tab;
   document.querySelector("#crumb-mode").textContent = tab;
 
-  // 1) Clear ALL tab contents and state
-  ["#tab-videos", "#tab-vocab", "#tab-grammar"].forEach(sel =>
-    document.querySelector(sel)?.classList.add("hidden")
-  );
-  clearVideosPane();     // empties cards + closes lightbox
-  clearVocabPane();      // hides all vocab submenus/finals
-  clearGrammarPane();    // hides grammar practice area
-  closeVideoLightbox?.();
-
-  // Always hide the lessons header (we are inside a lesson now)
+  // Clear all panes, then open the requested one
+  ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel=>document.querySelector(sel)?.classList.add("hidden"));
+  clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
   hideLessonsHeaderAndList();
 
-  // 2) Open the requested tab with the right chrome
   if (tab === "videos") {
-    // Tabs header visible on Videos
-    showLessonBar();
-
     document.querySelector("#tab-videos")?.classList.remove("hidden");
     await renderVideos();
-
   } else if (tab === "vocab") {
-    // Tabs header HIDDEN on Vocab (remove the “Lesson — N5 · Vocab: Yes” strip)
-    hideLessonBar();
-
     document.querySelector("#tab-vocab")?.classList.remove("hidden");
     await ensureDeckLoaded();
     const has = (App.deck?.length || 0) > 0;
     document.querySelector("#vocab-status").textContent = has ? "Pick an option." : "No vocabulary found.";
-
-    // Show ONLY the Vocab root card; all submenus/finals are already hidden by clearVocabPane()
-    showVocabRootCard();
+    // show the Vocab root choices first
     document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
-
   } else if (tab === "grammar") {
-    // Tabs header visible on Grammar
-    showLessonBar();
-
     document.querySelector("#tab-grammar")?.classList.remove("hidden");
     wireGrammarTab();
   }
 
   updateBackVisibility();
 };
-
-
-
   // ---------- Video Module (no extra file buttons) ----------
 async function loadAllVideoRows(level, lesson){
   const base = `/level/${level}/${lesson}/Video Lecture/`;
