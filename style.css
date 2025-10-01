@@ -657,10 +657,12 @@ code{ background:#0c1424; border:1px solid var(--border); padding:1px 6px; borde
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.55);   /* darker, solid overlay */
-  /* removed: backdrop-filter */
-  z-index:1000;
+  background:rgba(0,0,0,.55);  /* no blur, just a dark overlay */
+  z-index:1000;                /* below .sidebar (1001) so taps hit the menu */
 }
+/* when menu is open */
+body.nav-open .scrim{ display:block; }
+
 
 /* Desktop unchanged; switch at 900px */
 @media (max-width: 900px){
