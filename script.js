@@ -556,14 +556,17 @@ window.navigateLevel = async (level) => {
   }
   await showLessonList(level);
   // If manifest didn't load, tell the user exactly what's missing
-  const m = App.cache.manifest?.get?.(`m/${level}`);
-  if (!m) {
-    const st = document.querySelector("#lesson-status");
-    if (st) {
-      st.textContent = `manifest.json not found at: ${manifestCandidates(level).join("  or  ")}`;
-      st.classList.remove("coming-soon");
-    }
+  // After: await showLessonList(level);
+  const sts = document.querySelector("#lesson-status");
+  const status = App.cache.manifestStatus?.get?.(`m/${level}`);
+
+  // If the file existed but JSON was invalid, surface the parse error.
+  // If the file was missing (404), we leave the default "Coming Soon".
+  if (sts && status && status.found && status.error) {
+    sts.classList.remove("coming-soon");
+    sts.textContent = status.error; // e.g., "Error in manifest.json: Unexpected token …"
   }
+
 
   updateBackVisibility?.();
   // bring viewport up for fresh context
@@ -714,23 +717,42 @@ window.openSection = async (name) => {
   }
   // ===== Manifest helpers =====
 // Cache manifests per level
+// ===== Manifest helpers =====
+// Cache manifests per level + keep fetch/parse status
 async function loadLevelManifest(level){
   const key = `m/${level}`;
   App.cache.manifest = App.cache.manifest || new Map();
+  App.cache.manifestStatus = App.cache.manifestStatus || new Map();
+
   if (App.cache.manifest.has(key)) return App.cache.manifest.get(key);
 
   const [url] = manifestCandidates(level);
-  let txt = null;
+  let data = null;
+  const status = { found: false, error: null };
+
   try {
-    // Direct GET (most hosts block HEAD on static)
     const r = await fetch(url, { cache: "no-cache" });
-    if (r.ok) txt = await r.text();
-  } catch {}
-  const data = txt ? JSON.parse(txt) : null;
+    if (r.ok) {
+      status.found = true;
+      const txt = await r.text();
+      try {
+        data = JSON.parse(txt);
+      } catch (e) {
+        status.error = `Error in manifest.json: ${e.message}`;
+      }
+    } else if (r.status !== 404) {
+      // Non-404 fetch error (e.g., 500). Keep "Coming Soon" unless we want to surface it.
+      status.error = `Failed to load manifest.json (HTTP ${r.status}).`;
+    }
+  } catch (e) {
+    // Network or other fetch issue
+    status.error = `Failed to load manifest.json (${e.message || "network error"}).`;
+  }
+
   App.cache.manifest.set(key, data);
+  App.cache.manifestStatus.set(key, status);
   return data;
 }
-
 
 function getManifestEntry(level, lesson){
   const m = App.cache.manifest?.get?.(`m/${level}`);
@@ -740,12 +762,12 @@ function getManifestEntry(level, lesson){
   return m.lessons[k1] || m.lessons[k2] || null;
 }
 
-
 // Lessons come ONLY from manifest; otherwise show "Coming soon"
 async function discoverLessons(level){
   const m = await loadLevelManifest(level);
   return (m && Array.isArray(m.allLessons) && m.allLessons.length) ? m.allLessons.slice() : [];
 }
+
 
 
 
