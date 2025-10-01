@@ -1878,11 +1878,9 @@ window.openMixPractice = async () => {
   document.querySelector("#mix-section")?.classList.remove("hidden");
 
   // breadcrumbs / state
-  App.level = "Mix";
-  App.lesson = "—";
-  App.tab = "vocab";
-  App.mode = null;
-  setCrumbs();
+  document.querySelector("#crumb-level").textContent  = "Mix";
+  document.querySelector("#crumb-lesson").textContent = "—";
+  document.querySelector("#crumb-mode").textContent   = "vocab";
 
   await renderMixPicker?.();       // build the multi-select UI
   window.updateBackVisibility?.(); // safe global
