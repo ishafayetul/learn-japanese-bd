@@ -475,33 +475,72 @@ function showLessonBar(){ document.querySelector("#lesson-area .lesson-bar")?.cl
       .forEach(x=>x.classList.add("hidden"));
   }
 
- window.navigateLevel = async (level) => {
+ // HARD RESET: always bring user to the lesson list for the chosen level
+window.navigateLevel = async (level) => {
   try { await flushSession?.(); } catch {}
 
-  // make sure we’re writing to the same object used everywhere
+  // keep using the same App object everywhere
   if (!window.App) window.App = {};
   const App = window.App;
 
-  App.level = level; App.lesson = null; App.tab = "videos"; App.mode = null;
+  // reset high-level state
+  App.level = level;
+  App.lesson = null;
+  App.tab = "videos";
+  App.mode = null;
   App.stats = { right: 0, wrong: 0, skipped: 0 };
 
+  // crumbs
   document.querySelector("#crumb-level").textContent  = level || "—";
   document.querySelector("#crumb-lesson").textContent = "—";
   document.querySelector("#crumb-mode").textContent   = "—";
 
-  // clean right side completely
-  ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel => document.querySelector(sel)?.classList.add("hidden"));
+  // nuke any right-side content completely
   closeVideoLightbox?.();
-  hideContentPanes();
+  ["#tab-videos", "#tab-vocab", "#tab-grammar"].forEach(sel => document.querySelector(sel)?.classList.add("hidden"));
+  // clear per-tab panes so no stale text remains
+  (function hardClear(){
+    // videos
+    const vc = document.querySelector("#video-cards");
+    const vs = document.querySelector("#video-status");
+    if (vc) vc.innerHTML = "";
+    if (vs) vs.textContent = "";
 
-  // show lesson list and load
+    // vocab
+    ["#learn","#practice","#write","#make","#vocab-learn-menu","#vocab-mcq-menu","#vocab-write-menu"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
+    document.querySelector("#vocab-status") && (document.querySelector("#vocab-status").textContent = "");
+    document.querySelector("#vocab-mode-select")?.closest(".card")?.classList.remove("hidden");
+
+    // grammar
+    ["#pg-area"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
+    ["#pg-card","#pg-feedback"].forEach(s => { const el=document.querySelector(s); if (el) el.textContent=""; });
+    const pgi = document.querySelector("#pg-input"); if (pgi) pgi.value="";
+    const pgb = document.querySelector("#pg-file-buttons"); if (pgb) pgb.innerHTML="";
+    const pgs = document.querySelector("#pg-status"); if (pgs) pgs.textContent="";
+  })();
+
+  // show only the lesson list (hide the lesson tab bar & meta)
+  document.querySelector("#lesson-area")?.classList.add("hidden");
   document.querySelector("#level-shell")?.classList.remove("hidden");
+  document.querySelector(".lesson-head")?.classList?.remove?.("hidden");
+  document.querySelector(".lesson-meta")?.classList.add("hidden");
+  document.querySelector("#lesson-list")?.closest(".card")?.classList.remove("hidden"); // make sure list card is visible
+  // explicitly hide the tab bar (the “Video/Vocab/Grammar” buttons) while on the list
+  document.querySelector("#lesson-area .lesson-bar")?.classList.add("hidden");
+
+  // status + load lessons
   const st = document.querySelector("#lesson-status");
-  if (st) st.textContent = "Scanning lessons…";
+  if (st) {
+    st.classList.remove("coming-soon");
+    st.textContent = "Scanning lessons…";
+  }
   await showLessonList(level);
 
-  updateBackVisibility();
+  updateBackVisibility?.();
+  // bring viewport up for fresh context
+  try { document.querySelector(".main-content")?.scrollTo({ top: 0, behavior: "instant" }); } catch {}
 };
+
 
 
 
