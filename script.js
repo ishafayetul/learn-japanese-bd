@@ -202,9 +202,19 @@ window.App = App;
   function currentDeckId(){ return (App.level && App.lesson) ? `${App.level}/${App.lesson}` : (App.lesson || App.level || "-"); }
   // encode segments but preserve slashes
   function encodePath(p){
-  return p.split('/').map(s => s === '' ? '' : encodeURIComponent(s)).join('/')
-          .replace(/%3A/g, ':');
-}
+    return p.split('/').map(s => s === '' ? '' : encodeURIComponent(s)).join('/')
+            .replace(/%3A/g, ':');
+  }
+// ---- Manifest URL resolver (works on subpaths too) ----
+  const LEVEL_BASE = window.APP_LEVEL_BASE || "/level"; 
+  function manifestCandidates(level){
+    // Tries both absolute and relative, so /app/ works too.
+    return [
+      `${LEVEL_BASE}/${level}/manifest.json`,
+      `level/${level}/manifest.json`
+    ];
+  }
+
 // Build many possible filename variants for the vocab CSV
   function buildVocabCandidates(level, lesson){
     const num2 = (lesson.split("-")[1] || "").padStart(2, "0"); // "01"
@@ -547,6 +557,15 @@ window.navigateLevel = async (level) => {
     st.textContent = "Scanning lessons…";
   }
   await showLessonList(level);
+  // If manifest didn't load, tell the user exactly what's missing
+  const m = App.cache.manifest?.get?.(`m/${level}`);
+  if (!m) {
+    const st = document.querySelector("#lesson-status");
+    if (st) {
+      st.textContent = `manifest.json not found at: ${manifestCandidates(level).join("  or  ")}`;
+      st.classList.remove("coming-soon");
+    }
+  }
 
   updateBackVisibility?.();
   // bring viewport up for fresh context
@@ -696,44 +715,46 @@ window.openSection = async (name) => {
     }
   }
   // ===== Manifest helpers =====
+// Cache manifests per level
 async function loadLevelManifest(level){
-  const key = `m/${level}`;
-  if (App.cache.manifest?.get && App.cache.manifest.has(key)) {
-    return App.cache.manifest.get(key);
-  }
   App.cache.manifest = App.cache.manifest || new Map();
-  const url = `/level/${level}/manifest.json`;
-  // HEAD→GET like firstOk, but for a single URL
-  let txt = null;
-  try {
-    let r = await fetch(url, { method:"HEAD", cache:"no-cache" });
-    if (!r.ok && r.status !== 405) throw new Error();
-    r = await fetch(url, { method:"GET", cache:"no-cache" });
-    if (r.ok) txt = await r.text();
-  } catch {}
+  const key = `m/${level}`;
+  if (App.cache.manifest.has(key)) return App.cache.manifest.get(key);
+
   let data = null;
-  try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
-  App.cache.manifest.set(key, data);
+  const urls = manifestCandidates(level);
+  for (const raw of urls){
+    const url = encodePath(raw) + `?v=${Date.now()}`; // cache-bust while dev
+    try{
+      const r = await fetch(url, { method:"GET", cache:"no-cache" });
+      if (!r.ok) continue;
+      const txt = await r.text();
+      data = JSON.parse(txt);
+      break;
+    }catch(_e){ /* try next candidate */ }
+  }
+
+  App.cache.manifest.set(key, data); // may be null (we store that too)
   return data;
 }
 
 function getManifestEntry(level, lesson){
   const m = App.cache.manifest?.get?.(`m/${level}`);
   if (!m || !m.lessons) return null;
-  // Allow both "Lesson-01" and "lesson-01"
+  // Accept exact or lowercased lesson keys
   const k1 = lesson;
-  const k2 = lesson.toLowerCase();
+  const k2 = String(lesson || "").toLowerCase();
   return m.lessons[k1] || m.lessons[k2] || null;
 }
 
-// Only check canonical vocab filenames to decide if a lesson exists
-// Only use manifest. If missing/empty, show "Coming soon".
+// Lessons come ONLY from manifest; otherwise show "Coming soon"
 async function discoverLessons(level){
   const m = await loadLevelManifest(level);
   return (m && Array.isArray(m.allLessons) && m.allLessons.length)
     ? m.allLessons.slice()
     : [];
 }
+
 
 
 
