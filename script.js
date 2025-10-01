@@ -547,19 +547,78 @@ window.navigateLevel = async (level) => {
   try { document.querySelector(".main-content")?.scrollTo({ top: 0, behavior: "instant" }); } catch {}
 };
 
+// Open a "lesson-like" Vocab view, but the deck comes from Mistakes or Marked
+async function openVocabDeckFromList(source /* 'mistakes' | 'marked' */) {
+  // 1) Build the deck
+  let deck = [];
+  if (source === "mistakes") {
+    const list = getMistakes(); // [{kanji,hira,en},...]
+    deck = list.map(x => ({ kanji: x.kanji || "—", hira: x.hira || "", en: x.en || "" }))
+               .filter(x => x.hira && x.en);
+  } else {
+    deck = await getMarkedAsDeck(); // already maps front/back into hira/en
+  }
 
+  // Empty state → keep the old landing card so user sees a message
+  if (!deck.length) {
+    hideContentPanes();
+    if (source === "mistakes") {
+      document.querySelector("#mistakes-section")?.classList.remove("hidden");
+      renderMistakesLanding();
+    } else {
+      document.querySelector("#marked-section")?.classList.remove("hidden");
+      await renderMarkedList();
+    }
+    updateBackVisibility();
+    return;
+  }
 
+  // 2) Drive the UI exactly like a lesson's Vocab tab (NO auto-enter of a final mode)
+  hideContentPanes();                        // clear right panes
+  document.querySelector("#level-shell")?.classList.remove("hidden");
+  document.querySelector("#lesson-area")?.classList.remove("hidden");
+  hideLessonsHeaderAndList();
+  showLessonBar();
+
+  // Show only Vocab tab pane (keep the tab buttons visible)
+  ["#tab-videos","#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
+  document.querySelector("#tab-vocab")?.classList.remove("hidden");
+
+  // Breadcrumbs/title indicate we’re in a list, but hide meta line as per your spec
+  App.level = source === "mistakes" ? "Mistakes" : "Marked";
+  App.lesson = source === "mistakes" ? "From Mistakes" : "From Marked Words";
+  App.tab = "vocab";
+  App.mode = null;
+  document.querySelector("#crumb-level").textContent  = App.level;
+  document.querySelector("#crumb-lesson").textContent = App.lesson;
+  document.querySelector("#crumb-mode").textContent   = "vocab";
+  document.querySelector(".lesson-meta")?.classList.add("hidden");
+
+  // 3) Load the deck and show the Vocab root menus (Learn / MCQ / Write / Make)
+  App.deck = deck.slice();
+  document.querySelector("#vocab-status").textContent = "Pick an option.";
+  showVocabRootMenu();
+  showVocabRootCard();
+  document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
+
+  updateBackVisibility();
+}
 
 window.openSection = async (name) => {
   try { await flushSession?.(); } catch {}
   closeVideoLightbox?.();
-  hideContentPanes();
 
+  // Special handling: Mistakes / Marked should mirror the Lesson → Vocab experience
+  if (name === "mistakes" || name === "marked") {
+    await openVocabDeckFromList(name);
+    return;
+  }
+
+  // Other sections keep their own pages
+  hideContentPanes();
   const map = {
     progress: "#progress-section",
     leaderboard: "#leaderboard-section",
-    mistakes: "#mistakes-section",
-    marked: "#marked-section",
     signword: "#signword-section",
   };
   const sel = map[name];
@@ -567,13 +626,10 @@ window.openSection = async (name) => {
 
   if (name === "progress") await renderProgress();
   if (name === "leaderboard") await renderOverallLeaderboard();
-  if (name === "mistakes") renderMistakesLanding();
-  if (name === "marked") await renderMarkedList();
   if (name === "signword") await renderSignWordList();
 
   updateBackVisibility();
 };
-
 
 
   // ---------- Lesson discovery ----------
