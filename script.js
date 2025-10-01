@@ -1761,7 +1761,52 @@ async function learnNoteAddOrSave(){
   }
 
   // quick inputs
-  elWriteInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !(e.ctrlKey||e.metaKey)){ e.preventDefault(); window.writeSubmit(); } });
+  // quick inputs — WRITE: Enter=Submit, Ctrl+Enter=Next, Esc=Skip
+elWriteInput?.addEventListener("keydown", (e) => {
+  // Ctrl + Enter → Next
+  if (e.key === "Enter" && e.ctrlKey) {
+    e.preventDefault();
+    window.writeNext();
+    return;
+  }
+  // Enter → Submit
+  if (e.key === "Enter" && !(e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    window.writeSubmit();
+    return;
+  }
+  // Esc → Skip
+  if (e.key === "Escape") {
+    e.preventDefault();
+    window.writeSkip();
+  }
+});
+// Global shortcuts for WRITE (active only when #write is visible):
+// Ctrl+M = Mark, Ctrl+D = Show Details
+window.addEventListener("keydown", (e) => {
+  // Only when Write mode is on screen
+  if (!isVisible("#write")) return;
+
+  // Guard: require Ctrl, and ignore Alt/Meta to avoid surprises
+  if (e.ctrlKey && !e.altKey && !e.metaKey) {
+    const k = (e.key || "").toLowerCase();
+
+    // Ctrl + m → Mark current word
+    if (k === "m") {
+      e.preventDefault();           // avoid browser defaults
+      markCurrentWord();
+      return;
+    }
+
+    // Ctrl + d → Show Details
+    if (k === "d") {
+      e.preventDefault();           // avoid bookmark shortcut in some browsers
+      window.writeShowDetails();
+      return;
+    }
+  }
+});
+
   elPgInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); window.pgSubmit(); } });
 
   // Close lightbox when switching away
