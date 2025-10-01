@@ -677,56 +677,28 @@ async function openVocabDeckFromList(source /* 'mistakes' | 'marked' */) {
 window.openSection = async (name) => {
   try { await flushSession?.(); } catch {}
   closeVideoLightbox?.();
+  hideContentPanes?.();          // always clear the right pane first
 
-  // Special handling: Mistakes / Marked should mirror the Lesson → Vocab experience
-  if (name === "mistakes") {
-    await enterListMode("mistake");
-    return;
-  }
-  async function enterListMode(source /* "mistake" | "marked" */) {
-    try { await flushSession?.(); } catch {}
-    closeVideoLightbox?.();
-    hideContentPanes();        // hide everything on the right side
-    hideLessonsHeaderAndList();// hide lessons header
-    hideLessonBar();           // hide the top Video/Vocab/Grammar tabs
-
-    // Load deck from source
-    let deck = [];
-    if (name === "marked") {
-      await enterListMode("marked");
-      return;
-    }
-
-    App.deck = deck;
-    App.deckFiltered = deck.slice();
-    App.mode = null; App.qIndex = 0;
-    elVocabStatus.textContent = deck.length ? "Pick an option." : "No words found.";
-
-    // Reveal the same Vocabulary menus (root)
-    document.querySelector("#tab-vocab")?.classList.remove("hidden");
-    showVocabRootMenu();
-    showVocabRootCard();
-    document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
-
-    updateBackVisibility();
-  }
+  // Mistakes / Marked behave like a lesson's Vocab tab using the shared helper
+  if (name === "mistakes") { await openVocabDeckFromList("mistakes"); return; }
+  if (name === "marked")   { await openVocabDeckFromList("marked");   return; }
 
   // Other sections keep their own pages
-  hideContentPanes();
   const map = {
-    progress: "#progress-section",
+    progress:    "#progress-section",
     leaderboard: "#leaderboard-section",
-    signword: "#signword-section",
+    signword:    "#signword-section",
   };
   const sel = map[name];
   if (sel) document.querySelector(sel)?.classList.remove("hidden");
 
-  if (name === "progress") await renderProgress();
+  if (name === "progress")    await renderProgress();
   if (name === "leaderboard") await renderOverallLeaderboard();
-  if (name === "signword") await renderSignWordList();
+  if (name === "signword")    await renderSignWordList();
 
-  updateBackVisibility();
+  updateBackVisibility?.();
 };
+
 
 
   // ---------- Lesson discovery ----------
@@ -759,8 +731,16 @@ window.openSection = async (name) => {
       elLessonList.appendChild(item);
     }
   }
-  // ===== Manifest helpers =====
-// Cache manifests per level
+ 
+  // Build a deck from local "Mistakes" (localStorage)
+  async function fbListMistakesAsDeck(){
+    const list = getMistakes(); // [{kanji,hira,en,...}]
+    return list
+      .map(x => ({ kanji: x.kanji || "—", hira: x.hira || "", en: x.en || "" }))
+      .filter(x => x.hira && x.en);
+  }
+  window.fbListMistakesAsDeck = fbListMistakesAsDeck;
+
 // ===== Manifest helpers =====
 // Cache manifests per level + keep fetch/parse status
 async function loadLevelManifest(level){
