@@ -142,25 +142,36 @@ function landingGreeting() {
 }
 
 let __kanaTimer = null;
-function startKanaSparks() {
-  const host = document.querySelector(".device-screen");
-  if (!host || __kanaTimer) return;
-  const chars = ["あ","い","う","え","お","日","本","語","学","習","読","書","話","早","速","力"];
+  function startKanaSparks() {
+    const host = document.querySelector(".device-screen");   // the phone-like panel
+    if (!host || __kanaTimer) return;                        // don’t start twice / if not found
+    __kanaTimer = setInterval(() => spawnKanaSpark(host), 220); // add one floating kana every 220ms
+  }
 
-  __kanaTimer = setInterval(() => {
-    const s = document.createElement("div");
-    s.className = "kana-spark";
-    s.textContent = chars[Math.floor(Math.random()*chars.length)];
-    const x = 20 + Math.random() * (host.clientWidth - 40);
-    const y = host.clientHeight - 24;
-    const dur = 1400 + Math.random()*1200;
-    s.style.left = x + "px";
-    s.style.top  = y + "px";
-    s.style.animationDuration = dur + "ms";
-    host.appendChild(s);
-    setTimeout(() => s.remove(), dur + 40);
-  }, 220);
+
+function spawnKanaSpark(host){
+  const chars = ["あ","い","う","え","お","日","本","語","学","習","読","書","話","早","速","力"];
+  const s = document.createElement("div");
+  s.className = "kana-spark";
+  s.textContent = chars[Math.floor(Math.random()*chars.length)];
+  const x = 18 + Math.random() * (host.clientWidth - 36);
+  const y = host.clientHeight - 22 - Math.random()*6;
+  const dur = 1200 + Math.random()*1200;
+  s.style.left = x + "px";
+  s.style.top  = y + "px";
+  s.style.animationDuration = dur + "ms";
+  host.appendChild(s);
+  setTimeout(() => s.remove(), dur + 60);
 }
+
+function burstKanaSparks(count = 28){
+  const host = document.querySelector(".device-screen");
+  if (!host) return;
+  for (let i = 0; i < count; i++){
+    setTimeout(() => spawnKanaSpark(host), i * 18);
+  }
+}
+
 function stopKanaSparks(){
   if (__kanaTimer) { clearInterval(__kanaTimer); __kanaTimer = null; }
 }
@@ -500,6 +511,9 @@ function attemptSig(){
 
   // ---------- Auth ----------
   elAuthBtn.addEventListener("click", async () => {
+    const screen = document.querySelector(".device-screen");
+    screen?.classList.add("signing");
+    burstKanaSparks(36);
     try { const fb = await whenFBReady(); await fb.auth.signInWithGoogle(); }
     catch (e) { console.error(e); elAuthErr.style.display="block"; elAuthErr.textContent = e.message || "Sign-in failed."; }
   });
@@ -515,14 +529,20 @@ function attemptSig(){
         elAuthGate.style.display="none";
         elApp.classList.remove("hidden");
         navigateLevel("N5");
+        document.querySelector(".device-screen")?.classList.remove("signing");
+
       } else {
         // signed out → show landing
         elApp.classList.add("hidden");
         elAuthGate.style.display="";
         initLanding(); // <-- add this
+        document.querySelector(".device")?.addEventListener("mouseenter", () => burstKanaSparks(12), { passive:true });
       }
     });
-  }).catch(()=>{ elAuthGate.style.display=""; initLanding(); });
+  }).catch(()=>{ elAuthGate.style.display=""; 
+    initLanding(); 
+    document.querySelector(".device")?.addEventListener("mouseenter", () => burstKanaSparks(12), { passive:true });
+  });
 
 
   // ---------- Routing & view cleanup ----------
