@@ -132,6 +132,12 @@ async function whenFBReady(timeout = 15000) {
   const elToast = D("#toast");
 // visibility helper
 const isVisible = (sel) => !document.querySelector(sel)?.classList.contains("hidden");
+function prevLearn(){
+  if (App.qIndex > 0){ App.qIndex--; renderLearnCard(); }
+}
+function nextLearn(){
+  if (App.qIndex < App.deckFiltered.length - 1){ App.qIndex++; renderLearnCard(); }
+}
 
 // show only the lesson tabs (no tab content)
 function showLessonTabsOnly(){
@@ -907,14 +913,13 @@ function closeVideoLightbox(){
 
   // --- Learn Mode (sequential) ---
   window.startLearnMode = async (variant = "k2h") => {
-    await ensureDeckLoaded(); 
+    await ensureDeckLoaded();
     App.learnVariant = (variant === "h2e") ? "h2e" : "k2h";
     try{ await flushSession(); }catch{}
     App.mode = "learn"; setCrumbs();
-    App.deckFiltered = App.deck.slice(); // sequential
+    App.deckFiltered = App.deck.slice();
     App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
 
-    // STRICT LINEAR: hide all menus and all other finals, then show only Learn
     hideLessonsHeaderAndList();
     hideLessonBar();
     hideVocabRootCard();
@@ -924,19 +929,24 @@ function closeVideoLightbox(){
     elWrite.classList.add("hidden");
     elMake.classList.add("hidden");
 
+    // ensure notes are hidden at start
+    hideLearnNoteCard();
+
     elLearn.classList.remove("hidden");
     renderLearnCard();
     updateBackVisibility();
-
   };
+
   function renderLearnCard(){
     const w = App.deckFiltered[App.qIndex];
-    if (!w){ elLearnBox.textContent = "No words."; return; }
+    if (!w){ elLearnBox.textContent = "No words."; D("#learn-actions").innerHTML = ""; return; }
+
     const isK2H = App.learnVariant !== "h2e";
     const head  = isK2H ? "Kanji → Hiragana (Learn)" : "Hiragana → English (Learn)";
     const big   = isK2H ? (w.kanji && w.kanji!=="—" ? w.kanji : w.hira) : w.hira;
     const sub   = isK2H ? w.hira : w.en;
 
+    // flashcard body (🔊 stays here)
     elLearnBox.innerHTML = `
       <div class="flashcard">
         <div class="muted" style="font-size:1.1em;">${escapeHTML(head)}</div>
@@ -944,17 +954,29 @@ function closeVideoLightbox(){
         <div class="muted" style="margin-top:6px;">${escapeHTML(sub)}</div>
         <div style="margin-top:10px; display:flex; gap:8px; justify-content:center;">
           <button id="btn-audio" title="Play audio">🔊</button>
-          <button id="btn-mark" title="Mark word">📌 Mark</button>
-          <button id="btn-prev">Previous</button>
-          <button id="btn-next">Next</button>
         </div>
       </div>`;
 
-    D("#btn-audio").addEventListener("click", ()=>speakJa(w.hira), { passive:true });
-    D("#btn-mark").addEventListener("click", markCurrentWord);
-    D("#btn-prev").addEventListener("click", ()=>{ if (App.qIndex>0) { App.qIndex--; renderLearnCard(); } });
-    D("#btn-next").addEventListener("click", ()=>{ if (App.qIndex<App.deckFiltered.length-1) { App.qIndex++; renderLearnCard(); } });
+    // single controls row under the flashcard
+    const actions = `
+      <button id="learn-prev">⬅️ Previous</button>
+      <button id="learn-next">➡️ Next</button>
+      <button id="learn-mark">📌 Mark</button>
+      <button id="learn-note-toggle">📝 Add Note</button>
+    `;
+    D("#learn-actions").innerHTML = actions;
+
+    // wire handlers
+    D("#btn-audio")?.addEventListener("click", ()=>speakJa(w.hira), { passive:true });
+    D("#learn-prev")?.addEventListener("click", prevLearn);
+    D("#learn-next")?.addEventListener("click", nextLearn);
+    D("#learn-mark")?.addEventListener("click", markCurrentWord);
+    D("#learn-note-toggle")?.addEventListener("click", learnNoteAddOrSave);
+
+    // make sure the note card is hidden when you move to a new item
+    hideLearnNoteCard();
   }
+
 
   // --- MCQ Modes ---
   window.startPractice = async (mode)=>{
@@ -1418,3 +1440,64 @@ function closeVideoLightbox(){
 
 })();
 
+const NOTE_LS_KEY = "lj_notes_v1";
+function noteKeyFor(w){ return "note::" + keyForWord(w); }
+
+function getNoteFromLS(k){ try{ const all=JSON.parse(localStorage.getItem(NOTE_LS_KEY))||{}; return all[k]||""; }catch{ return ""; } }
+function setNoteToLS(k, v){ try{ const all=JSON.parse(localStorage.getItem(NOTE_LS_KEY))||{}; all[k]=v; localStorage.setItem(NOTE_LS_KEY, JSON.stringify(all)); }catch{} }
+
+function showLearnNoteCard(){ D("#learn-note-card")?.classList.remove("hidden"); }
+function hideLearnNoteCard(){ D("#learn-note-card")?.classList.add("hidden"); D("#learn-note-status").textContent = "—"; D("#learn-note-toggle")?.classList.remove("saving"); D("#learn-note-toggle") && (D("#learn-note-toggle").textContent = "📝 Add Note"); }
+
+async function loadNoteIfNeeded(){
+  if (!D("#learn-note-card") || !D("#learn-note-card").classList.contains("hidden")) return;
+  const w = App.deckFiltered[App.qIndex]; if (!w) return;
+  const key = noteKeyFor(w);
+
+  // try firebase first; fallback to LS
+  let txt = "";
+  try {
+    const fb = await whenFBReady();
+    if (fb?.getNoteForKey){ txt = await fb.getNoteForKey(key) || ""; }
+    else if (fb?.notes?.get){ txt = await fb.notes.get(key) || ""; }
+    else { txt = getNoteFromLS(key); }
+  } catch { txt = getNoteFromLS(key); }
+
+  D("#learn-note-text").value = txt;
+  D("#learn-note-status").textContent = txt ? "Loaded" : "—";
+}
+
+async function saveNoteNow(){
+  const w = App.deckFiltered[App.qIndex]; if (!w) return;
+  const key = noteKeyFor(w);
+  const txt = (D("#learn-note-text").value || "").trim();
+
+  // try firebase; fallback to LS
+  let ok = false;
+  try {
+    const fb = await whenFBReady();
+    if (fb?.setNoteForKey){ await fb.setNoteForKey(key, txt); ok = true; }
+    else if (fb?.notes?.set){ await fb.notes.set(key, txt); ok = true; }
+  } catch {}
+  if (!ok) setNoteToLS(key, txt);
+
+  D("#learn-note-status").textContent = "Saved ✓";
+}
+
+async function learnNoteAddOrSave(){
+  const btn = D("#learn-note-toggle");
+  const isClosed = D("#learn-note-card")?.classList.contains("hidden");
+
+  if (isClosed){
+    // first click → open and lazy-load
+    showLearnNoteCard();
+    btn.textContent = "💾 Save Note";
+    await loadNoteIfNeeded();
+    D("#learn-note-text")?.focus();
+  } else {
+    // second click → save and close
+    btn.classList.add("saving");
+    await saveNoteNow();
+    hideLearnNoteCard();
+  }
+}

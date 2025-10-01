@@ -155,32 +155,32 @@
                   </div>
                 </div>
               </section>
-
-
+              
               <!-- Flashcard Learn -->
               <section id="learn" class="hidden">
                 <div class="flashcard" id="learn-box"></div>
 
-                <!-- Notes -->
-                <div class="card learn-note-card">
+                <!-- Notes (hidden until "Add Note" is pressed) -->
+                <div class="card learn-note-card hidden" id="learn-note-card">
                   <div class="learn-note-row">
                     <label for="learn-note-text" class="learn-note-label">📝 Note for this word</label>
                     <span id="learn-note-status" class="learn-note-status muted">—</span>
                   </div>
-                  <textarea id="learn-note-text" class="learn-note-input" rows="3" placeholder="Write your mnemonic, nuance, Bangla hint, etc."></textarea>
-                  <div class="practice-actions">
-                    <!-- <button id="learn-note-save" class="save" onclick="learnNoteSaveNow()">Save Note</button>
-                    <button id="learn-mark-btn" onclick="markCurrentWord()">📌 Mark</button> -->
-                  </div>
+                  <textarea id="learn-note-text" class="learn-note-input" rows="3"
+                    placeholder="Write your mnemonic, nuance, Bangla hint, etc."></textarea>
+                  <!-- No buttons here. The only note button lives under the flashcard -->
                 </div>
 
-                <div class="practice-actions">
-                  <button onclick="prevLearn()">⬅️ Previous</button>
-                  <button onclick="showLearnRomaji()">👁 Show Details</button>
-                  <button onclick="nextLearn()">➡️ Next</button>
+                <!-- ONE controls row under the flashcard (see script.js for wiring) -->
+                <div class="practice-actions" id="learn-actions">
+                  <!-- will be injected by renderLearnCard() -->
                 </div>
+
                 <div id="learn-extra" class="muted" style="margin-top:8px;"></div>
               </section>
+
+
+              
 
               <!-- MCQ -->
               <section id="practice" class="hidden">
