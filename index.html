@@ -10,12 +10,91 @@
 <body>
   <!-- ========== Auth Gate ========== -->
   <div id="auth-gate" class="auth-gate">
-    <div class="auth-card">
-      <h1>Learn Japanese</h1>
-      <p class="muted">Sign in with Google to save progress, notes, and leaderboards.</p>
-      <button id="auth-btn">🔐 Sign in with Google</button>
-      <p id="auth-error" class="error" style="display:none;"></p>
+    <!-- AUTH GATE / LANDING -->
+    <div id="auth-gate" class="landing">
+      <!-- animated background -->
+      <div class="landing-bg"></div>
+
+      <div class="landing-wrap">
+        <header class="landing-header">
+          <div class="brand">
+            <div class="brand-badge">JL</div>
+            <div class="brand-text">
+              <h1>Learn Japanese Faster</h1>
+              <p id="landing-greeting" class="muted">こんにちは — Ready to begin?</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="landing-hero card">
+          <div class="hero-left">
+            <h2>Master vocab, kanji & grammar — effortlessly.</h2>
+            <p class="muted">
+              Bite-sized lessons, smart quizzes, writing drills, and a personal mistake tracker.
+              Practice faster with speech hints and clean keyboard shortcuts.
+            </p>
+
+            <div class="cta-row">
+              <button id="auth-btn" class="btn-primary">
+                <span class="gicon">G</span> Continue with Google
+              </button>
+              <div id="auth-error" class="auth-error" style="display:none;"></div>
+            </div>
+
+            <ul class="hero-points">
+              <li>⚡ Instant vocab decks from each lesson</li>
+              <li>🧠 Learn • MCQ • Write • Make Sentence</li>
+              <li>🎯 Track “Mistakes” and “Marked Words”</li>
+              <li>🏆 Daily & overall leaderboard</li>
+            </ul>
+          </div>
+
+          <div class="hero-right">
+            <!-- Simple “device” mock with animated kana grid (created in CSS/JS) -->
+            <div class="device">
+              <div class="device-screen">
+                <div class="kana-grid" aria-hidden="true">
+                  <!-- JS will sprinkle kana particles; this grid is just a subtle pattern -->
+                  <div>あ</div><div>い</div><div>う</div><div>え</div><div>お</div>
+                  <div>学</div><div>習</div><div>日</div><div>本</div><div>語</div>
+                  <div>書</div><div>聞</div><div>話</div><div>速</div><div>読</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="feature-grid">
+              <div class="mini-card">
+                <div class="mini-icon">🎬</div>
+                <div class="mini-title">Video Lectures</div>
+                <div class="mini-text muted">Short, focused sessions per lesson.</div>
+              </div>
+              <div class="mini-card">
+                <div class="mini-icon">🗂</div>
+                <div class="mini-title">Vocabulary</div>
+                <div class="mini-text muted">Smart decks, all modes supported.</div>
+              </div>
+              <div class="mini-card">
+                <div class="mini-icon">✍️</div>
+                <div class="mini-title">Write</div>
+                <div class="mini-text muted">Hiragana & Kanji drills with hints.</div>
+              </div>
+              <div class="mini-card">
+                <div class="mini-icon">📖</div>
+                <div class="mini-title">Grammar</div>
+                <div class="mini-text muted">Per-lesson PDFs and practice.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="landing-footer">
+          <div class="copyright">
+            © <span id="landing-year"></span> <span id="landing-author">Your Name</span>. All rights reserved.
+          </div>
+        </footer>
+      </div>
     </div>
+
   </div>
 
   <!-- ========== App ========== -->
@@ -406,6 +485,7 @@
   </div>
 
   <!-- Scripts -->
+   <script>window.SITE_AUTHOR = "Shafayetul Islam";</script>
   <script type="module" src="firebase.js"></script>
   window.APP_LEVEL_BASE = "level";
   <script src="script.js"></script>

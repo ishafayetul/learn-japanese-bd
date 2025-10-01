@@ -132,6 +132,51 @@ async function whenFBReady(timeout = 15000) {
 
   // Toast
   const elToast = D("#toast");
+
+  // --- Landing page helpers (auth gate) ---
+function landingGreeting() {
+  const h = new Date().getHours();
+  if (h < 11)  return "おはよう — Good morning!";
+  if (h < 18)  return "こんにちは — Good afternoon!";
+  return "こんばんは — Good evening!";
+}
+
+let __kanaTimer = null;
+function startKanaSparks() {
+  const host = document.querySelector(".device-screen");
+  if (!host || __kanaTimer) return;
+  const chars = ["あ","い","う","え","お","日","本","語","学","習","読","書","話","早","速","力"];
+
+  __kanaTimer = setInterval(() => {
+    const s = document.createElement("div");
+    s.className = "kana-spark";
+    s.textContent = chars[Math.floor(Math.random()*chars.length)];
+    const x = 20 + Math.random() * (host.clientWidth - 40);
+    const y = host.clientHeight - 24;
+    const dur = 1400 + Math.random()*1200;
+    s.style.left = x + "px";
+    s.style.top  = y + "px";
+    s.style.animationDuration = dur + "ms";
+    host.appendChild(s);
+    setTimeout(() => s.remove(), dur + 40);
+  }, 220);
+}
+function stopKanaSparks(){
+  if (__kanaTimer) { clearInterval(__kanaTimer); __kanaTimer = null; }
+}
+
+function initLanding() {
+  const gate = document.getElementById("auth-gate");
+  if (!gate) return;
+  const yEl = document.getElementById("landing-year");
+  const aEl = document.getElementById("landing-author");
+  const gEl = document.getElementById("landing-greeting");
+  if (yEl) yEl.textContent = String(new Date().getFullYear());
+  if (aEl) aEl.textContent = String(window.SITE_AUTHOR || "Your Name");
+  if (gEl) gEl.textContent = landingGreeting();
+  startKanaSparks();
+}
+
 // visibility helper
 const isVisible = (sel) => !document.querySelector(sel)?.classList.contains("hidden");
 function prevLearn(){
@@ -464,10 +509,21 @@ function attemptSig(){
   });
   whenFBReady().then(fb=>{
     fb.auth.onChange(user=>{
-      if(user){ elAuthGate.style.display="none"; elApp.classList.remove("hidden"); navigateLevel("N5"); }
-      else { elApp.classList.add("hidden"); elAuthGate.style.display=""; }
+      if(user){
+        // signed in → hide landing, show app
+        stopKanaSparks();
+        elAuthGate.style.display="none";
+        elApp.classList.remove("hidden");
+        navigateLevel("N5");
+      } else {
+        // signed out → show landing
+        elApp.classList.add("hidden");
+        elAuthGate.style.display="";
+        initLanding(); // <-- add this
+      }
     });
-  }).catch(()=>{ elAuthGate.style.display=""; });
+  }).catch(()=>{ elAuthGate.style.display=""; initLanding(); });
+
 
   // ---------- Routing & view cleanup ----------
   function hideContentPanes(){
