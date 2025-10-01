@@ -648,7 +648,7 @@ async function openVocabDeckFromList(source /* 'mistakes' | 'marked' */) {
   document.querySelector("#level-shell")?.classList.remove("hidden");
   document.querySelector("#lesson-area")?.classList.remove("hidden");
   hideLessonsHeaderAndList();
-  showLessonBar();
+  hideLessonBar();
 
   // Show only Vocab tab pane (keep the tab buttons visible)
   ["#tab-videos","#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
@@ -1094,7 +1094,7 @@ window.closeVideoLightbox = closeVideoLightbox;
 
   function showVocabRootMenu(){
   // keep the top 3 tabs visible while you're inside Vocab
-  showLessonBar();
+  if (inListVocabContext()) hideLessonBar(); else showLessonBar();
   document.querySelector(".lesson-meta")?.classList.add("hidden");
 
   // ✅ make sure the whole card reappears (this was missing)
@@ -1113,7 +1113,7 @@ window.closeVideoLightbox = closeVideoLightbox;
 
 
   window.openVocabLearnMenu = ()=>{
-    showLessonBar();
+    if (inListVocabContext()) hideLessonBar(); else showLessonBar();
     document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep meta hidden
 
     hideVocabRootCard();
@@ -1129,7 +1129,7 @@ window.closeVideoLightbox = closeVideoLightbox;
   };
 
   window.openVocabMCQMenu = ()=>{
-    showLessonBar();
+    if (inListVocabContext()) hideLessonBar(); else showLessonBar();
     document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep meta hidden
 
     hideVocabRootCard();
@@ -1145,7 +1145,7 @@ window.closeVideoLightbox = closeVideoLightbox;
   };
 
   window.openVocabWriteMenu = ()=>{
-    showLessonBar();
+    if (inListVocabContext()) hideLessonBar(); else showLessonBar();
     document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep meta hidden
 
     hideVocabRootCard();
@@ -1972,6 +1972,10 @@ async function renderMixPicker(){
 
   const st = document.querySelector("#mix-status");
   if (st) st.textContent = "Select lessons, then click Build Deck.";
+}
+
+function inListVocabContext(){
+  return App.level === "Mistakes" || App.level === "Marked" || App.level === "Mix";
 }
 
 // Global select/clear helpers (buttons below the picker)
