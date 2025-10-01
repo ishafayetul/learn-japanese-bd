@@ -139,7 +139,7 @@
         // batch setup
         const batch = writeBatch(db);
 
-        const attemptsRef = collection(db, Paths.attemptsCol());
+        const attemptsRef = collection(db, Paths.userAttemptsCol(_user.uid));
         const dailyRef    = doc(collection(db, Paths.dailyScoresCol(date)), _user.uid);
         const overallRef  = doc(collection(db, Paths.overallLBCol()), _user.uid);
 
@@ -208,22 +208,25 @@
       },
 
       async getRecentAttempts({ max = 10 } = {}) {
-        const { collection, query, orderBy, where, limit, getDocs } = await fsMods();
+        if (!_user) throw new Error("Not signed in");
+        const { collection, query, orderBy, limit, getDocs } = await fsMods();
+
+        // Per-user attempts; no cross-user merge
         const q = query(
-          collection(db, Paths.attemptsCol()),
-          where("uid","==", _user?.uid || "_"),
-          orderBy("createdAt","desc"),
+          collection(db, Paths.userAttemptsCol(_user.uid)),
+          orderBy("createdAt", "desc"),
           limit(max)
         );
+
         const snap = await getDocs(q);
         const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Stable order when createdAt is identical (same batch):
-        rows.sort((a,b) => {
+        // Stable ordering when server timestamps are identical (same batch)
+        rows.sort((a, b) => {
           const sa = a.createdAt?.toMillis?.() || 0;
           const sb = b.createdAt?.toMillis?.() || 0;
           if (sa !== sb) return sb - sa;
-          return (b.clientAtMs||0) - (a.clientAtMs||0);
+          return (b.clientAtMs || 0) - (a.clientAtMs || 0);
         });
 
         return rows;
