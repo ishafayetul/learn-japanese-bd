@@ -596,6 +596,7 @@ async function openLesson(level, lesson){
   document.querySelector("#lesson-area")?.classList.remove("hidden");
   hideLessonsHeaderAndList();
   showLessonBar(); // <-- show the three choices
+  document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep meta hidden
 
   // Header text above the tabs
   document.querySelector("#lesson-title").textContent = `${lesson.replace(/-/g," ")} — ${level}`;
@@ -613,6 +614,7 @@ window.openLessonTab = async (tab)=>{
   document.querySelector("#level-shell")?.classList.remove("hidden");
   document.querySelector("#lesson-area")?.classList.remove("hidden");
   showLessonBar();
+  document.querySelector(".lesson-meta")?.classList.add("hidden"); // keep meta hidden
 
   try { await flushSession?.(); } catch {}
   App.tab = tab;
