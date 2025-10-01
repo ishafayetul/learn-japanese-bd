@@ -335,3 +335,5 @@ code{ background:#0c1424; border:1px solid var(--border); padding:1px 6px; borde
 .mix-level-actions button { margin-left:6px; }
 .mix-lessons { display:grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap:6px 12px; }
 .mix-levels-wrap { margin-top:8px; }
+.action-row{display:flex; gap:.5rem; justify-content:flex-end; margin:0 0 .5rem;}
+.action-row .danger{background:#3a1a1a;}

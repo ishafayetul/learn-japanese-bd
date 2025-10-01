@@ -141,6 +141,49 @@ function nextLearn(){
   if (App.qIndex < App.deckFiltered.length - 1){ App.qIndex++; renderLearnCard(); }
 }
 
+function removeListActions(){
+  document.querySelector("#list-actions")?.remove();
+}
+
+function injectListActions(source){
+  removeListActions();
+  const hostCard = document.querySelector("#tab-vocab .card"); // the big “Vocabulary” card
+  if (!hostCard) return;
+
+  const row = document.createElement("div");
+  row.id = "list-actions";
+  row.className = "action-row"; // small toolbar above the card
+
+  if (source === "mistakes"){
+    row.innerHTML = `<button id="btn-clear-mistakes" class="danger">🗑️ Clear Mistakes</button>`;
+    row.querySelector("#btn-clear-mistakes").addEventListener("click", ()=>{
+      setMistakes([]);                           // clear local cache
+      toast("Mistakes cleared");
+      App.deck = [];
+      App.deckFiltered = [];
+      showVocabRootMenu();
+      document.querySelector("#vocab-status").textContent = "No words found.";
+    });
+  } else { // marked
+    row.innerHTML = `<button id="btn-unmark-all" class="danger">❌ Unmark Words</button>`;
+    row.querySelector("#btn-unmark-all").addEventListener("click", async ()=>{
+      try{
+        const fb = await whenFBReady();
+        const rows = await fb.listMarked();
+        for (const r of rows) await fb.unmarkWord(r.id);
+        toast("All words unmarked ✓");
+      } catch { toast("Sign in first"); }
+      App.deck = [];
+      App.deckFiltered = [];
+      showVocabRootMenu();
+      document.querySelector("#vocab-status").textContent = "No words found.";
+    });
+  }
+
+  // place the toolbar just above the vocab card
+  hostCard.parentNode.insertBefore(row, hostCard);
+}
+
 // show only the lesson tabs (no tab content)
 function showLessonTabsOnly(){
   ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
@@ -376,6 +419,7 @@ window.App = App;
         }
         return;
       }
+      removeListActions();
 
     }
 
@@ -598,7 +642,7 @@ window.navigateLevel = async (level) => {
     const vs = document.querySelector("#video-status");
     if (vc) vc.innerHTML = "";
     if (vs) vs.textContent = "";
-
+    removeListActions();
     // vocab
     ["#learn","#practice","#write","#make","#vocab-learn-menu","#vocab-mcq-menu","#vocab-write-menu"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
     document.querySelector("#vocab-status") && (document.querySelector("#vocab-status").textContent = "");
@@ -647,7 +691,7 @@ window.navigateLevel = async (level) => {
 };
 
 // Open a "lesson-like" Vocab view, but the deck comes from Mistakes or Marked
-async function openVocabDeckFromList(source /* 'mistakes' | 'marked' */) {
+async function openVocabDeckFromList(source) {
   // 1) Build the deck
   let deck = [];
   if (source === "mistakes") {
@@ -698,6 +742,7 @@ async function openVocabDeckFromList(source /* 'mistakes' | 'marked' */) {
   document.querySelector("#vocab-status").textContent = "Pick an option.";
   showVocabRootMenu();
   showVocabRootCard();
+  injectListActions(source === "mistakes" ? "mistakes" : "marked");
   document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
 
   updateBackVisibility();
@@ -886,7 +931,7 @@ window.openLessonTab = async (tab)=>{
   // Clear all panes, then open the requested one
   ["#tab-videos","#tab-vocab","#tab-grammar"].forEach(sel=>document.querySelector(sel)?.classList.add("hidden"));
   clearVideosPane(); clearVocabPane(); clearGrammarPane(); closeVideoLightbox?.();
-  hideLessonsHeaderAndList();
+  hideLessonsHeaderAndList();removeListActions();
 
   if (tab === "videos") {
     document.querySelector("#tab-videos")?.classList.remove("hidden");
@@ -1932,7 +1977,7 @@ window.openMixPractice = async () => {
   try { await flushSession?.(); } catch {}
   window.closeVideoLightbox?.();   // safe global
   window.hideContentPanes?.();     // safe global
-
+  removeListActions();
   document.querySelector("#mix-section")?.classList.remove("hidden");
 
   // breadcrumbs / state
