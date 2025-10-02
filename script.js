@@ -1725,7 +1725,8 @@ async function learnNoteAddOrSave(){
 
     let prompt="", correctLeft="", correctRight="";
     if (mode==="k2h-e"){ prompt = w.kanji; correctLeft = w.hira; correctRight = w.en; }
-    else { prompt = `${w.hira} · ${w.en}`; correctLeft = w.kanji; correctRight = w.en; }
+    // else { prompt = `${w.hira} · ${w.en}`; correctLeft = w.kanji; correctRight = w.en; }
+    else { prompt = `${w.en}`; correctLeft = w.kanji; correctRight = w.hira; }
     elQuestionBox.textContent = prompt;
 
     const pickSetLeft  = buildOptions(correctLeft,  mode==="k2h-e" ? "hira" : "kanji");
