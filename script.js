@@ -1876,16 +1876,31 @@ async function learnNoteAddOrSave(){
     elWriteText.textContent = `${cur} / ${App.write.order.length} (${pct(cur, App.write.order.length)})`;
   }
   window.writeSubmit = ()=>{
-    const i = App.write.order[App.write.idx] ?? -1; const w = App.deckFiltered[i]; if(!w) return;
-    const ans = (elWriteInput.value||"").trim(); if(!ans) return;
-    if ((ans||"").replace(/\s+/g,"").toLowerCase() === (w.hira||"").replace(/\s+/g,"").toLowerCase()){
+    const i = App.write.order[App.write.idx] ?? -1;
+    const w = App.deckFiltered[i];
+    if(!w) return;
+
+    const ans = (elWriteInput.value || "").trim();
+    if(!ans) return;
+
+    // normalize: remove spaces and wave-dash (〜 U+301C, ～ U+FF5E, and "~")
+    const norm = s => (s || "")
+      .replace(/\s+/g, "")      // any spaces (incl. full-width)
+      .replace(/[〜～~]/g, "")  // wave dashes
+      .toLowerCase();
+
+    if (norm(ans) === norm(w.hira)) {
       elWriteFeedback.innerHTML = `<span class="ok-inline">✓ Correct</span>`;
-      App.stats.right++; incrementPoints(1); App.write.idx++; updateScorePanel(); setTimeout(renderWriteCard, 250);
+      App.stats.right++; incrementPoints(1);
+      App.write.idx++; updateScorePanel();
+      setTimeout(renderWriteCard, 250);
     } else {
-      elWriteFeedback.innerHTML = `Expected: <b>${escapeHTML(w.hira)}</b><br>Got: <span class="error-inline">${escapeHTML(ans)}</span>`;
+      elWriteFeedback.innerHTML =
+        `Expected: <b>${escapeHTML(w.hira)}</b><br>Got: <span class="error-inline">${escapeHTML(ans)}</span>`;
       App.stats.wrong++; updateScorePanel(); recordMistake(w);
     }
   };
+
   window.writeSkip = ()=>{ App.stats.skipped++; updateScorePanel(); App.write.idx++; renderWriteCard(); };
   window.writeShowDetails = ()=>{
     const i = App.write.order[App.write.idx] ?? -1; const w = App.deckFiltered[i];

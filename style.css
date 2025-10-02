@@ -828,3 +828,7 @@ body.nav-open .scrim{ display:block; }
 @media (min-width: 901px){
   #nav-toggle{ display:none !important; }
 }
+
+/* Tabs (Video/Vocab/Grammar): don’t show focus ring unless keyboard users */
+#lesson-area .lesson-bar button:focus { outline: none; box-shadow: none; }
+#lesson-area .lesson-bar button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
