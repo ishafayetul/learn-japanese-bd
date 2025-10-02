@@ -160,17 +160,17 @@ button.chip:hover{ background:#132340; }
 
 /* Vocab & Practice */
 .flashcard{
-  margin-top:20px; padding:18px; border-radius:16px;
+  margin-top:15px; padding:18px; border-radius:16px;
   background: radial-gradient(600px 260px at -10% -10%, #202f4d 0%, transparent 60%), #0e1423;
   border:1px solid #283a5f;
-  font-size:30px; text-align:center;
+  font-size:1em; text-align:center;
 }
 #options{
   list-style:none; padding:0; margin:12px 0 0;
   display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:10px;
 }
 #options li button{
-  width:100%; padding:15px 20px; border-radius:12px; text-align:center;
+  width:100%; padding:10px 12px; border-radius:12px; text-align:center;
   border-color:#263656; background:#0c1321;
 }
 #options li button.is-correct{ border-color:#1b5a2c; background:#0e2a18; color:#bcffc9; }
@@ -724,3 +724,57 @@ body.nav-open .scrim{ display:block; }
     margin-left:4px;
   }
 }
+
+/* === Global scale knob for question + options === */
+:root{ --q-scale: 1.5; }          /* try 1.15 or 1.25 on mobile */
+
+/* Question/flashcard text size */
+.flashcard{
+  font-size: calc(20px * var(--q-scale));
+  min-height: calc(88px * var(--q-scale));   /* grows the card too */
+  line-height: 1.25;
+}
+
+/* MCQ options */
+#options{
+  gap: calc(10px * var(--q-scale));
+}
+#options li button{
+  font-size: calc(15px * var(--q-scale));
+  padding: calc(10px * var(--q-scale)) calc(12px * var(--q-scale));
+  min-height: calc(44px * var(--q-scale));
+  line-height: 1.35;
+}
+
+/* Dual-MCQ buttons (if you use that mode) */
+.dual-grid{ gap: calc(10px * var(--q-scale)); }
+.dual-grid button{
+  font-size: calc(15px * var(--q-scale));
+  padding: calc(10px * var(--q-scale));
+  min-height: calc(44px * var(--q-scale));
+}
+
+/* Writing mode input */
+#write-input.pg-input{
+  font-size: calc(16px * var(--q-scale));
+  padding: calc(10px * var(--q-scale)) calc(12px * var(--q-scale));
+  min-height: calc(52px * var(--q-scale));
+}
+
+/* Keep long terms from overflowing */
+.flashcard, #options li button{
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* Optional: auto-bump size on phones */
+@media (max-width: 900px){
+  :root{ --q-scale: 1.2; }
+}
+
+/* Optional: switch MCQ to 1 column on very small phones */
+/*
+@media (max-width: 420px){
+  #options{ grid-template-columns: 1fr; }
+}
+*/
