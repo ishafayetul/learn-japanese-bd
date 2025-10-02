@@ -1804,8 +1804,8 @@ async function learnNoteAddOrSave(){
     const i = App.write.order[App.write.idx] ?? -1;
     const w = App.deckFiltered[i];
     if (!w){ elWriteCard.textContent="All done."; elWriteInput.value=""; updateWriteProgress(); return; }
-    if (App.write.variant==="k2h") elWriteCard.textContent = (w.kanji||"") + "  →  (type Hiragana)";
-    else elWriteCard.textContent = w.en + "  →  (type Hiragana)";
+    if (App.write.variant==="k2h") elWriteCard.textContent = (w.kanji||"");
+    else elWriteCard.textContent = w.en;
     elWriteInput.value=""; elWriteFeedback.textContent=""; elWriteInput.focus(); updateWriteProgress();
   }
   function updateWriteProgress(){
