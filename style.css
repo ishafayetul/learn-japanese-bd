@@ -160,7 +160,7 @@ button.chip:hover{ background:#132340; }
 
 /* Vocab & Practice */
 .flashcard{
-  margin-top:15px; padding:18px; border-radius:16px;
+  margin-top:20px; padding:18px; border-radius:16px;
   background: radial-gradient(600px 260px at -10% -10%, #202f4d 0%, transparent 60%), #0e1423;
   border:1px solid #283a5f;
   font-size:30px; text-align:center;
