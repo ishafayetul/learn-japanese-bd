@@ -170,7 +170,7 @@ button.chip:hover{ background:#132340; }
   display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:10px;
 }
 #options li button{
-  width:100%; padding:10px 12px; border-radius:12px; text-align:center;
+  width:100%; padding:15px 20px; border-radius:12px; text-align:center;
   border-color:#263656; background:#0c1321;
 }
 #options li button.is-correct{ border-color:#1b5a2c; background:#0e2a18; color:#bcffc9; }
