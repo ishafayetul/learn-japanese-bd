@@ -643,13 +643,13 @@ code{ background:#0c1424; border:1px solid var(--border); padding:1px 6px; borde
   align-items:center;
   gap:6px;
 }
-.nav-toggle .bar{
+/* .nav-toggle .bar{
   display:block;
   width:18px;
   height:2px;
   background:var(--muted);
   border-radius:4px;
-}
+} */
 .nav-toggle:focus{ outline:2px solid var(--link); outline-offset:2px; }
 
 /* overlay behind the drawer (no blur) */
@@ -792,4 +792,29 @@ body.nav-open .scrim{ display:block; }
 #question-box, #write-card{
   word-break: break-word;
   white-space: normal;
+}
+
+/* Menu toggle: icon + text label, clearer than hamburger */
+.nav-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid var(--border);
+  background:var(--panel);
+  padding:8px 12px;
+  border-radius:12px;
+}
+.nav-toggle .ico{ fill: var(--text); opacity:.9; }
+.nav-toggle .label{
+  color: var(--text);
+  font-weight:600;
+  font-size:14px;
+  letter-spacing:.2px;
+}
+.nav-toggle:focus{ outline:2px solid var(--link); outline-offset:2px; }
+
+/* (Optional) slightly tighter on very small phones */
+@media (max-width: 380px){
+  .nav-toggle{ padding:6px 10px; }
+  .nav-toggle .label{ font-size:13px; }
 }
