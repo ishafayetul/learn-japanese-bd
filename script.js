@@ -1716,21 +1716,86 @@ async function learnNoteAddOrSave(){
   window.showMeaning = ()=>{ const w=App.deckFiltered[App.qIndex]; if(w) toast(`Meaning: ${w.en}`); };
 
   // Dual (8 options total; two selections)
+  // function renderDualQuestion(w){
+  //   elOptions.innerHTML="";
+  //   const mode = App.mode;
+  //   const grid = document.createElement("div"); grid.className="dual-grid";
+  //   const leftCol = document.createElement("div"); const rightCol=document.createElement("div");
+  //   grid.appendChild(leftCol); grid.appendChild(rightCol); elOptions.appendChild(grid);
+
+  //   let prompt="", correctLeft="", correctRight="";
+  //   if (mode==="k2h-e"){ prompt = w.kanji; correctLeft = w.hira; correctRight = w.en; }
+  //   else { prompt = `${w.hira} · ${w.en}`; correctLeft = w.kanji; correctRight = w.en; }
+    
+  //   elQuestionBox.textContent = prompt;
+
+  //   const pickSetLeft  = buildOptions(correctLeft,  mode==="k2h-e" ? "hira" : "kanji");
+  //   const pickSetRight = buildOptions(correctRight, "en");
+
+  //   let pickedLeft=null, pickedRight=null;
+  //   function finalize(){
+  //     if (pickedLeft==null || pickedRight==null) return;
+  //     const ok = (pickedLeft===correctLeft) && (pickedRight===correctRight);
+  //     if (ok){ App.stats.right++; incrementPoints(1); }
+  //     else { App.stats.wrong++; recordMistake(w); }
+  //     updateScorePanel();
+  //     setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 350);
+  //   }
+
+  //     for (const val of pickSetLeft){
+  //   const b = document.createElement("button");
+  //   b.textContent = val;
+  //   b.addEventListener("click", ()=>{
+  //     // disable entire left column via attribute so CSS picks it up
+  //     A(".dual-grid > :first-child button").forEach(x => x.disabled = true);
+  //     // color THIS pick based on correctness
+  //     b.classList.add(val === correctLeft ? "is-correct" : "is-wrong");
+  //     pickedLeft = val;
+  //     finalize();
+  //   }, { once:true });
+  //   leftCol.appendChild(b);
+  // }
+
+  // for (const val of pickSetRight){
+  //   const b = document.createElement("button");
+  //   b.textContent = val;
+  //   b.addEventListener("click", ()=>{
+  //     // disable entire right column via attribute so CSS picks it up
+  //     A(".dual-grid > :last-child button").forEach(x => x.disabled = true);
+  //     // color THIS pick based on correctness
+  //     b.classList.add(val === correctRight ? "is-correct" : "is-wrong");
+  //     pickedRight = val;
+  //     finalize();
+  //   }, { once:true });
+  //   rightCol.appendChild(b);
+  // }
+
+  // }
+  // Dual (8 options total; two selections)
   function renderDualQuestion(w){
     elOptions.innerHTML="";
     const mode = App.mode;
+    if (!w.kanji || !w.kanji.trim()) { App.qIndex++; updateDeckProgress(); return renderQuestion(); }
     const grid = document.createElement("div"); grid.className="dual-grid";
-    const leftCol = document.createElement("div"); const rightCol=document.createElement("div");
-    grid.appendChild(leftCol); grid.appendChild(rightCol); elOptions.appendChild(grid);
+    const leftCol = document.createElement("div");
+    const rightCol = document.createElement("div");
+    grid.appendChild(leftCol); grid.appendChild(rightCol);
+    elOptions.appendChild(grid);
 
-    let prompt="", correctLeft="", correctRight="";
-    if (mode==="k2h-e"){ prompt = w.kanji; correctLeft = w.hira; correctRight = w.en; }
-    // else { prompt = `${w.hira} · ${w.en}`; correctLeft = w.kanji; correctRight = w.en; }
-    else { prompt = `${w.en}`; correctLeft = w.kanji; correctRight = w.hira; }
+    // NEW: English prompt → pick Hiragana (left) + Kanji (right)
+    // (backward compatible with old id "k2h-e"; new id could be "e2h-k")
+    const isDualEnglish = (mode === "k2h-e" || mode === "e2h-k");
+
+    let prompt = w.en;
+    let correctLeft  = w.hira;   // user must pick the correct HIRAGANA
+    let correctRight = w.kanji;  // ...and the correct KANJI
+
+    // show English only
     elQuestionBox.textContent = prompt;
 
-    const pickSetLeft  = buildOptions(correctLeft,  mode==="k2h-e" ? "hira" : "kanji");
-    const pickSetRight = buildOptions(correctRight, "en");
+    // build distractors from the proper fields
+    const pickSetLeft  = buildOptions(correctLeft,  "hira");
+    const pickSetRight = buildOptions(correctRight, "kanji");
 
     let pickedLeft=null, pickedRight=null;
     function finalize(){
@@ -1742,35 +1807,31 @@ async function learnNoteAddOrSave(){
       setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 350);
     }
 
-      for (const val of pickSetLeft){
-    const b = document.createElement("button");
-    b.textContent = val;
-    b.addEventListener("click", ()=>{
-      // disable entire left column via attribute so CSS picks it up
-      A(".dual-grid > :first-child button").forEach(x => x.disabled = true);
-      // color THIS pick based on correctness
-      b.classList.add(val === correctLeft ? "is-correct" : "is-wrong");
-      pickedLeft = val;
-      finalize();
-    }, { once:true });
-    leftCol.appendChild(b);
+    for (const val of pickSetLeft){
+      const b = document.createElement("button");
+      b.textContent = val;
+      b.addEventListener("click", ()=>{
+        A(".dual-grid > :first-child button").forEach(x => x.disabled = true);
+        b.classList.add(val === correctLeft ? "is-correct" : "is-wrong");
+        pickedLeft = val;
+        finalize();
+      }, { once:true });
+      leftCol.appendChild(b);
+    }
+
+    for (const val of pickSetRight){
+      const b = document.createElement("button");
+      b.textContent = val;
+      b.addEventListener("click", ()=>{
+        A(".dual-grid > :last-child button").forEach(x => x.disabled = true);
+        b.classList.add(val === correctRight ? "is-correct" : "is-wrong");
+        pickedRight = val;
+        finalize();
+      }, { once:true });
+      rightCol.appendChild(b);
+    }
   }
 
-  for (const val of pickSetRight){
-    const b = document.createElement("button");
-    b.textContent = val;
-    b.addEventListener("click", ()=>{
-      // disable entire right column via attribute so CSS picks it up
-      A(".dual-grid > :last-child button").forEach(x => x.disabled = true);
-      // color THIS pick based on correctness
-      b.classList.add(val === correctRight ? "is-correct" : "is-wrong");
-      pickedRight = val;
-      finalize();
-    }, { once:true });
-    rightCol.appendChild(b);
-  }
-
-  }
   window.startDualMCQ = (variant)=> window.startPractice(variant);
 
   // ---------- Write Mode ----------
