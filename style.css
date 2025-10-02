@@ -838,3 +838,28 @@ body.nav-open .scrim{ display:block; }
   text-align: right;
   vertical-align: middle;
 }
+
+/* === MCQ options layout =============================== */
+/* Desktop (and tablets ≥901px): vertical list (1 column) */
+#practice #options{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-content: start;
+}
+#practice #options li{ width: 100%; }
+#practice #options li button{
+  width: 100%;
+  text-align: left;         /* feels like a list; change to center if you prefer */
+}
+
+/* Mobile: keep your existing 2-left / 2-right grid */
+@media (max-width: 900px){
+  #practice #options{
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Dual MCQ stays as-is (two columns) — this rule is just for clarity */
+#practice .dual-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
