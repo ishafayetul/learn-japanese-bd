@@ -818,3 +818,13 @@ body.nav-open .scrim{ display:block; }
   .nav-toggle{ padding:6px 10px; }
   .nav-toggle .label{ font-size:13px; }
 }
+
+/* Hide menu toggle on desktop; show only on mobile */
+#nav-toggle{ display:none; }
+
+@media (max-width: 900px){
+  #nav-toggle{ display:inline-flex; }
+}
+@media (min-width: 901px){
+  #nav-toggle{ display:none !important; }
+}
