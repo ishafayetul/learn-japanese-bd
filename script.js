@@ -1833,6 +1833,46 @@ async function learnNoteAddOrSave(){
   }
 
   window.startDualMCQ = (variant)=> window.startPractice(variant);
+// ==== Keyboard shortcuts for MCQ ====
+// 1 → option 1, 2 → option 2, 3 → option 3, 4 → option 4
+// Dual MCQ: first number picks from LEFT column (first 4),
+//           second number picks from RIGHT column (last 4).
+window.addEventListener("keydown", (e) => {
+  // Only when MCQ screen is visible; ignore if typing in inputs/textareas
+  if (!isVisible("#practice")) return;
+  const t = e.target;
+  const isTyping =
+    t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+  if (isTyping) return;
+
+  // Ignore with modifiers to prevent conflicts
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  const k = e.key;
+  if (k !== "1" && k !== "2" && k !== "3" && k !== "4") return;
+
+  e.preventDefault();
+  const idx = Number(k) - 1;
+
+  // Dual-grid present?
+  const dual = document.querySelector(".dual-grid");
+  if (dual) {
+    const left  = Array.from(dual.querySelectorAll(":scope > :first-child button"));
+    const right = Array.from(dual.querySelectorAll(":scope > :last-child  button"));
+
+    // If LEFT column not chosen yet (not disabled), use left; otherwise right
+    const leftActive = left.length && !left[0].disabled;
+    const targetList = leftActive ? left : right;
+    const btn = targetList[idx];
+    if (btn && !btn.disabled) btn.click();
+    return;
+  }
+
+  // Regular MCQ (single column list)
+  const btns = Array.from(document.querySelectorAll("#options li button"));
+  const btn = btns[idx];
+  if (btn && !btn.disabled) btn.click();
+});
 
   // ---------- Write Mode ----------
   window.startWriteEN2H = async ()=> startWriteWords("en2h");
