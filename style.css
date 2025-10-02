@@ -778,3 +778,18 @@ body.nav-open .scrim{ display:block; }
   #options{ grid-template-columns: 1fr; }
 }
 */
+/* Center the text inside question flashcards (MCQ + Writing) */
+#question-box,
+#write-card{
+  display: flex;              /* safe for multiple children */
+  flex-direction: column;
+  justify-content: center;    /* vertical center */
+  align-items: center;        /* horizontal center for block children */
+  text-align: center;         /* center the text itself */
+}
+
+/* (optional) keep long words from overflowing */
+#question-box, #write-card{
+  word-break: break-word;
+  white-space: normal;
+}
