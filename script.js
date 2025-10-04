@@ -1393,6 +1393,7 @@ window.closeVideoLightbox = closeVideoLightbox;
 
   // show the root buttons; hide submenus + finals
   document.querySelector("#vocab-mode-select")?.classList.remove("hidden");
+  document.querySelector("#learn-table")?.classList.add("hidden");
   document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
   document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
   document.querySelector("#vocab-write-menu")?.classList.add("hidden");
@@ -1409,6 +1410,7 @@ window.closeVideoLightbox = closeVideoLightbox;
 
     hideVocabRootCard();
     document.querySelector("#vocab-learn-menu")?.classList.remove("hidden");
+    document.querySelector("#learn-table")?.classList.add("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
     document.querySelector("#vocab-write-menu")?.classList.add("hidden");
     document.querySelector("#learn")?.classList.add("hidden");
@@ -1425,6 +1427,7 @@ window.closeVideoLightbox = closeVideoLightbox;
 
     hideVocabRootCard();
     document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
+    document.querySelector("#learn-table")?.classList.add("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.remove("hidden");
     document.querySelector("#vocab-write-menu")?.classList.add("hidden");
     document.querySelector("#learn")?.classList.add("hidden");
@@ -1444,6 +1447,7 @@ window.closeVideoLightbox = closeVideoLightbox;
     document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
     document.querySelector("#vocab-write-menu")?.classList.remove("hidden");
     document.querySelector("#learn")?.classList.add("hidden");
+    document.querySelector("#learn-table")?.classList.add("hidden");
     document.querySelector("#practice")?.classList.add("hidden");
     document.querySelector("#write")?.classList.add("hidden");
     document.querySelector("#make")?.classList.add("hidden");
