@@ -1677,13 +1677,18 @@ window.startLearnTable = async () => {
   wireLearnTableOnce();
   updateBackVisibility();
 };
-document.addEventListener("DOMContentLoaded", () => {
+
+// wire the Word Table button now + as a fallback after DOM ready
+function wireLearnTableBtn(){
   const btn = document.querySelector("#btn-learn-table");
   if (btn && !btn.dataset.wired){
-    btn.dataset.wired = "1";                 // prevent double-binding
+    btn.dataset.wired = "1";
     btn.addEventListener("click", () => window.startLearnTable());
   }
-});
+}
+wireLearnTableBtn();
+document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
+
 
 function buildLearnTable(){
   const tb = document.querySelector("#lt-table tbody");
@@ -1747,22 +1752,26 @@ function buildLearnTable(){
       }
     });
     // Column visibility toggles
+    // Column visibility toggles (safe if .lt-cols is missing)
     (function wireLtColumns(){
-      const host = document.querySelector("#learn-table");   // section
-      if (!host) return;
+      const host = document.querySelector("#learn-table");
+      const controls = document.querySelector(".lt-cols");  // <— might not exist
+      if (!host || !controls) return;
 
       function applyCols(){
         ["kanji","hira","en","audio"].forEach(k=>{
-          const on = document.querySelector(`.lt-cols input[data-col="${k}"]`)?.checked;
+          const ch = controls.querySelector(`input[data-col="${k}"]`);
+          const on = ch ? ch.checked : true;                // <— default to visible
           host.classList.toggle(`hide-col-${k}`, !on);
         });
       }
 
-      document.querySelectorAll(".lt-cols input[type='checkbox']").forEach(ch=>{
+      controls.querySelectorAll("input[type='checkbox']").forEach(ch=>{
         ch.addEventListener("change", applyCols);
       });
-      applyCols(); // set initial state
+      applyCols();
     })();
+
 
   }
 
