@@ -214,38 +214,10 @@
                   <div class="practice-actions">
                     <button onclick="startLearnMode('k2h')">Kanji → Hiragana (Learn)</button>
                     <button onclick="startLearnMode('h2e')">Hiragana → English (Learn)</button>
-                    <button id="btn-learn-table" class="chip" onclick="startLearnTable()">📋 Word Table</button>
+                    <button id="btn-learn-table" type="button">📋 Word Table</button>
                   </div>
                 </div>
-                <!-- Learn → Table view -->
-                <div id="learn-table" class="card hidden">
-                  <div class="learn-table-bar">
-                    <input id="lt-filter" class="pg-input" type="search"
-                          placeholder="Filter (Kanji / Hiragana / English)…">
-                    <div class="lt-actions">
-                      <button id="lt-shuffle">Shuffle</button>
-                      <button id="lt-playall">Play all</button>
-                    </div>
-                  </div>
-
-                  <div class="table-wrap">
-                    <table id="lt-table" class="learn-table">
-                      <thead>
-                        <tr>
-                          <th data-k="kanji" title="Sort">Kanji</th>
-                          <th data-k="hira"  title="Sort">Hiragana</th>
-                          <th data-k="en"    title="Sort">English</th>
-                          <th class="lt-audio-col"></th>
-                        </tr>
-                      </thead>
-                      <tbody></tbody>
-                    </table>
-                  </div>
-
-                  <div class="muted" style="margin-top:6px">
-                    Tip: Click a column header to sort. Tap 🔊 to hear a word.
-                  </div>
-                </div>
+               
               </section>
 
               <!-- Stage 3.b — MCQ submenu -->
@@ -300,6 +272,32 @@
                 <div id="learn-extra" class="muted" style="margin-top:8px;"></div>
               </section>
 
+              <!-- Learn → Table view (hidden until used) -->
+              <section id="learn-table" class="hidden">
+                <div class="card">
+                  <div class="learn-table-bar">
+                    <input id="lt-filter" class="pg-input" placeholder="Filter (kanji / hiragana / english)…">
+                    <div>
+                      <button id="lt-shuffle" type="button">Shuffle</button>
+                      <button id="lt-playall" type="button">▶ Play all</button>
+                    </div>
+                  </div>
+
+                  <div class="table-wrap">
+                    <table id="lt-table" class="learn-table">
+                      <thead>
+                        <tr>
+                          <th data-k="kanji">Kanji</th>
+                          <th data-k="hira">Hiragana</th>
+                          <th data-k="en">English</th>
+                          <th class="lt-audio-col">🔊</th>
+                        </tr>
+                      </thead>
+                      <tbody><!-- rows are built by script.js/buildLearnTable() --></tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
 
               
 
