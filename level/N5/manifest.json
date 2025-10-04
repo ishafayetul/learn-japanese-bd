@@ -10,6 +10,11 @@
     "Lesson-Numbers","Lesson-Time","Lesson-Phrases"
   ],
   "lessons": {
+    "Lesson-Kanji": {
+      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-kanji.pdf"]
+    },
     "Lesson-01": {
       "vocab": ["Vocabulary/Vocab-Lesson-01.csv"],
       "videoCsv": "Video Lecture/video.csv",
@@ -149,11 +154,6 @@
       "vocab": ["Vocabulary/Vocab-Phrases.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Phrases.pdf"]
-    },
-    "Lesson-Kanji": {
-      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
-      "videoCsv": "Video Lecture/video.csv",
-      "grammar": ["Grammar/Grammar-kanji.pdf"]
     }
   }
 }
