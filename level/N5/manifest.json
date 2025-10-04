@@ -7,7 +7,7 @@
     "Lesson-11","Lesson-12","Lesson-13","Lesson-14","Lesson-15",
     "Lesson-16","Lesson-17","Lesson-18","Lesson-19","Lesson-20",
     "Lesson-21","Lesson-22","Lesson-23","Lesson-24","Lesson-25",
-    "Lesson-Numbers","Lesson-Time","Lesson-Phrases"
+    "Lesson-Counters","Lesson-Time","Lesson-Phrases"
   ],
   "lessons": {
     "Lesson-Kanji": {
@@ -140,8 +140,8 @@
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson-25.pdf"]
     },
-    "Lesson-Numbers": {
-      "vocab": ["Vocabulary/Vocab-Numbers.csv"],
+    "Lesson-Counters": {
+      "vocab": ["Vocabulary/Vocab-Counters.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Numbers.pdf"]
     },
