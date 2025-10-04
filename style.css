@@ -863,3 +863,26 @@ body.nav-open .scrim{ display:block; }
 
 /* Dual MCQ stays as-is (two columns) — this rule is just for clarity */
 #practice .dual-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* ==== Dual MCQ mobile layout fix ==== */
+/* Let the dual grid span the whole #options width, not just column 1 */
+#practice #options .dual-grid{
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+/* Stack the four buttons in each column with consistent spacing */
+#practice #options .dual-grid > div{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Make buttons fill their column and remove stray margins from global rules */
+#practice #options .dual-grid button{
+  width: 100%;
+  margin: 0;
+  text-align: center;
+}
