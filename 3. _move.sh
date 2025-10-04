@@ -34,15 +34,15 @@ if [ ! -d "$BASE" ]; then
 fi
 
 # Lessons 01..25
-for i in $(seq -w 01 25); do
-  src="$BASE/Vocab-Lesson-$i.csv"
-  dest="$BASE/Lesson-$i/Vocabulary/Vocab-Lesson-$i.csv"
+for i in $(seq -w 11 25); do
+  src="$BASE/Grammar-Lesson-$i.pdf"
+  dest="$BASE/Lesson-$i/Grammar/Grammar-Lesson-$i.pdf"
   move_one "$src" "$dest"
 done
 
 # Specials from your screenshot
-move_one "$BASE/Vocab-Numbers.csv" "$BASE/Lesson-Numbers/Vocabulary/Vocab-Numbers.csv"
-move_one "$BASE/Vocab-Phrases.csv" "$BASE/Lesson-Phrases/Vocabulary/Vocab-Phrases.csv"
-move_one "$BASE/Vocab-Time.csv"   "$BASE/Lesson-Time/Vocabulary/Vocab-Time.csv"
+#move_one "$BASE/Vocab-Numbers.csv" "$BASE/Lesson-Numbers/Vocabulary/Vocab-Numbers.csv"
+#move_one "$BASE/Vocab-Phrases.csv" "$BASE/Lesson-Phrases/Vocabulary/Vocab-Phrases.csv"
+#move_one "$BASE/Vocab-Time.csv"   "$BASE/Lesson-Time/Vocabulary/Vocab-Time.csv"
 
 echo "Done."
