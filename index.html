@@ -214,7 +214,36 @@
                   <div class="practice-actions">
                     <button onclick="startLearnMode('k2h')">Kanji → Hiragana (Learn)</button>
                     <button onclick="startLearnMode('h2e')">Hiragana → English (Learn)</button>
-                
+                    <button id="btn-learn-table" class="chip" onclick="startLearnTable()">📋 Word Table</button>
+                  </div>
+                </div>
+                <!-- Learn → Table view -->
+                <div id="learn-table" class="card hidden">
+                  <div class="learn-table-bar">
+                    <input id="lt-filter" class="pg-input" type="search"
+                          placeholder="Filter (Kanji / Hiragana / English)…">
+                    <div class="lt-actions">
+                      <button id="lt-shuffle">Shuffle</button>
+                      <button id="lt-playall">Play all</button>
+                    </div>
+                  </div>
+
+                  <div class="table-wrap">
+                    <table id="lt-table" class="learn-table">
+                      <thead>
+                        <tr>
+                          <th data-k="kanji" title="Sort">Kanji</th>
+                          <th data-k="hira"  title="Sort">Hiragana</th>
+                          <th data-k="en"    title="Sort">English</th>
+                          <th class="lt-audio-col"></th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+
+                  <div class="muted" style="margin-top:6px">
+                    Tip: Click a column header to sort. Tap 🔊 to hear a word.
                   </div>
                 </div>
               </section>
@@ -384,15 +413,7 @@
             </table>
           </div>
 
-          <!-- <h3 style="margin-top:18px;">Write — Per-Deck Completion (best session)</h3>
-          <div class="table-wrap">
-            <table id="write-progress-table" class="progress-table">
-              <thead>
-                <tr><th>Deck</th><th>Best Attempted</th><th>Deck Size</th><th>Best Completion</th><th>Last Write</th></tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div> -->
+        
         </section>
 
         <!-- ========= Leaderboard ========= -->

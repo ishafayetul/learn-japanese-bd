@@ -744,10 +744,12 @@ window.updateBackVisibility = updateBackVisibility;
   const learn = document.querySelector("#learn");
   const write = document.querySelector("#write");
   const make = document.querySelector("#make");
+  const learnTbl = document.querySelector("#learn-table");
   if (practice) practice.classList.add("hidden");
   if (learn) learn.classList.add("hidden");
   if (write) write.classList.add("hidden");
   if (make) make.classList.add("hidden");
+  if (learnTbl) learnTbl.classList.add("hidden");
   const elVocabStatus = document.querySelector("#vocab-status"); 
   const subA = document.querySelector("#vocab-learn-menu"); 
   const subB = document.querySelector("#vocab-mcq-menu"); 
@@ -1649,6 +1651,90 @@ async function learnNoteAddOrSave(){
     hideLearnNoteCard();
   }
 }
+// === Learn: Table view =========================================
+window.startLearnTable = async () => {
+  await ensureDeckLoaded(); try{ await flushSession(); }catch{}
+  App.mode = "learn-table"; setCrumbs();
+
+  hideLessonsHeaderAndList();
+  hideLessonBar();
+  hideVocabRootCard();
+  hideVocabMenus();
+
+  // hide other finals
+  document.querySelector("#learn")?.classList.add("hidden");
+  document.querySelector("#practice")?.classList.add("hidden");
+  document.querySelector("#write")?.classList.add("hidden");
+  document.querySelector("#make")?.classList.add("hidden");
+
+  document.querySelector("#learn-table")?.classList.remove("hidden");
+  buildLearnTable();
+  wireLearnTableOnce();
+  updateBackVisibility();
+};
+
+function buildLearnTable(){
+  const tb = document.querySelector("#lt-table tbody");
+  const q  = (document.querySelector("#lt-filter")?.value || "").trim().toLowerCase();
+  if (!tb) return;
+
+  // filter on kanji/hira/en
+  const rows = (App.deck || []).filter(w => {
+    if (!q) return true;
+    return [w.kanji || "", w.hira || "", w.en || ""].join(" ").toLowerCase().includes(q);
+  });
+
+  tb.innerHTML = "";
+  for (const w of rows){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="kanji">${escapeHTML(w.kanji || "—")}</td>
+      <td class="hira">${escapeHTML(w.hira || "")}</td>
+      <td class="en">${escapeHTML(w.en || "")}</td>
+      <td class="acts"><button class="lt-audio-btn" title="Play">🔊</button></td>
+    `;
+    tr.querySelector(".lt-audio-btn")?.addEventListener("click", () => speakJa(w.hira));
+    tb.appendChild(tr);
+  }
+}
+
+  function wireLearnTableOnce(){
+    if (window.__ltWired) return;
+    window.__ltWired = true;
+
+    // filter-as-you-type
+    document.querySelector("#lt-filter")?.addEventListener("input", buildLearnTable);
+
+    // sort by clicking headers
+    let sortKey = null, dir = 1;
+    document.querySelector("#lt-table thead")?.addEventListener("click", (e) => {
+      const th = e.target.closest("th[data-k]");
+      if (!th) return;
+      const k = th.dataset.k;
+      dir = (sortKey === k ? -dir : 1);
+      sortKey = k;
+      // locale-aware for Japanese
+      App.deck = (App.deck || []).slice()
+        .sort((a,b) => String(a[k]||"").localeCompare(String(b[k]||""), "ja") * dir);
+      buildLearnTable();
+    });
+
+    // shuffle
+    document.querySelector("#lt-shuffle")?.addEventListener("click", () => {
+      App.deck = shuffle(App.deck || []);
+      buildLearnTable();
+    });
+
+    // play all (current filtered order)
+    document.querySelector("#lt-playall")?.addEventListener("click", async () => {
+      const items = Array.from(document.querySelectorAll("#lt-table tbody td.hira"))
+        .map(td => (td.textContent || "").trim()).filter(Boolean);
+      for (const hira of items){
+        speakJa(hira);
+        await sleep(600); // small gap between words
+      }
+    });
+  }
 
   // --- MCQ Modes ---
   window.startPractice = async (mode)=>{
@@ -1715,63 +1801,7 @@ async function learnNoteAddOrSave(){
   window.showRomaji = ()=> toast("Romaji: (not available)");
   window.showMeaning = ()=>{ const w=App.deckFiltered[App.qIndex]; if(w) toast(`Meaning: ${w.en}`); };
 
-  // Dual (8 options total; two selections)
-  // function renderDualQuestion(w){
-  //   elOptions.innerHTML="";
-  //   const mode = App.mode;
-  //   const grid = document.createElement("div"); grid.className="dual-grid";
-  //   const leftCol = document.createElement("div"); const rightCol=document.createElement("div");
-  //   grid.appendChild(leftCol); grid.appendChild(rightCol); elOptions.appendChild(grid);
-
-  //   let prompt="", correctLeft="", correctRight="";
-  //   if (mode==="k2h-e"){ prompt = w.kanji; correctLeft = w.hira; correctRight = w.en; }
-  //   else { prompt = `${w.hira} · ${w.en}`; correctLeft = w.kanji; correctRight = w.en; }
-    
-  //   elQuestionBox.textContent = prompt;
-
-  //   const pickSetLeft  = buildOptions(correctLeft,  mode==="k2h-e" ? "hira" : "kanji");
-  //   const pickSetRight = buildOptions(correctRight, "en");
-
-  //   let pickedLeft=null, pickedRight=null;
-  //   function finalize(){
-  //     if (pickedLeft==null || pickedRight==null) return;
-  //     const ok = (pickedLeft===correctLeft) && (pickedRight===correctRight);
-  //     if (ok){ App.stats.right++; incrementPoints(1); }
-  //     else { App.stats.wrong++; recordMistake(w); }
-  //     updateScorePanel();
-  //     setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 350);
-  //   }
-
-  //     for (const val of pickSetLeft){
-  //   const b = document.createElement("button");
-  //   b.textContent = val;
-  //   b.addEventListener("click", ()=>{
-  //     // disable entire left column via attribute so CSS picks it up
-  //     A(".dual-grid > :first-child button").forEach(x => x.disabled = true);
-  //     // color THIS pick based on correctness
-  //     b.classList.add(val === correctLeft ? "is-correct" : "is-wrong");
-  //     pickedLeft = val;
-  //     finalize();
-  //   }, { once:true });
-  //   leftCol.appendChild(b);
-  // }
-
-  // for (const val of pickSetRight){
-  //   const b = document.createElement("button");
-  //   b.textContent = val;
-  //   b.addEventListener("click", ()=>{
-  //     // disable entire right column via attribute so CSS picks it up
-  //     A(".dual-grid > :last-child button").forEach(x => x.disabled = true);
-  //     // color THIS pick based on correctness
-  //     b.classList.add(val === correctRight ? "is-correct" : "is-wrong");
-  //     pickedRight = val;
-  //     finalize();
-  //   }, { once:true });
-  //   rightCol.appendChild(b);
-  // }
-
-  // }
-  // Dual (8 options total; two selections)
+ 
   function renderDualQuestion(w){
     elOptions.innerHTML="";
     const mode = App.mode;
