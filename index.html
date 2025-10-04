@@ -275,14 +275,26 @@
               <!-- Learn → Table view (hidden until used) -->
               <section id="learn-table" class="hidden">
                 <div class="card">
+                  <!-- Toolbar (filter + actions) -->
                   <div class="learn-table-bar">
-                    <input id="lt-filter" class="pg-input" placeholder="Filter (kanji / hiragana / english)…">
-                    <div>
+                    <input id="lt-filter" class="pg-input"
+                          type="text"
+                          placeholder="Filter (kanji / hiragana / english)…">
+
+                    <div class="lt-toolbar">
                       <button id="lt-shuffle" type="button">Shuffle</button>
-                      <!-- <button id="lt-playall" type="button">▶ Play all</button> -->
+
+                      <!-- Column toggles -->
+                      <div class="lt-cols" aria-label="Toggle columns">
+                        <label class="chip"><input type="checkbox" data-col="kanji" checked> Kanji</label>
+                        <label class="chip"><input type="checkbox" data-col="hira"  checked> Hiragana</label>
+                        <label class="chip"><input type="checkbox" data-col="en"    checked> English</label>
+                        <label class="chip"><input type="checkbox" data-col="audio" checked> Audio</label>
+                      </div>
                     </div>
                   </div>
 
+                  <!-- Scrollable table -->
                   <div class="table-wrap">
                     <table id="lt-table" class="learn-table">
                       <thead>
@@ -293,13 +305,11 @@
                           <th class="lt-audio-col">🔊</th>
                         </tr>
                       </thead>
-                      <tbody><!-- rows are built by script.js/buildLearnTable() --></tbody>
+                      <tbody><!-- rows built by buildLearnTable() --></tbody>
                     </table>
                   </div>
                 </div>
               </section>
-
-              
 
               <!-- MCQ -->
               <section id="practice" class="hidden">

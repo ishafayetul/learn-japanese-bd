@@ -909,6 +909,7 @@ body.nav-open .scrim{ display:block; }
 
 .lt-audio-col{ width:82px; text-align:center; }
 .lt-audio-btn{ border-radius:999px; padding:6px 10px; }
+
 /* ===== Learn Table — responsive & column hide ===== */
 
 /* Chip group & toolbar layout */
@@ -941,3 +942,23 @@ body.nav-open .scrim{ display:block; }
     overflow-x: auto;
   }
 }
+
+/* Word Table — filter input sizing */
+#lt-filter.pg-input{
+  flex: 1 1 auto;   /* fills horizontal space */
+  width: 100%;
+  min-height: 40px;
+  height: auto;
+  font-size: 16px;
+  line-height: 1.25;
+  /* optional: make it visually slimmer if needed */
+  padding-block: 8px;
+}
+
+@media (max-width: 900px){
+  #lt-filter.pg-input{
+    min-height: 38px;
+    font-size: 15px;
+  }
+}
+
