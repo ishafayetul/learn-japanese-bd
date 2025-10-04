@@ -579,7 +579,8 @@ async function cascadeUnmark({ src, id, markedId }){
     // 1) Inside Vocab tab? handle nested steps first
     const inVocabTab = isVisible("#tab-vocab");
     if (inVocabTab) {
-      const learnOpen    = isVisible("#learn");
+      //const learnOpen    = isVisible("#learn");
+      const learnOpen    = isVisible("#learn") || isVisible("#learn-table");
       const practiceOpen = isVisible("#practice");
       const writeOpen    = isVisible("#write");
       const makeOpen     = isVisible("#make");
