@@ -1746,6 +1746,24 @@ function buildLearnTable(){
         await sleep(600); // small gap between words
       }
     });
+    // Column visibility toggles
+    (function wireLtColumns(){
+      const host = document.querySelector("#learn-table");   // section
+      if (!host) return;
+
+      function applyCols(){
+        ["kanji","hira","en","audio"].forEach(k=>{
+          const on = document.querySelector(`.lt-cols input[data-col="${k}"]`)?.checked;
+          host.classList.toggle(`hide-col-${k}`, !on);
+        });
+      }
+
+      document.querySelectorAll(".lt-cols input[type='checkbox']").forEach(ch=>{
+        ch.addEventListener("change", applyCols);
+      });
+      applyCols(); // set initial state
+    })();
+
   }
 
   // --- MCQ Modes ---

@@ -909,3 +909,35 @@ body.nav-open .scrim{ display:block; }
 
 .lt-audio-col{ width:82px; text-align:center; }
 .lt-audio-btn{ border-radius:999px; padding:6px 10px; }
+/* ===== Learn Table — responsive & column hide ===== */
+
+/* Chip group & toolbar layout */
+.lt-toolbar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.lt-cols{ display:flex; gap:6px; flex-wrap:wrap; }
+.lt-cols label.chip{
+  display:flex; align-items:center; gap:6px;
+  cursor:pointer;
+}
+.lt-cols input{ accent-color: var(--accent); }
+
+/* Hide columns when toggled off */
+#learn-table.hide-col-kanji  td.kanji,  #learn-table.hide-col-kanji  th[data-k="kanji"]{ display:none; }
+#learn-table.hide-col-hira   td.hira,   #learn-table.hide-col-hira   th[data-k="hira"]{  display:none; }
+#learn-table.hide-col-en     td.en,     #learn-table.hide-col-en     th[data-k="en"]{    display:none; }
+#learn-table.hide-col-audio  td.acts,   #learn-table.hide-col-audio  th.lt-audio-col{     display:none; }
+
+/* Mobile tweaks: tighter spacing + allow wrapping so it fits */
+@media (max-width: 900px){
+  .learn-table-bar{ flex-direction: column; align-items: stretch; gap:6px; }
+  .lt-toolbar{ justify-content: space-between; }
+  .learn-table th,
+  .learn-table td{
+    padding: 8px 10px;
+    white-space: normal;            /* allow wrap instead of forcing horizontal scroll */
+  }
+  .lt-audio-col{ width: 56px; }     /* narrower audio col */
+  #learn-table .table-wrap{
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
