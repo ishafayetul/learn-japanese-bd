@@ -149,6 +149,11 @@
       "vocab": ["Vocabulary/Vocab-Phrases.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Phrases.pdf"]
+    },
+    "Lesson-Kanji": {
+      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-kanji.pdf"]
     }
   }
 }
