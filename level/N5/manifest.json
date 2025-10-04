@@ -13,7 +13,7 @@
     "Lesson-Kanji": {
       "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
-      "grammar": ["Grammar/Grammar-kanji.pdf"]
+      "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
     "Lesson-01": {
       "vocab": ["Vocabulary/Vocab-Lesson-01.csv"],
