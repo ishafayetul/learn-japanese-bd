@@ -962,3 +962,17 @@ body.nav-open .scrim{ display:block; }
   }
 }
 
+/* Word Table — put toggles under the filter on all screens */
+.learn-table-bar{
+  display: flex;
+  flex-direction: column;   /* stack filter, then toolbar */
+  align-items: stretch;
+  gap: 8px;
+}
+
+/* tidy toolbar + chips */
+.lt-toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.lt-cols{ display:flex; gap:6px; flex-wrap:wrap; }
+
+/* small breathing room above table */
+#learn-table .table-wrap{ margin-top: 6px; }
