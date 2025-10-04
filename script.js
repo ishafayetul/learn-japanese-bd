@@ -1672,6 +1672,13 @@ window.startLearnTable = async () => {
   wireLearnTableOnce();
   updateBackVisibility();
 };
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.querySelector("#btn-learn-table");
+  if (btn && !btn.dataset.wired){
+    btn.dataset.wired = "1";                 // prevent double-binding
+    btn.addEventListener("click", () => window.startLearnTable());
+  }
+});
 
 function buildLearnTable(){
   const tb = document.querySelector("#lt-table tbody");
