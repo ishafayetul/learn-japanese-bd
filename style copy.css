@@ -4,35 +4,35 @@
    ========================================================= */
 
 :root{
-  /* === Aurora theme — fixed (not tied to prefers-color-scheme) === */
-  --bg: #0b1220;
-  --bg-soft: #0f1830;
-  --card: #101a2e;
-  --text: #eaf0ff;
-  --muted: #a9b4d0;
-
-  /* Brand accents aligned with landing gradient */
-  --accent: #8b5cf6;   /* violet */
-  --accent-2: #22d3ee; /* cyan */
-
-  /* Status & utility */
-  --danger: #e05666;
-  --warning: #f2c94c;
-  --ok: #12b886;
-  --bad: #e03131;
-
-  /* Layout */
-  --border: #25345a;
-  --shadow: 0 10px 40px rgba(0,0,0,.35);
+  --bg: #0b0e13;
+  --bg-soft: #121824;
+  --card: #151c28;
+  --text: #e7edf7;
+  --muted: #a8b3c7;
+  --accent: #5aa9ff;
+  --accent-2: #7bd389;
+  --danger: #ff6b6b;
+  --warning: #f8c14b;
+  --border: #223049;
+  --shadow: 0 8px 24px rgba(0,0,0,.24);
   --radius: 14px;
-
-  /* Extras used in a few places */
-  --panel: #101826;
-  --panel-2: #0f1727;
-  --link: #8b5cf6;
 }
 
-
+@media (prefers-color-scheme: light){
+  :root{
+    --bg: #f7fbff;
+    --bg-soft: #eef5ff;
+    --card: #ffffff;
+    --text: #0a1a33;
+    --muted: #50627e;
+    --accent: #2267e3;
+    --accent-2: #0aa35b;
+    --danger: #cc2936;
+    --warning: #b77e00;
+    --border: #d6e2f3;
+    --shadow: 0 8px 24px rgba(0,0,0,.08);
+  }
+}
 
 *{ box-sizing: border-box; }
 html, body { height:100%; }
