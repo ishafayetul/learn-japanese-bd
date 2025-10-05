@@ -2,7 +2,7 @@
   "version": 1,
   "level": "N5",
   "allLessons": [
-    "Lesson-Kanji-01","Lesson-Kanji-01-Words","Lesson-Kanji-02","Lesson-Kanji-03","Lesson-Kanji-04","Lesson-01","Lesson-02","Lesson-03","Lesson-04","Lesson-05",
+    "Kanji-01","Kanji-01-Words","Kanji-02","Kanji-03","Kanji-04","Lesson-01","Lesson-02","Lesson-03","Lesson-04","Lesson-05",
     "Lesson-06","Lesson-07","Lesson-08","Lesson-09","Lesson-10",
     "Lesson-11","Lesson-12","Lesson-13","Lesson-14","Lesson-15",
     "Lesson-16","Lesson-17","Lesson-18","Lesson-19","Lesson-20",
@@ -10,28 +10,28 @@
     "Lesson-Counters","Lesson-Time","Lesson-Phrases"
   ],
   "lessons": {
-    "Lesson-Kanji-01": {
-      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
+    "Kanji-01": {
+      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
-    "Lesson-Kanji-01-Words": {
-      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
+    "Kanji-01-Words": {
+      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
-    "Lesson-Kanji-02": {
-      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
+    "Kanji-02": {
+      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
-    "Lesson-Kanji-03": {
-      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
+    "Kanji-03": {
+      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
-    "Lesson-Kanji-04": {
-      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
+    "Kanji-04": {
+      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
