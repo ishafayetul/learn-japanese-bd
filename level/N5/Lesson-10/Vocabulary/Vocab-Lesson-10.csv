@@ -9,18 +9,18 @@
 猫,ねこ,cat
 木,き,tree
 物,もの,thing
-フィルム,フィルム,film
+?,フィルム,film
 電池,でんち,battery
 箱,はこ,box
 スイッチ,スイッチ,switch
 冷蔵庫,れいぞうこ,refrigerator
 テーブル,テーブル,table
-ベッド,ベッド,bed
+?,ベッド,bed
 棚,たな,shelf
-ドア,ドア,door
+?,ドア,door
 窓,まど,window
-ポスト,ポスト,"mailbox, postbox"
-ビル,ビル,building
+?,ポスト,"mailbox, postbox"
+?,ビル,building
 公園,こうえん,park
 喫茶店,きっさてん,coffee shop
 本屋,ほんや,bookstore
