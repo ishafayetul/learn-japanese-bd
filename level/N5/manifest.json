@@ -11,27 +11,27 @@
   ],
   "lessons": {
     "Kanji-01": {
-      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
+      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
     "Kanji-01-Words": {
-      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
+      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
     "Kanji-02": {
-      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
+      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
     "Kanji-03": {
-      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
+      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
     "Kanji-04": {
-      "vocab": ["Vocabulary/Vocab-Kanji.csv"],
+      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
