@@ -1464,7 +1464,7 @@ window.closeVideoLightbox = closeVideoLightbox;
     case "kanji-hira":
     case "hira-kanji":
     case "k2h-e":
-    case "he2k":
+    case "e2h-k":
     case "write-k2h":
       return App.deck.filter(hasKanji);
     default:
@@ -1811,7 +1811,7 @@ function buildLearnTable(){
     else if (mode==="en-jp"){ prompt=w.en;   correct=w.hira; poolField="hira"; }
     else if (mode==="kanji-hira"){ prompt=w.kanji; correct=w.hira; poolField="hira"; }
     else if (mode==="hira-kanji"){ prompt=w.hira; correct=w.kanji; poolField="kanji"; }
-    else if (mode==="k2h-e" || mode==="he2k"){ renderDualQuestion(w); return; }
+    else if (mode==="k2h-e" || mode==="e2h-k"){ renderDualQuestion(w); return; }
     else { prompt=w.hira; correct=w.en; poolField="en"; }
 
     elQuestionBox.textContent = prompt;
@@ -1842,40 +1842,54 @@ function buildLearnTable(){
 
  
   function renderDualQuestion(w){
-    elOptions.innerHTML="";
-    const mode = App.mode;
-    if (!w.kanji || !w.kanji.trim()) { App.qIndex++; updateDeckProgress(); return renderQuestion(); }
-    const grid = document.createElement("div"); grid.className="dual-grid";
-    const leftCol = document.createElement("div");
+    elOptions.innerHTML = "";
+    const mode = App.mode; // "k2h-e" or "e2h-k"
+
+    // Skip rows that have no kanji (both dual modes would break without a kanji candidate set)
+    if (!w.kanji || !w.kanji.trim()){
+      App.qIndex++; updateDeckProgress(); return renderQuestion();
+    }
+
+    const grid = document.createElement("div"); grid.className = "dual-grid";
+    const leftCol  = document.createElement("div");
     const rightCol = document.createElement("div");
     grid.appendChild(leftCol); grid.appendChild(rightCol);
     elOptions.appendChild(grid);
 
-    // NEW: English prompt → pick Hiragana (left) + Kanji (right)
-    // (backward compatible with old id "k2h-e"; new id could be "e2h-k")
-    const isDualEnglish = (mode === "k2h-e" || mode === "e2h-k");
+    // Decide prompt + which fields populate LEFT/RIGHT
+    let prompt, correctLeft, correctRight, pickSetLeft, pickSetRight;
 
-    let prompt = w.en;
-    let correctLeft  = w.hira;   // user must pick the correct HIRAGANA
-    let correctRight = w.kanji;  // ...and the correct KANJI
+    if (mode === "k2h-e"){
+      // Kanji prompt; choose HIRAGANA (left) + ENGLISH (right)
+      prompt       = w.kanji;
+      correctLeft  = w.hira;
+      correctRight = w.en;
+      pickSetLeft  = buildOptions(correctLeft,  "hira");
+      pickSetRight = buildOptions(correctRight, "en");
+    } else { // default to "e2h-k"
+      // English prompt; choose HIRAGANA (left) + KANJI (right)
+      prompt       = w.en || "";
+      correctLeft  = w.hira;
+      correctRight = w.kanji;
+      pickSetLeft  = buildOptions(correctLeft,  "hira");
+      pickSetRight = buildOptions(correctRight, "kanji");
+    }
 
-    // show English only
+    // Show the question text (kanji or english depending on mode)
     elQuestionBox.textContent = prompt;
 
-    // build distractors from the proper fields
-    const pickSetLeft  = buildOptions(correctLeft,  "hira");
-    const pickSetRight = buildOptions(correctRight, "kanji");
+    let pickedLeft = null, pickedRight = null;
 
-    let pickedLeft=null, pickedRight=null;
     function finalize(){
-      if (pickedLeft==null || pickedRight==null) return;
-      const ok = (pickedLeft===correctLeft) && (pickedRight===correctRight);
+      if (pickedLeft == null || pickedRight == null) return;
+      const ok = (pickedLeft === correctLeft) && (pickedRight === correctRight);
       if (ok){ App.stats.right++; incrementPoints(1); }
-      else { App.stats.wrong++; recordMistake(w); }
+      else   { App.stats.wrong++; recordMistake(w); }
       updateScorePanel();
       setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 350);
     }
 
+    // LEFT column buttons
     for (const val of pickSetLeft){
       const b = document.createElement("button");
       b.textContent = val;
@@ -1888,6 +1902,7 @@ function buildLearnTable(){
       leftCol.appendChild(b);
     }
 
+    // RIGHT column buttons
     for (const val of pickSetRight){
       const b = document.createElement("button");
       b.textContent = val;
@@ -1900,6 +1915,7 @@ function buildLearnTable(){
       rightCol.appendChild(b);
     }
   }
+
 
   window.startDualMCQ = (variant)=> window.startPractice(variant);
 // ==== Keyboard shortcuts for MCQ (incl. Dual) ====
