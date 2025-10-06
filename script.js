@@ -1811,7 +1811,8 @@ function buildLearnTable(){
     else if (mode==="en-jp"){ prompt=w.en;   correct=w.hira; poolField="hira"; }
     else if (mode==="kanji-hira"){ prompt=w.kanji; correct=w.hira; poolField="hira"; }
     else if (mode==="hira-kanji"){ prompt=w.hira; correct=w.kanji; poolField="kanji"; }
-    else if (mode==="k2h-e" || mode==="e2h-k"){ renderDualQuestion(w); return; }
+    else if (mode==="k2h-e"){ renderDualQuestion(w); return; }
+    else if (mode==="e2h-k"){ renderDualQuestion(w); return; }
     else { prompt=w.hira; correct=w.en; poolField="en"; }
 
     elQuestionBox.textContent = prompt;
