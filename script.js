@@ -1806,19 +1806,14 @@ function buildLearnTable(){
   function renderQuestion(){
     const w = App.deckFiltered[App.qIndex];
     if (!w){ elQuestionBox.textContent = "All done."; elOptions.innerHTML=""; return; }
-      // --- Dual modes FIRST (exact match) ---
-    if (App.mode === "k2h-e" || App.mode === "e2h-k") {
-      renderDualQuestion(w);
-      return;
-    }
-    // --- Single modes ---
     const mode = App.mode; let prompt="", correct="", poolField="";
-    if (mode==="jp-en"){ prompt=w.hira; correct=w.en;   poolField="en"; }
+
+    if (mode === "k2h-e") return renderDualQuestion(w, "k2h-e");
+    else if (mode === "e2h-k") return renderDualQuestion(w, "e2h-k");
+    else if (mode==="jp-en"){ prompt=w.hira; correct=w.en;   poolField="en"; }
     else if (mode==="en-jp"){ prompt=w.en;   correct=w.hira; poolField="hira"; }
     else if (mode==="kanji-hira"){ prompt=w.kanji; correct=w.hira; poolField="hira"; }
     else if (mode==="hira-kanji"){ prompt=w.hira; correct=w.kanji; poolField="kanji"; }
-    // else if (mode==="k2h-e"){ renderDualQuestion(w); return; }
-    // else if (mode==="e2h-k"){ renderDualQuestion(w); return; }
     else { prompt=w.hira; correct=w.en; poolField="en"; }
 
     elQuestionBox.textContent = prompt;
@@ -1849,9 +1844,9 @@ function buildLearnTable(){
   window.showMeaning = ()=>{ const w=App.deckFiltered[App.qIndex]; if(w) toast(`Meaning: ${w.en}`); };
 
  
-  function renderDualQuestion(w){
+  function renderDualQuestion(w,mode){
     elOptions.innerHTML = "";
-    const mode = App.mode; // "k2h-e" or "e2h-k"
+    // const mode = App.mode; // "k2h-e" or "e2h-k"
 
     // Skip rows that have no kanji (both dual modes would break without a kanji candidate set)
     if (!w.kanji || !w.kanji.trim()){
@@ -1874,7 +1869,7 @@ function buildLearnTable(){
       correctRight = w.en;
       pickSetLeft  = buildOptions(correctLeft,  "hira");
       pickSetRight = buildOptions(correctRight, "en");
-    } if (mode === "e2h-k"){ // default to "e2h-k"
+    } else if (mode === "e2h-k"){ // default to "e2h-k"
       // English prompt; choose HIRAGANA (left) + KANJI (right)
       prompt       = w.en || "";
       correctLeft  = w.hira;
@@ -1923,8 +1918,8 @@ function buildLearnTable(){
       rightCol.appendChild(b);
     }
   }
-
   window.startDualMCQ = (variant)=> window.startPractice(variant);
+
 // ==== Keyboard shortcuts for MCQ (incl. Dual) ====
 // 1..4 = pick options; 0 = Skip current question
   window.mcqSkip = function(){
