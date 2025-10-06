@@ -1867,7 +1867,7 @@ function buildLearnTable(){
       correctRight = w.en;
       pickSetLeft  = buildOptions(correctLeft,  "hira");
       pickSetRight = buildOptions(correctRight, "en");
-    } else { // default to "e2h-k"
+    } if (mode === "e2h-k"){ // default to "e2h-k"
       // English prompt; choose HIRAGANA (left) + KANJI (right)
       prompt       = w.en || "";
       correctLeft  = w.hira;
