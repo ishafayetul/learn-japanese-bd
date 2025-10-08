@@ -399,16 +399,24 @@
   }
 
   function jumpTo(index, autoplay = true){
-  S.el.prev.addEventListener('click', ()=> {
-    if (!S.state.story) return;
-    if (S.state.idx > 0) jumpTo(S.state.idx - 1, true);
-  });
-  S.el.next.addEventListener('click', ()=> {
-    if (!S.state.story) return;
-    if (S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
-  });
+    const st = S.state.story;
+    if (!st) return;
 
+    // clamp to valid range (force integer)
+    index = Math.max(0, Math.min((index | 0), st.lines.length - 1));
+
+    pause();                 // cancel any current utterances immediately
+    S.state.idx = index;     // set new index
+    showLine();              // show + mark for THIS index snapshot
+
+    if (autoplay) {
+      playFromCurrent();     // triple-play from this line
+    } else {
+      // keep UI button in sync when not auto-playing
+      syncToggleLabel && syncToggleLabel();
+    }
   }
+
 
 
   function bindEvents(){
