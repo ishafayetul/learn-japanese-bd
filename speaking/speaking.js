@@ -1,6 +1,6 @@
 /* =======================================================
    Speaking Practice (Shadowing)
-   - Loads /speaking/manifest.json
+   - Loads speaking/manifest.json
    - UI: story dropdown, play/pause, prev/next, +/- speed
    - Triple play per line: Normal → Slow → Normal
    - Auto Bangla translation (client-side Google mini endpoint fallback)
@@ -78,7 +78,7 @@
           <button id="sp-next"  type="button">Next ⟶</button>
           <button id="sp-rate-down" type="button">− Speed</button>
           <span   id="sp-rate-badge" class="rate-badge">1.00×</span>
-          <button id="sp-rate-up" type="button">+ Speed</button>0
+          <button id="sp-rate-up" type="button">+ Speed</button>
         </div>
 
         <div class="sp-card">
@@ -105,7 +105,7 @@
   // ===== Story Manifest ======================================================
   async function loadStories(){
     try{
-      const res = await fetch('/speaking/manifest.json', {cache: 'no-store'});
+      const res = await fetch('speaking/manifest.json', {cache: 'no-store'});
       const json = await res.json();
       S.state.stories = (json.stories || []).map(x => ({
         id: x.id,
@@ -163,8 +163,7 @@
   }
 
   function scrollActive(){
-    const cur = S.el.list.querySelector(`.sp-item[data-i="${S.state.idx}"]`);
-    if (cur) cur.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
   }
 
   // ===== Line View + Translation ============================================
