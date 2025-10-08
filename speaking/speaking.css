@@ -51,6 +51,10 @@
   min-height: 320px;            /* NEW: taller card */
 
   /* keep your existing look */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;   /* vertical center */
+  align-items: center;       /* horizontal center */
   background: radial-gradient(600px 260px at -10% -10%, #2a2130 0%, transparent 60%), #0e1423;
   border:1px solid #3b2730;
   text-align:center;
@@ -62,6 +66,8 @@
   /* ↑ bigger floor and higher cap */
   font-size: clamp(32px, 6vw, 60px); 
   font-weight: 800;
+  text-align: center;        /* ensure horizontal center */
+  margin: 0;                 /* remove stray margins */
 }
 
 /* Bangla is removed from the card, but if the node still exists, hide it */
