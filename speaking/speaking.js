@@ -165,26 +165,17 @@
     `).join('');
     S.el.list.querySelectorAll('.sp-item').forEach(li=>{
       li.addEventListener('click', (ev)=>{
-        // resolve the exact li regardless of where inside it was clicked
-        const node = ev.currentTarget; // safest — already the bound .sp-item
-        const i = Array.prototype.indexOf.call(S.el.list.children, node);
-        jumpTo(i, true);  // pause → set idx → mark → show → play
+        const node = ev.currentTarget;           // the .sp-item itself
+        const i = Number(node.dataset.i) | 0;    // read data-i directly
+        jumpTo(i, true);                          // pause → set idx → show(mark) → play
       });
     });
 
-    // helper: mark a specific index (used above)
-    function markActiveIndex(i){
-      const old = S.state.idx;
-      S.state.idx = i;
-      markActive();
-      S.state.idx = i; // keep the index
-    }
-    markActive();
+    markActive(); // after building the list, mark index 0
+
   }
 
-  
-
-  function markActive(){
+  function markActiveFor(idx){
     const list = S.el?.list;
     if (!list) return;
 
@@ -198,10 +189,12 @@
       n.style.removeProperty('border-left');
     });
 
-    const cur = getItemEl(S.state.idx);
+    const items = list.querySelectorAll('.sp-item');
+    const i = Math.max(0, Math.min(Number(idx) | 0, items.length - 1));
+    const cur = items[i];
     if (!cur) return;
 
-    // apply strong visual — cannot be overridden
+    // strong visual (wins any CSS conflicts)
     cur.classList.add('active');
     cur.setAttribute('data-active','1');
     cur.style.setProperty('outline', '2px solid var(--speak-accent, #ff4d5e)', 'important');
@@ -209,6 +202,12 @@
     cur.style.setProperty('box-shadow', '0 0 0 2px color-mix(in oklab, var(--speak-accent,#ff4d5e) 45%, transparent)', 'important');
     cur.style.setProperty('border-left', '6px solid var(--speak-accent, #ff4d5e)', 'important');
   }
+
+
+  function markActive(){
+  markActiveFor(S.state.idx);
+}
+
 
 
   function scrollActive(){
@@ -219,18 +218,23 @@
   async function showLine(){
     const st = S.state.story;
     if (!st) return;
-    const ja = st.lines[S.state.idx] || '';
-    S.el.cardJa.textContent = ja || '—';
-    // do NOT call markActive() here — keep view update separate from selection
 
-    // put cached translation if already rendered; otherwise fetch
-    const bnCell = S.el.list.querySelector(`.bn-${S.state.idx}`);
+    // snapshot the index at the moment we're showing the line
+    const idx = Math.max(0, Math.min(S.state.idx, st.lines.length - 1));
+    const ja = st.lines[idx] || '';
+
+    S.el.cardJa.textContent = ja || '—';
+
+    // translation cell for this SAME index
+    const bnCell = S.el.list.querySelector(`.bn-${idx}`);
     const bn = bnCell?.textContent?.trim() || await autoBn(ja);
     S.el.cardBn.textContent = bn || '';
     if (bnCell && !bnCell.textContent.trim()) bnCell.textContent = bn || '';
-    markActive();
 
+    // mark the row for THIS snapshot index (prevents async races)
+    markActiveFor(idx);
   }
+
 
 
   // Prefer a local translator hook if you add one later (e.g. Firebase Cloud Fn)
@@ -321,16 +325,13 @@
         if (!S.state.playing) break;
 
         if (S.state.idx < (S.state.story.lines.length - 1)){
-            S.state.idx++;
-            markActive();           // NEW: highlight the next line we moved to
-            showLine();             // update flashcard content
-            // scrollActive();      // still no-op for you
-        }else{
-            S.state.playing = false; // reached end
-            syncToggleLabel();
+          S.state.idx++;
+          showLine();     // will mark the new current line for its own snapshot
+        } else {
+          S.state.playing = false;
+          syncToggleLabel();
         }
     }
-
   }
 
   function pause(){
@@ -378,19 +379,16 @@
     const st = S.state.story;
     if (!st) return;
 
-    // clamp index
-    index = Math.max(0, Math.min(index, st.lines.length - 1));
+    // clamp
+    index = Math.max(0, Math.min(index | 0, st.lines.length - 1));
 
-    // stop any current speech
-    pause();
+    pause();                 // cancel any current utterances immediately
+    S.state.idx = index;     // set new index
+    showLine();              // show + mark for THIS index snapshot
 
-    // update view + highlight
-    S.state.idx = index;
-    markActive();
-    showLine();
+    if (autoplay) playFromCurrent(); // triple-play from this line
+  }
 
-    if (autoplay) playFromCurrent();
-    }
 
   function bindEvents(){
     S.el.back.addEventListener('click', ()=> goBack());
@@ -566,19 +564,22 @@ function isVisible(node){
     
     // Global fallback: if something steals focus, still handle arrows for Speaking
     window.addEventListener('keydown', (ev)=>{
-      if (!speakingVisible()) return;
+    const sec = document.getElementById('speaking-section');
+    if (!sec || sec.classList.contains('hidden')) return;
 
-      if (ev.key === ' '){
-        ev.preventDefault();
-        S.state.playing ? pause() : playFromCurrent();
-      } else if (ev.key === 'ArrowLeft'){
-        ev.preventDefault();
-        if (S.state.story && S.state.idx > 0) jumpTo(S.state.idx - 1, true);
-      } else if (ev.key === 'ArrowRight'){
-        ev.preventDefault();
-        if (S.state.story && S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
-      }
-    }, true);
+    const key = ev.key;
+    if (key === ' '){
+      ev.preventDefault();
+      S.state.playing ? pause() : playFromCurrent();
+    } else if (key === 'ArrowLeft' || key === 'Left'){
+      ev.preventDefault();
+      if (S.state.story && S.state.idx > 0) jumpTo(S.state.idx - 1, true);
+    } else if (key === 'ArrowRight' || key === 'Right'){
+      ev.preventDefault();
+      if (S.state.story && S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
+    }
+  }, true); // capture so <select> can't swallow it
+
 
   }
 
