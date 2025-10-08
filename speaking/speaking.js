@@ -163,18 +163,30 @@
         <div class="bn bn-${i}">${escapeHtml(bnList[i] || '')}</div>
       </div>
     `).join('');
-    S.el.list.querySelectorAll('.sp-item').forEach(div=>{
-      div.addEventListener('click', ()=>{
-        // visually mark EXACTLY what was clicked immediately
-        clearActiveStyles();
-        applyActiveStyles(div);
+    S.el.list.querySelectorAll('.sp-item').forEach(li=>{
+      li.addEventListener('click', (ev)=>{
+        // resolve the exact li regardless of where inside it was clicked
+        const node = ev.currentTarget.closest('.sp-item') || ev.currentTarget;
+        const idxAttr = node.getAttribute('data-i');
+        const i = Number.isFinite(+idxAttr) ? +idxAttr
+          : Array.from(S.el.list.children).indexOf(node);
 
-        const targetIndex = +div.dataset.i;
-        jumpTo(targetIndex, true); // cancels current speech & plays selected line
+        // immediate visual feedback
+        markActiveIndex(i);
+
+        // jump & play
+        jumpTo(i, true);
       });
     });
 
-    markActive();
+    // helper: mark a specific index (used above)
+    function markActiveIndex(i){
+      const old = S.state.idx;
+      S.state.idx = i;
+      markActive();
+      S.state.idx = i; // keep the index
+    }
+
   }
 
   function clearActiveStyles(){
@@ -201,11 +213,31 @@
   }
 
   function markActive(){
-  if (!S.el || !S.el.list) return;
-  clearActiveStyles();
-  const cur = S.el.list.querySelector(`.sp-item[data-i="${S.state.idx}"]`);
-  applyActiveStyles(cur);
-}
+    const list = S.el?.list;
+    if (!list) return;
+
+    // clear previous
+    list.querySelectorAll('.sp-item').forEach(n=>{
+      n.classList.remove('active');
+      n.removeAttribute('data-active');
+      n.style.removeProperty('outline');
+      n.style.removeProperty('background');
+      n.style.removeProperty('box-shadow');
+      n.style.removeProperty('border-left');
+    });
+
+    const cur = getItemEl(S.state.idx);
+    if (!cur) return;
+
+    // apply strong visual
+    cur.classList.add('active');
+    cur.setAttribute('data-active','1');
+    cur.style.setProperty('outline', '2px solid var(--speak-accent, #ff4d5e)', 'important');
+    cur.style.setProperty('background', '#141c30', 'important');
+    cur.style.setProperty('box-shadow', '0 0 0 2px color-mix(in oklab, var(--speak-accent,#ff4d5e) 45%, transparent)', 'important');
+    cur.style.setProperty('border-left', '6px solid var(--speak-accent, #ff4d5e)', 'important');
+  }
+
 
   function scrollActive(){
     return;
@@ -343,17 +375,24 @@
   }
 
   // ===== Events ==============================================================
-  function currentVisibleSectionId(){
-  const ids = [
-    'lesson-area','level-shell','progress-section','leaderboard-section',
-    'mistakes-section','marked-section','signword-section','mix-section'
-  ];
-  for (const id of ids){
-    const el = document.getElementById(id);
-    if (el && !el.classList.contains('hidden')) return id;
+  function getItemEl(idx){
+    const list = S.el?.list;
+    if (!list) return null;
+    // Prefer data-i match; fall back to nth child (index-based)
+    return list.querySelector(`.sp-item[data-i="${idx}"]`) || list.children?.[idx] || null;
   }
-  return null;
-}
+
+  function currentVisibleSectionId(){
+    const ids = [
+      'lesson-area','level-shell','progress-section','leaderboard-section',
+      'mistakes-section','marked-section','signword-section','mix-section'
+    ];
+    for (const id of ids){
+      const el = document.getElementById(id);
+      if (el && !el.classList.contains('hidden')) return id;
+    }
+    return null;
+  }
 
   function speakingVisible(){
     const sec = document.getElementById('speaking-section');
@@ -550,7 +589,8 @@ function isVisible(node){
     }, true);
 
     
-    document.addEventListener('keydown', (ev)=>{
+    // Global fallback: if something steals focus, still handle arrows for Speaking
+    window.addEventListener('keydown', (ev)=>{
       if (!speakingVisible()) return;
 
       if (ev.key === ' '){
@@ -562,12 +602,9 @@ function isVisible(node){
       } else if (ev.key === 'ArrowRight'){
         ev.preventDefault();
         if (S.state.story && S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
-      } else if (ev.key === '+'){
-        ev.preventDefault(); setRate(S.state.curRate + 0.05);
-      } else if ((ev.key === '-') || (ev.key === '_')){
-        ev.preventDefault(); setRate(S.state.curRate - 0.05);
       }
     }, true);
+
   }
 
 
