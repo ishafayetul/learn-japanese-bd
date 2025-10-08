@@ -324,7 +324,7 @@
 
     await speakOnce(line, n);    if (token.cancelled) return; await sleep(pauseMsFor(line));
     await speakOnce(line, slow); if (token.cancelled) return; await sleep(pauseMsFor(line));
-    await speakOnce(line, n);    if (token.cancelled) return; await sleep(120);
+    await speakOnce(line, n);    if (token.cancelled) return; await sleep(pauseMsFor(line));
   }
 
 
