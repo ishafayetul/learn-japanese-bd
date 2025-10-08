@@ -93,7 +93,7 @@
       <div class="card">
         <div class="sp-head">
           <select id="sp-story" title="Choose story"></select>
-          <select id="sp-voice" title="Voice (ja-JP preferred)"></select>
+          <select class="muted" id="sp-voice" title="Voice (ja-JP preferred)"></select>
           <button id="sp-prev"  type="button">↑ Prev</button>
           <button id="sp-next"  type="button">Next ↓</button>
           <button id="sp-rate-down" type="button">− Speed</button>
