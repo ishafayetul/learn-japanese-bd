@@ -49,8 +49,8 @@
     S.el.wrap      = root;
     S.el.back      = root.querySelector('#speaking-back');
     S.el.storySel  = root.querySelector('#sp-story');
-    S.el.play      = root.querySelector('#sp-play');
-    S.el.pause     = root.querySelector('#sp-pause');
+    // S.el.play      = root.querySelector('#sp-play');
+    // S.el.pause     = root.querySelector('#sp-pause');
     S.el.prev      = root.querySelector('#sp-prev');
     S.el.next      = root.querySelector('#sp-next');
     S.el.rateDown  = root.querySelector('#sp-rate-down');
@@ -74,13 +74,11 @@
         <div class="sp-head">
           <select id="sp-story" title="Choose story"></select>
           <select id="sp-voice" title="Voice (ja-JP preferred)"></select>
-          <button id="sp-play"  type="button">▶ Play</button>
-          <button id="sp-pause" type="button">⏸ Pause</button>
           <button id="sp-prev"  type="button">⟵ Prev</button>
           <button id="sp-next"  type="button">Next ⟶</button>
           <button id="sp-rate-down" type="button">− Speed</button>
           <span   id="sp-rate-badge" class="rate-badge">1.00×</span>
-          <button id="sp-rate-up" type="button">+ Speed</button>
+          <button id="sp-rate-up" type="button">+ Speed</button>0
         </div>
 
         <div class="sp-card">
@@ -101,6 +99,9 @@
     `;
   }
 
+  //<button id="sp-play"  type="button">▶ Play</button>
+  //<button id="sp-pause" type="button">⏸ Pause</button>
+  
   // ===== Story Manifest ======================================================
   async function loadStories(){
     try{
