@@ -120,19 +120,30 @@
   // ===== Story Manifest ======================================================
   async function loadStories(){
     try{
-      const res = await fetch('speaking/manifest.json', {cache: 'no-store'});
+      const res = await fetch('speaking/manifest.json', { cache: 'no-store' });
       const json = await res.json();
+
+      // Accept both the new object format and any old plain-string lines
       S.state.stories = (json.stories || []).map(x => ({
         id: x.id,
         title: x.title,
         lang: x.lang || 'ja-JP',
-        lines: (x.lines || []).map(s => String(s).trim()).filter(Boolean)
+        lines: (x.lines || [])
+          .map(row => {
+            if (typeof row === 'string') return { ja: row.trim(), bn: '' };
+            return {
+              ja: String(row?.ja || '').trim(),
+              bn: String(row?.bn || '').trim()
+            };
+          })
+          .filter(r => r.ja) // must have Japanese text
       }));
     }catch(e){
       console.error('Failed to load stories manifest:', e);
       S.state.stories = [];
     }
   }
+
 
   function buildStoryDropdown(){
     const sel = S.el.storySel;
@@ -155,25 +166,25 @@
   async function paintList(){
     const st = S.state.story;
     if (!st){ S.el.list.innerHTML = ''; return; }
-    // Prefetch Bangla translations to make scrolling/snapping quick
-    const bnList = await Promise.all(st.lines.map(line => autoBn(line)));
-    S.el.list.innerHTML = st.lines.map((ja, i) => `
+
+    S.el.list.innerHTML = st.lines.map((line, i) => `
       <div class="sp-item" data-i="${i}">
-        <div class="ja">${escapeHtml(ja)}</div>
-        <div class="bn bn-${i}">${escapeHtml(bnList[i] || '')}</div>
+        <div class="ja">${escapeHtml(line.ja)}</div>
+        <div class="bn bn-${i}">${escapeHtml(line.bn || '')}</div>
       </div>
     `).join('');
+
     S.el.list.querySelectorAll('.sp-item').forEach(li=>{
       li.addEventListener('click', (ev)=>{
-        const node = ev.currentTarget;           // the .sp-item itself
-        const i = Number(node.dataset.i) | 0;    // read data-i directly
+        const node = ev.currentTarget;            // the .sp-item itself
+        const i = Number(node.dataset.i) | 0;     // read data-i directly
         jumpTo(i, true);                          // pause → set idx → show(mark) → play
       });
     });
 
     markActive(); // after building the list, mark index 0
-
   }
+
 
   function markActiveFor(idx){
     const list = S.el?.list;
@@ -214,26 +225,25 @@
     return;
   }
 
-  // ===== Line View + Translation ============================================
+  // ===== Line View ===========================================================
   async function showLine(){
     const st = S.state.story;
     if (!st) return;
 
-    // snapshot the index at the moment we're showing the line
     const idx = Math.max(0, Math.min(S.state.idx, st.lines.length - 1));
-    const ja = st.lines[idx] || '';
+    const cur = st.lines[idx] || { ja: '', bn: '' };
 
-    S.el.cardJa.textContent = ja || '—';
+    S.el.cardJa.textContent = cur.ja || '—';
+    S.el.cardBn.textContent = cur.bn || '';
 
-    // translation cell for this SAME index
+    // keep the list cell in sync if it was blank
     const bnCell = S.el.list.querySelector(`.bn-${idx}`);
-    const bn = bnCell?.textContent?.trim() || await autoBn(ja);
-    S.el.cardBn.textContent = bn || '';
-    if (bnCell && !bnCell.textContent.trim()) bnCell.textContent = bn || '';
+    if (bnCell && !bnCell.textContent.trim()) bnCell.textContent = cur.bn || '';
 
-    // mark the row for THIS snapshot index (prevents async races)
+    // strong visual mark for the exact snapshot index
     markActiveFor(idx);
   }
+
 
 
 
@@ -296,7 +306,7 @@
   // Pause length depends on chars & punctuation
   function pauseMsFor(text){
     const base = 400;
-    const perChar = 55;
+    const perChar = 100;
     const bonus = /[。？！]/.test(text) ? 350 : 150;
     return base + (text.length * perChar) + bonus;
   }
@@ -306,15 +316,17 @@
   async function playCurrentTriple(token){
     const st = S.state.story; if (!st) return;
     const i = S.state.idx;
-    const line = st.lines[i] || '';
+    const line = st.lines[i]?.ja || '';
     if (!line) return;
 
     const n = S.state.curRate;
     const slow = Math.max(.6, n * S.state.slowFactor);
-    await speakOnce(line, n);                 if (token.cancelled) return; await sleep(pauseMsFor(line));
-    await speakOnce(line, slow);              if (token.cancelled) return; await sleep(pauseMsFor(line));
-    await speakOnce(line, n);                 if (token.cancelled) return; await sleep(120); // small settle
+
+    await speakOnce(line, n);    if (token.cancelled) return; await sleep(pauseMsFor(line));
+    await speakOnce(line, slow); if (token.cancelled) return; await sleep(pauseMsFor(line));
+    await speakOnce(line, n);    if (token.cancelled) return; await sleep(120);
   }
+
 
   async function playFromCurrent(){
     S.state.playing = true;
