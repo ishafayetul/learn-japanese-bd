@@ -74,6 +74,8 @@
         <div class="sp-head">
           <select id="sp-story" title="Choose story"></select>
           <select id="sp-voice" title="Voice (ja-JP preferred)"></select>
+          <button id="sp-play"  type="button">▶ Play</button>
+          <button id="sp-pause" type="button">⏸ Pause</button>
           <button id="sp-prev"  type="button">⟵ Prev</button>
           <button id="sp-next"  type="button">Next ⟶</button>
           <button id="sp-rate-down" type="button">− Speed</button>
