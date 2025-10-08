@@ -46,15 +46,15 @@
   margin: 12px auto 20px;
   padding: 32px 36px;           /* ↑ was 16px */
   border-radius: 18px;          /* ↑ was 16px */
-  max-width: 1000px;            /* NEW: wider cap */
-  width: min(100%, 1000px);     /* NEW: responsive width */
+  max-width: 1280px;            /* NEW: wider cap */
+  width: min(100%, 1280px);     /* NEW: responsive width */
   min-height: 320px;            /* NEW: taller card */
 
   /* keep your existing look */
   background: radial-gradient(600px 260px at -10% -10%, #2a2130 0%, transparent 60%), #0e1423;
   border:1px solid #3b2730;
   text-align:center;
-  line-height:1.35;
+  line-height:1;
 }
 
 /* Bigger Japanese text on the card */
