@@ -46,8 +46,8 @@
   margin: 12px auto 20px;
   padding: 32px 36px;           /* ↑ was 16px */
   border-radius: 18px;          /* ↑ was 16px */
-  max-width: 1280px;            /* NEW: wider cap */
-  width: min(100%, 1280px);     /* NEW: responsive width */
+  max-width: 1500px;            /* NEW: wider cap */
+  width: min(100%, 1500px);     /* NEW: responsive width */
   min-height: 320px;            /* NEW: taller card */
 
   /* keep your existing look */
@@ -60,7 +60,7 @@
 /* Bigger Japanese text on the card */
 .sp-ja{
   /* ↑ bigger floor and higher cap */
-  font-size: clamp(28px, 6vw, 60px); 
+  font-size: clamp(32px, 6vw, 60px); 
   font-weight: 800;
 }
 
