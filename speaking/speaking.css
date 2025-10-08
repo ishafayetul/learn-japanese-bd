@@ -82,3 +82,5 @@
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--speak-accent, #ff4d5e) 45%, transparent) !important;
   border-left: 6px solid var(--speak-accent, #ff4d5e) !important;
 }
+/* Hide Bangla on the flashcard if any BN node still exists */
+#sp-card .bn, .sp-card-bn { display: none !important; }

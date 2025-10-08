@@ -28,6 +28,11 @@
   function mount(){
     const host = document.getElementById('speaking-section');
     host.innerHTML = renderShell();
+    // Permanently remove Bangla slot from the flashcard
+    if (S.el.cardBn) {
+      S.el.cardBn.remove();
+      S.el.cardBn = null; // ensure later code won't touch it
+    }
 
     // 1) cache elements BEFORE anything that touches S.el.*
     cacheEls(host);
@@ -233,16 +238,16 @@
     const idx = Math.max(0, Math.min(S.state.idx, st.lines.length - 1));
     const cur = st.lines[idx] || { ja: '', bn: '' };
 
+    // Flashcard shows ONLY Japanese
     S.el.cardJa.textContent = cur.ja || '—';
-    S.el.cardBn.textContent = cur.bn || '';
 
-    // keep the list cell in sync if it was blank
+    // Keep the list cell in sync (Bangla visible in the list only)
     const bnCell = S.el.list.querySelector(`.bn-${idx}`);
     if (bnCell && !bnCell.textContent.trim()) bnCell.textContent = cur.bn || '';
 
-    // strong visual mark for the exact snapshot index
     markActiveFor(idx);
   }
+
 
 
 
