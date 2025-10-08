@@ -75,14 +75,14 @@
     S.el.cardBn    = root.querySelector('#sp-bn');
     S.el.list      = root.querySelector('#sp-list');
   }
-{/* <div class="topbar">
+
+  function renderShell(){
+    return `
+      <div class="topbar">
         <button id="speaking-back" class="back" type="button">← Back</button>
         <div class="crumbs">Learn Japanese <span class="sep">›</span> <span class="speak-accent">Speaking Practice</span></div>
         <div class="topbar-right"></div>
-      </div> */}
-  function renderShell(){
-    return `
-      
+      </div>
 
       <div class="card">
         <div class="sp-head">
@@ -165,12 +165,7 @@
     S.el.list.querySelectorAll('.sp-item').forEach(div=>{
       div.addEventListener('click', ()=>{
         const targetIndex = +div.dataset.i;
-        pause();                  // kill any ongoing speech immediately
-        S.state.idx = targetIndex;
-        markActive();             // highlight EXACTLY what was clicked
-        showLine();               // update flashcard text/translation
-        // scrollActive();        // still a no-op per your setting
-        playFromCurrent();        // speak the selected line (then continue)
+        jumpTo(targetIndex, true);
         });
 
     });
@@ -178,11 +173,24 @@
   }
 
   function markActive(){
-    if (!S.el || !S.el.list) return;               // <— guard
-    S.el.list.querySelectorAll('.sp-item').forEach(n=> n.classList.remove('active'));
+    if (!S.el || !S.el.list) return;
+
+    // remove previous markers
+    S.el.list.querySelectorAll('.sp-item').forEach(n => {
+        n.classList.remove('active');
+        n.style.outline = '';              // inline fallback cleanup
+        n.style.background = '';           // inline cleanup
+    });
+
     const cur = S.el.list.querySelector(`.sp-item[data-i="${S.state.idx}"]`);
-    if (cur) cur.classList.add('active');
-}
+    if (cur){
+        cur.classList.add('active');
+        // visual fallback (in case speaking.css isn't applied)
+        cur.style.outline = '2px solid var(--speak-accent, #ff4d5e)';
+        cur.style.background = '#141c30';
+    }
+    }
+
 
 
   function scrollActive(){
@@ -321,6 +329,24 @@
   }
 
   // ===== Events ==============================================================
+  function jumpTo(index, autoplay = true){
+    const st = S.state.story;
+    if (!st) return;
+
+    // clamp index
+    index = Math.max(0, Math.min(index, st.lines.length - 1));
+
+    // stop any current speech
+    pause();
+
+    // update view + highlight
+    S.state.idx = index;
+    markActive();
+    showLine();
+
+    if (autoplay) playFromCurrent();
+    }
+
   function bindEvents(){
     S.el.back.addEventListener('click', ()=> goBack());
 
@@ -333,17 +359,29 @@
 
     //S.el.pause.addEventListener('click', ()=> pause());
     S.el.wrap.querySelector('#sp-stop').addEventListener('click', ()=> stopAll());
-    S.el.prev.addEventListener('click', ()=> { if (S.state.idx>0){ S.state.idx--; showLine(); scrollActive(); } });
-    S.el.next.addEventListener('click', ()=> { if (S.state.idx < S.state.story.lines.length-1){ S.state.idx++; showLine(); scrollActive(); } });
-
+   
+    S.el.prev.addEventListener('click', ()=> {
+        if (!S.state.story) return;
+        if (S.state.idx > 0) jumpTo(S.state.idx - 1, true);
+    });
+    S.el.next.addEventListener('click', ()=> {
+        if (!S.state.story) return;
+        if (S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
+    });
     S.el.rateDown.addEventListener('click', ()=> setRate(S.state.curRate - 0.05));
     S.el.rateUp.addEventListener('click',   ()=> setRate(S.state.curRate + 0.05));
 
     // Keyboard shortcuts (scope: section only)
     S.el.wrap.addEventListener('keydown', (ev)=>{
       if (ev.key === ' '){ ev.preventDefault(); S.state.playing ? pause() : playFromCurrent(); }
-      else if (ev.key === 'ArrowLeft'){ ev.preventDefault(); S.el.prev.click(); }
-      else if (ev.key === 'ArrowRight'){ ev.preventDefault(); S.el.next.click(); }
+      else if (ev.key === 'ArrowLeft'){
+        ev.preventDefault();
+        if (S.state.idx > 0) jumpTo(S.state.idx - 1, true);
+      }
+      else if (ev.key === 'ArrowRight'){
+        ev.preventDefault();
+        if (S.state.story && S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
+      }
       else if (ev.key === '+'){ ev.preventDefault(); S.el.rateUp.click(); }
       else if (ev.key === '-' || ev.key === '_'){ ev.preventDefault(); S.el.rateDown.click(); }
     }, true);
