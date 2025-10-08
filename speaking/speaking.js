@@ -1,6 +1,6 @@
 /* =======================================================
    Speaking Practice (Shadowing)
-   - Loads /stories/manifest.json
+   - Loads /speaking/manifest.json
    - UI: story dropdown, play/pause, prev/next, +/- speed
    - Triple play per line: Normal → Slow → Normal
    - Auto Bangla translation (client-side Google mini endpoint fallback)
@@ -102,7 +102,7 @@
   // ===== Story Manifest ======================================================
   async function loadStories(){
     try{
-      const res = await fetch('/stories/manifest.json', {cache: 'no-store'});
+      const res = await fetch('/speaking/manifest.json', {cache: 'no-store'});
       const json = await res.json();
       S.state.stories = (json.stories || []).map(x => ({
         id: x.id,
