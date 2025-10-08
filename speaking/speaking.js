@@ -56,6 +56,7 @@
     // focus keyboard scope
     host.tabIndex = -1;
     host.focus();
+    markActive();
     }
 
 
@@ -173,26 +174,29 @@
   }
 
   function markActive(){
-    if (!S.el || !S.el.list) return;
+  if (!S.el || !S.el.list) return;
 
-    // clear previous
-    S.el.list.querySelectorAll('.sp-item').forEach(n => {
-      n.classList.remove('active');
-      n.style.removeProperty('outline');
-      n.style.removeProperty('background');
-      n.style.removeProperty('box-shadow');
-    });
+  // clear previous marks
+  S.el.list.querySelectorAll('.sp-item').forEach(n => {
+    n.classList.remove('active');
+    n.style.removeProperty('outline');
+    n.style.removeProperty('background');
+    n.style.removeProperty('box-shadow');
+    n.style.removeProperty('border-left');
+  });
 
-    const cur = S.el.list.querySelector(`.sp-item[data-i="${S.state.idx}"]`);
-    if (cur){
-      cur.classList.add('active');
+  const cur = S.el.list.querySelector(`.sp-item[data-i="${S.state.idx}"]`);
+  if (!cur) return;
 
-      // Strong visual fallback: force styles even if CSS conflicts exist
-      cur.style.setProperty('outline', '2px solid var(--speak-accent, #ff4d5e)', 'important');
-      cur.style.setProperty('background', '#141c30', 'important');
-      cur.style.setProperty('box-shadow', '0 0 0 2px color-mix(in oklab, var(--speak-accent, #ff4d5e) 50%, transparent)', 'important');
-    }
-  }
+  cur.classList.add('active');
+
+  // Force a strong visual even if other CSS overrides exist
+  cur.style.setProperty('outline', '2px solid var(--speak-accent, #ff4d5e)', 'important');
+  cur.style.setProperty('background', '#141c30', 'important');
+  cur.style.setProperty('box-shadow', '0 0 0 2px color-mix(in oklab, var(--speak-accent, #ff4d5e) 45%, transparent)', 'important');
+  cur.style.setProperty('border-left', '6px solid var(--speak-accent, #ff4d5e)', 'important');
+}
+
 
 
 
@@ -333,6 +337,18 @@
   }
 
   // ===== Events ==============================================================
+  function currentVisibleSectionId(){
+  const ids = [
+    'lesson-area','level-shell','progress-section','leaderboard-section',
+    'mistakes-section','marked-section','signword-section','mix-section'
+  ];
+  for (const id of ids){
+    const el = document.getElementById(id);
+    if (el && !el.classList.contains('hidden')) return id;
+  }
+  return null;
+}
+
   function speakingVisible(){
     const sec = document.getElementById('speaking-section');
     return !!sec && !sec.classList.contains('hidden');
@@ -426,17 +442,25 @@ function isVisible(node){
 
 
   function showSpeaking(){
+    S.state.prevSectionId = currentVisibleSectionId();
     hideAllSections();
     document.getElementById('speaking-section')?.classList.remove('hidden');
     mount();
   }
 
   function goBack(){
-  pause();
-  window.speechSynthesis.onvoiceschanged = null; // optional cleanup
-  hideAllSections();
-  (document.getElementById('lesson-area') || document.getElementById('level-shell'))?.classList.remove('hidden');
-}
+    pause();
+    window.speechSynthesis.onvoiceschanged = null; // optional cleanup
+    hideSpeakingOnly();
+    // If we remembered a real previous section, go there; else fall back.
+    const prev = S.state.prevSectionId && document.getElementById(S.state.prevSectionId);
+    if (prev){
+      prev.classList.remove('hidden');
+    }else{
+      (document.getElementById('lesson-area') || document.getElementById('level-shell'))?.classList.remove('hidden');
+    }
+  }
+
 
 
   // ===== Sidebar injection ===================================================
