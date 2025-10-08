@@ -29,6 +29,8 @@
     const host = document.getElementById('speaking-section');
     host.innerHTML = renderShell();
     cacheEls(host);
+    const onVoices = () => loadVoices();
+    window.speechSynthesis.onvoiceschanged = onVoices;
     bindEvents();
     loadStories().then(()=> {
       buildStoryDropdown();
@@ -72,8 +74,6 @@
         <div class="sp-head">
           <select id="sp-story" title="Choose story"></select>
           <select id="sp-voice" title="Voice (ja-JP preferred)"></select>
-          <button id="sp-play"  type="button">▶ Play</button>
-          <button id="sp-pause" type="button">⏸ Pause</button>
           <button id="sp-prev"  type="button">⟵ Prev</button>
           <button id="sp-next"  type="button">Next ⟶</button>
           <button id="sp-rate-down" type="button">− Speed</button>
@@ -194,16 +194,26 @@
 
   // ===== Web Speech Synthesis ===============================================
   function loadVoices(){
-    const sel = S.el.voiceSel;
-    const voices = window.speechSynthesis.getVoices() || [];
-    S.state.voices = voices.slice().sort((a,b)=>
-      (b.lang.startsWith('ja') - a.lang.startsWith('ja')) || a.name.localeCompare(b.name)
-    );
-    sel.innerHTML = S.state.voices.map(v => `<option value="${v.name}">${escapeHtml(v.name)} (${v.lang})</option>`).join('');
-    const defIdx = Array.from(sel.options).findIndex(o => /\(ja/i.test(o.textContent));
-    if (defIdx >= 0) sel.selectedIndex = defIdx;
-    S.state.voiceName = sel.value || null;
-  }
+  // Always update the state list
+  const voices = window.speechSynthesis.getVoices() || [];
+  S.state.voices = voices.slice().sort((a,b)=>
+    (b.lang.startsWith('ja') - a.lang.startsWith('ja')) || a.name.localeCompare(b.name)
+  );
+
+  // If the UI isn't mounted yet, don't touch DOM — just return
+  if (!S.el || !S.el.voiceSel) return;
+
+  const sel = S.el.voiceSel;
+  sel.innerHTML = S.state.voices
+    .map(v => `<option value="${v.name}">${escapeHtml(v.name)} (${v.lang})</option>`)
+    .join('');
+
+  // Prefer ja-JP if present
+  const defIdx = Array.from(sel.options).findIndex(o => /\(ja/i.test(o.textContent));
+  if (defIdx >= 0) sel.selectedIndex = defIdx;
+  S.state.voiceName = sel.value || null;
+}
+
   window.speechSynthesis.onvoiceschanged = ()=> loadVoices();
 
   function pickVoice(){
@@ -324,14 +334,12 @@
   }
 
   function goBack(){
-    pause();
-    // mimic your app's back behavior: go to last lesson area or level list
-    hideAllSections();
-    // Prefer lesson-area if deep, else level-shell
-    const lesson = document.getElementById('lesson-area');
-    const level  = document.getElementById('level-shell');
-    (lesson || level)?.classList.remove('hidden');
-  }
+  pause();
+  window.speechSynthesis.onvoiceschanged = null; // optional cleanup
+  hideAllSections();
+  (document.getElementById('lesson-area') || document.getElementById('level-shell'))?.classList.remove('hidden');
+}
+
 
   // ===== Sidebar injection ===================================================
   function ensureNavButton(){
@@ -343,7 +351,7 @@
     btn.type = 'button';
     btn.id = 'nav-speaking';
     btn.className = 'chip speaking-chip';
-    btn.textContent = '🗣️ Speaking Practice';
+    btn.textContent = 'Speaking Practice';
     btn.addEventListener('click', showSpeaking);
     if (anchor && anchor.parentNode){
       anchor.parentNode.insertBefore(btn, anchor.nextSibling);
