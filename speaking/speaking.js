@@ -18,7 +18,7 @@
       baseRate: 1.0,
       curRate: 1.0,
       slowFactor: 0.82,
-      queueToken: 0,
+      queueToken: { cancelled: false },
       voices: [],
       voiceName: null,
     }
@@ -352,19 +352,25 @@
   }
 
   function pause(){
-    S.state.playing = false;
-    S.state.queueToken.cancelled = true;
-    window.speechSynthesis.pause();
-    window.speechSynthesis.cancel();
+    if (S.state.playing) S.state.playing = false;
+    if (S.state.queueToken && typeof S.state.queueToken === 'object'){
+      S.state.queueToken.cancelled = true;
+    }
+    try {
+      // cancel immediately clears the queue and current utterance
+      window.speechSynthesis.cancel();
+    } catch(_) {}
     syncToggleLabel();
   }
+
 
   function stopAll(){
     pause();
     S.state.idx = 0;
-    showLine();
-    syncToggleLabel();
+    showLine();           // refresh card + highlight line 0
+    syncToggleLabel();    // ensure the big button shows ▶ Play
   }
+
 
   // ===== Events ==============================================================
   function getItemEl(idx){
@@ -393,17 +399,15 @@
   }
 
   function jumpTo(index, autoplay = true){
-    const st = S.state.story;
-    if (!st) return;
+  S.el.prev.addEventListener('click', ()=> {
+    if (!S.state.story) return;
+    if (S.state.idx > 0) jumpTo(S.state.idx - 1, true);
+  });
+  S.el.next.addEventListener('click', ()=> {
+    if (!S.state.story) return;
+    if (S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
+  });
 
-    // clamp
-    index = Math.max(0, Math.min(index | 0, st.lines.length - 1));
-
-    pause();                 // cancel any current utterances immediately
-    S.state.idx = index;     // set new index
-    showLine();              // show + mark for THIS index snapshot
-
-    if (autoplay) playFromCurrent(); // triple-play from this line
   }
 
 
@@ -606,23 +610,35 @@ function isVisible(node){
     }, true);
 
     
-    // Global fallback: if something steals focus, still handle arrows for Speaking
+    // Global fallback: only handle keys if focus is OUTSIDE the speaking section.
+    // (Prevents double toggle when wrapper handler already handled the key.)
     window.addEventListener('keydown', (ev)=>{
-    const sec = document.getElementById('speaking-section');
-    if (!sec || sec.classList.contains('hidden')) return;
+      const sec = document.getElementById('speaking-section');
+      if (!sec || sec.classList.contains('hidden')) return;
+      if (sec.contains(ev.target)) return;   // <— let the section handler handle it
 
-    const key = ev.key;
-    if (key === ' '){
-      ev.preventDefault();
-      S.state.playing ? pause() : playFromCurrent();
-    } else if (key === 'ArrowLeft' || key === 'Left'){
-      ev.preventDefault();
-      if (S.state.story && S.state.idx > 0) jumpTo(S.state.idx - 1, true);
-    } else if (key === 'ArrowRight' || key === 'Right'){
-      ev.preventDefault();
-      if (S.state.story && S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
-    }
-  }, true); // capture so <select> can't swallow it
+      const key = ev.key;
+      if (key === ' '){
+        ev.preventDefault();
+        S.state.playing ? pause() : playFromCurrent();
+      } else if (key === 'ArrowLeft' || key === 'Left'){
+        ev.preventDefault();
+        if (S.state.story && S.state.idx > 0) jumpTo(S.state.idx - 1, true);
+      } else if (key === 'ArrowRight' || key === 'Right'){
+        ev.preventDefault();
+        if (S.state.story && S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
+      } else if (key === '+' || key === '=' ){ // support Shift+'=' keyboards
+        ev.preventDefault();
+        setRate(S.state.curRate + 0.05);
+      } else if (key === '-' || key === '_'){
+        ev.preventDefault();
+        setRate(S.state.curRate - 0.05);
+      } else if (key === 'Escape'){           // quality-of-life: Esc = Stop
+        ev.preventDefault();
+        stopAll();
+      }
+    }, true);
+
 
 
   }
