@@ -28,24 +28,36 @@
   function mount(){
     const host = document.getElementById('speaking-section');
     host.innerHTML = renderShell();
-    syncToggleLabel();
-    markActive();
+
+    // 1) cache elements BEFORE anything that touches S.el.*
     cacheEls(host);
+
+    // 2) now it's safe to use UI-bound helpers
+    syncToggleLabel();
+
+    // voice list may arrive before/after mount — guard inside loadVoices()
     const onVoices = () => loadVoices();
     window.speechSynthesis.onvoiceschanged = onVoices;
+
     bindEvents();
+
     loadStories().then(()=> {
-      buildStoryDropdown();
-      // auto-select first
-      if (S.state.stories.length) {
+        buildStoryDropdown();
+        // auto-select first
+        if (S.state.stories.length) {
         S.el.storySel.value = S.state.stories[0].id;
-        selectStory();
-      }
+        selectStory();          // will paint list + call markActive()
+        } else {
+        // if no stories, at least avoid stale highlight
+        markActive();
+        }
     });
+
     // focus keyboard scope
     host.tabIndex = -1;
     host.focus();
-  }
+    }
+
 
   function cacheEls(root){
     S.el.wrap      = root;
@@ -166,10 +178,12 @@
   }
 
   function markActive(){
+    if (!S.el || !S.el.list) return;               // <— guard
     S.el.list.querySelectorAll('.sp-item').forEach(n=> n.classList.remove('active'));
     const cur = S.el.list.querySelector(`.sp-item[data-i="${S.state.idx}"]`);
     if (cur) cur.classList.add('active');
-  }
+}
+
 
   function scrollActive(){
     return;
