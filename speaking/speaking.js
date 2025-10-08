@@ -165,41 +165,47 @@
     `).join('');
     S.el.list.querySelectorAll('.sp-item').forEach(div=>{
       div.addEventListener('click', ()=>{
-        const targetIndex = +div.dataset.i;
-        jumpTo(targetIndex, true);
-        });
+        // visually mark EXACTLY what was clicked immediately
+        clearActiveStyles();
+        applyActiveStyles(div);
 
+        const targetIndex = +div.dataset.i;
+        jumpTo(targetIndex, true); // cancels current speech & plays selected line
+      });
     });
+
     markActive();
+  }
+
+  function clearActiveStyles(){
+    if (!S.el || !S.el.list) return;
+    S.el.list.querySelectorAll('.sp-item').forEach(n=>{
+      n.classList.remove('active');
+      n.removeAttribute('data-active');
+      n.style.removeProperty('outline');
+      n.style.removeProperty('background');
+      n.style.removeProperty('box-shadow');
+      n.style.removeProperty('border-left');
+    });
+  }
+
+  function applyActiveStyles(el){
+    if (!el) return;
+    el.classList.add('active');
+    el.setAttribute('data-active','1');
+    // strong, inline fallback so CSS conflicts can't hide it
+    el.style.setProperty('outline', '2px solid var(--speak-accent, #ff4d5e)', 'important');
+    el.style.setProperty('background', '#141c30', 'important');
+    el.style.setProperty('box-shadow', '0 0 0 2px color-mix(in oklab, var(--speak-accent, #ff4d5e) 45%, transparent)', 'important');
+    el.style.setProperty('border-left', '6px solid var(--speak-accent, #ff4d5e)', 'important');
   }
 
   function markActive(){
   if (!S.el || !S.el.list) return;
-
-  // clear previous marks
-  S.el.list.querySelectorAll('.sp-item').forEach(n => {
-    n.classList.remove('active');
-    n.style.removeProperty('outline');
-    n.style.removeProperty('background');
-    n.style.removeProperty('box-shadow');
-    n.style.removeProperty('border-left');
-  });
-
+  clearActiveStyles();
   const cur = S.el.list.querySelector(`.sp-item[data-i="${S.state.idx}"]`);
-  if (!cur) return;
-
-  cur.classList.add('active');
-
-  // Force a strong visual even if other CSS overrides exist
-  cur.style.setProperty('outline', '2px solid var(--speak-accent, #ff4d5e)', 'important');
-  cur.style.setProperty('background', '#141c30', 'important');
-  cur.style.setProperty('box-shadow', '0 0 0 2px color-mix(in oklab, var(--speak-accent, #ff4d5e) 45%, transparent)', 'important');
-  cur.style.setProperty('border-left', '6px solid var(--speak-accent, #ff4d5e)', 'important');
+  applyActiveStyles(cur);
 }
-
-
-
-
 
   function scrollActive(){
     return;
