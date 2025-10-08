@@ -318,8 +318,11 @@
 
   function sleep(ms){ return new Promise(r=> setTimeout(r, ms)); }
 
+  // Cancel-safe triple play for the CURRENT line snapshot
   async function playCurrentTriple(token){
-    const st = S.state.story; if (!st) return;
+    const st = S.state.story; 
+    if (!st || !tokenActive(token)) return;
+
     const i = S.state.idx;
     const line = st.lines[i]?.ja || '';
     if (!line) return;
@@ -327,41 +330,52 @@
     const n = S.state.curRate;
     const slow = Math.max(.6, n * S.state.slowFactor);
 
-    await speakOnce(line, n);    if (token.cancelled) return; await sleep(pauseMsFor(line));
-    await speakOnce(line, slow); if (token.cancelled) return; await sleep(pauseMsFor(line));
-    await speakOnce(line, n);    if (token.cancelled) return; await sleep(pauseMsFor(line));
+    await speakOnce(line, n);                 if (!tokenActive(token)) return;
+    await sleep(pauseMsFor(line));            if (!tokenActive(token)) return;
+    await speakOnce(line, slow);              if (!tokenActive(token)) return;
+    await sleep(pauseMsFor(line));            if (!tokenActive(token)) return;
+    await speakOnce(line, n);                 if (!tokenActive(token)) return;
+    await sleep(pauseMsFor(line));
   }
 
 
+
+  // Single owner for the loop. Any new play() invalidates the previous one.
   async function playFromCurrent(){
     S.state.playing = true;
     syncToggleLabel();
-    const token = { cancelled:false }; S.state.queueToken = token;
-    while (S.state.playing){
-        await playCurrentTriple(token);
-        if (!S.state.playing) break;
 
-        if (S.state.idx < (S.state.story.lines.length - 1)){
-          S.state.idx++;
-          showLine();     // will mark the new current line for its own snapshot
-        } else {
-          S.state.playing = false;
-          syncToggleLabel();
-        }
+    const token = { cancelled:false };
+    S.state.queueToken = token;
+
+    while (tokenActive(token)){
+      await playCurrentTriple(token);
+      if (!tokenActive(token)) break;
+
+      // advance if possible
+      if (S.state.idx < (S.state.story.lines.length - 1)){
+        S.state.idx++;
+        showLine();                  // highlight and show new line
+      } else {
+        S.state.playing = false;     // reached the end
+      }
     }
+
+    // Sync button if this runner is still the owner when we exit
+    if (S.state.queueToken === token) syncToggleLabel();
   }
 
+
+  // Immediate, race-free cancel
   function pause(){
-    if (S.state.playing) S.state.playing = false;
+    S.state.playing = false;
     if (S.state.queueToken && typeof S.state.queueToken === 'object'){
       S.state.queueToken.cancelled = true;
     }
-    try {
-      // cancel immediately clears the queue and current utterance
-      window.speechSynthesis.cancel();
-    } catch(_) {}
+    try{ window.speechSynthesis.cancel(); }catch(_){}
     syncToggleLabel();
   }
+
 
 
   function stopAll(){
@@ -373,6 +387,11 @@
 
 
   // ===== Events ==============================================================
+  // Helper: is this play token still the active one?
+  function tokenActive(token){
+    return token && !token.cancelled && token === S.state.queueToken && S.state.playing;
+  }
+
   function getItemEl(idx){
     const list = S.el?.list;
     if (!list) return null;
