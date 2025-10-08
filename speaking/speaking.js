@@ -465,11 +465,11 @@
     // Keyboard shortcuts (scope: section only)
     S.el.wrap.addEventListener('keydown', (ev)=>{
       if (ev.key === ' '){ ev.preventDefault(); S.state.playing ? pause() : playFromCurrent(); }
-      else if (ev.key === 'ArrowLeft'){
+      else if (ev.key === 'ArrowUp'){
         ev.preventDefault();
         if (S.state.idx > 0) jumpTo(S.state.idx - 1, true);
       }
-      else if (ev.key === 'ArrowRight'){
+      else if (ev.key === 'ArrowDown'){
         ev.preventDefault();
         if (S.state.story && S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
       }
@@ -648,10 +648,10 @@ function isVisible(node){
       if (key === ' '){
         ev.preventDefault();
         S.state.playing ? pause() : playFromCurrent();
-      } else if (key === 'ArrowLeft' || key === 'Left'){
+      } else if (key === 'ArrowUp' || key === 'Left'){
         ev.preventDefault();
         if (S.state.story && S.state.idx > 0) jumpTo(S.state.idx - 1, true);
-      } else if (key === 'ArrowRight' || key === 'Right'){
+      } else if (key === 'ArrowDown' || key === 'Right'){
         ev.preventDefault();
         if (S.state.story && S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
       } else if (key === '+' || key === '=' ){ // support Shift+'=' keyboards
