@@ -29,6 +29,7 @@
     const host = document.getElementById('speaking-section');
     host.innerHTML = renderShell();
     syncToggleLabel();
+    markActive();
     cacheEls(host);
     const onVoices = () => loadVoices();
     window.speechSynthesis.onvoiceschanged = onVoices;
@@ -134,7 +135,7 @@
     showLine();
     loadVoices(); // set voice defaults per language, if possible
     syncToggleLabel();
-
+    markActive();
   }
 
   // ===== Rendering Sentences List ===========================================
@@ -151,14 +152,15 @@
     `).join('');
     S.el.list.querySelectorAll('.sp-item').forEach(div=>{
       div.addEventListener('click', ()=>{
-        // Always stop current audio and start from the clicked line
         const targetIndex = +div.dataset.i;
-        pause(); // kills any queued utterances immediately
+        pause();                  // kill any ongoing speech immediately
         S.state.idx = targetIndex;
-        showLine();
-        scrollActive(); // (no-op per your setting)
-        playFromCurrent(); // start triple-play from the selected line
-      });
+        markActive();             // highlight EXACTLY what was clicked
+        showLine();               // update flashcard text/translation
+        // scrollActive();        // still a no-op per your setting
+        playFromCurrent();        // speak the selected line (then continue)
+        });
+
     });
     markActive();
   }
@@ -179,13 +181,15 @@
     if (!st) return;
     const ja = st.lines[S.state.idx] || '';
     S.el.cardJa.textContent = ja || '—';
-    markActive();
+    // do NOT call markActive() here — keep view update separate from selection
+
     // put cached translation if already rendered; otherwise fetch
     const bnCell = S.el.list.querySelector(`.bn-${S.state.idx}`);
     const bn = bnCell?.textContent?.trim() || await autoBn(ja);
     S.el.cardBn.textContent = bn || '';
     if (bnCell && !bnCell.textContent.trim()) bnCell.textContent = bn || '';
-  }
+    }
+
 
   // Prefer a local translator hook if you add one later (e.g. Firebase Cloud Fn)
   async function autoBn(text){
@@ -270,18 +274,21 @@
     S.state.playing = true;
     syncToggleLabel();
     const token = { cancelled:false }; S.state.queueToken = token;
-    while(S.state.playing){
-      await playCurrentTriple(token);
-      if (!S.state.playing) break;
-      // move forward or stop at end
-      if (S.state.idx < (S.state.story.lines.length - 1)){
-        S.state.idx++;
-        showLine(); scrollActive();
-      }else{
-        S.state.playing = false; // reached end
-        syncToggleLabel();
-      }
+    while (S.state.playing){
+        await playCurrentTriple(token);
+        if (!S.state.playing) break;
+
+        if (S.state.idx < (S.state.story.lines.length - 1)){
+            S.state.idx++;
+            markActive();           // NEW: highlight the next line we moved to
+            showLine();             // update flashcard content
+            // scrollActive();      // still no-op for you
+        }else{
+            S.state.playing = false; // reached end
+            syncToggleLabel();
+        }
     }
+
   }
 
   function pause(){
