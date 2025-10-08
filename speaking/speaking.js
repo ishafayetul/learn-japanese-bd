@@ -175,21 +175,25 @@
   function markActive(){
     if (!S.el || !S.el.list) return;
 
-    // remove previous markers
+    // clear previous
     S.el.list.querySelectorAll('.sp-item').forEach(n => {
-        n.classList.remove('active');
-        n.style.outline = '';              // inline fallback cleanup
-        n.style.background = '';           // inline cleanup
+      n.classList.remove('active');
+      n.style.removeProperty('outline');
+      n.style.removeProperty('background');
+      n.style.removeProperty('box-shadow');
     });
 
     const cur = S.el.list.querySelector(`.sp-item[data-i="${S.state.idx}"]`);
     if (cur){
-        cur.classList.add('active');
-        // visual fallback (in case speaking.css isn't applied)
-        cur.style.outline = '2px solid var(--speak-accent, #ff4d5e)';
-        cur.style.background = '#141c30';
+      cur.classList.add('active');
+
+      // Strong visual fallback: force styles even if CSS conflicts exist
+      cur.style.setProperty('outline', '2px solid var(--speak-accent, #ff4d5e)', 'important');
+      cur.style.setProperty('background', '#141c30', 'important');
+      cur.style.setProperty('box-shadow', '0 0 0 2px color-mix(in oklab, var(--speak-accent, #ff4d5e) 50%, transparent)', 'important');
     }
-    }
+  }
+
 
 
 
@@ -329,6 +333,11 @@
   }
 
   // ===== Events ==============================================================
+  function speakingVisible(){
+    const sec = document.getElementById('speaking-section');
+    return !!sec && !sec.classList.contains('hidden');
+  }
+
   function jumpTo(index, autoplay = true){
     const st = S.state.story;
     if (!st) return;
@@ -490,32 +499,47 @@ function isVisible(node){
     ensureNavButton();
     window.openSpeaking = showSpeaking;
 
-    // 1) Hide Speaking when other known sections become visible
     observeOtherSections();
-
-    // 2) Hide on hash changes (if your app uses # routes)
     window.addEventListener('hashchange', hideSpeakingOnly);
 
-    // 3) Hide on any sidebar click that's NOT Speaking
     const side = document.querySelector('.sidebar');
     if (side){
-        side.addEventListener('click', (ev)=>{
+      side.addEventListener('click', (ev)=>{
         const btn = ev.target.closest('button, a');
         if (!btn) return;
         if (btn.id !== 'nav-speaking') hideSpeakingOnly();
-        }, true);
+      }, true);
     }
-
-    // 4) Wide net: any anchor that navigates should hide Speaking
     document.addEventListener('click', (ev)=>{
-        const a = ev.target.closest('a[href]');
-        if (!a) return;
-        const href = a.getAttribute('href') || '';
-        if (href && href !== '#' && !href.startsWith('javascript:')){
+      const a = ev.target.closest('a[href]');
+      if (!a) return;
+      const href = a.getAttribute('href') || '';
+      if (href && href !== '#' && !href.startsWith('javascript:')){
         hideSpeakingOnly();
-        }
+      }
     }, true);
-    }
+
+    
+    document.addEventListener('keydown', (ev)=>{
+      if (!speakingVisible()) return;
+
+      if (ev.key === ' '){
+        ev.preventDefault();
+        S.state.playing ? pause() : playFromCurrent();
+      } else if (ev.key === 'ArrowLeft'){
+        ev.preventDefault();
+        if (S.state.story && S.state.idx > 0) jumpTo(S.state.idx - 1, true);
+      } else if (ev.key === 'ArrowRight'){
+        ev.preventDefault();
+        if (S.state.story && S.state.idx < S.state.story.lines.length - 1) jumpTo(S.state.idx + 1, true);
+      } else if (ev.key === '+'){
+        ev.preventDefault(); setRate(S.state.curRate + 0.05);
+      } else if ((ev.key === '-') || (ev.key === '_')){
+        ev.preventDefault(); setRate(S.state.curRate - 0.05);
+      }
+    }, true);
+  }
+
 
 
   // util
