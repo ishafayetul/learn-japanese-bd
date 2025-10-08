@@ -28,6 +28,7 @@
   function mount(){
     const host = document.getElementById('speaking-section');
     host.innerHTML = renderShell();
+    syncToggleLabel();
     cacheEls(host);
     const onVoices = () => loadVoices();
     window.speechSynthesis.onvoiceschanged = onVoices;
@@ -87,7 +88,7 @@
         </div>
 
         <div class="sp-transport">
-          <button class="sp-big" id="sp-play2" type="button">▶ Start / Resume</button>
+          <button class="sp-big" id="sp-play2" type="button">▶ Play</button>
           <button class="sp-big" id="sp-stop"  type="button">⏹ Stop</button>
         </div>
 
@@ -132,6 +133,8 @@
     paintList();
     showLine();
     loadVoices(); // set voice defaults per language, if possible
+    syncToggleLabel();
+
   }
 
   // ===== Rendering Sentences List ===========================================
@@ -148,9 +151,13 @@
     `).join('');
     S.el.list.querySelectorAll('.sp-item').forEach(div=>{
       div.addEventListener('click', ()=>{
-        S.state.idx = +div.dataset.i;
+        // Always stop current audio and start from the clicked line
+        const targetIndex = +div.dataset.i;
+        pause(); // kills any queued utterances immediately
+        S.state.idx = targetIndex;
         showLine();
-        scrollActive();
+        scrollActive(); // (no-op per your setting)
+        playFromCurrent(); // start triple-play from the selected line
       });
     });
     markActive();
@@ -261,6 +268,7 @@
 
   async function playFromCurrent(){
     S.state.playing = true;
+    syncToggleLabel();
     const token = { cancelled:false }; S.state.queueToken = token;
     while(S.state.playing){
       await playCurrentTriple(token);
@@ -271,6 +279,7 @@
         showLine(); scrollActive();
       }else{
         S.state.playing = false; // reached end
+        syncToggleLabel();
       }
     }
   }
@@ -280,12 +289,14 @@
     S.state.queueToken.cancelled = true;
     window.speechSynthesis.pause();
     window.speechSynthesis.cancel();
+    syncToggleLabel();
   }
 
   function stopAll(){
     pause();
     S.state.idx = 0;
     showLine();
+    syncToggleLabel();
   }
 
   // ===== Events ==============================================================
@@ -295,9 +306,9 @@
     S.el.storySel.addEventListener('change', ()=> selectStory());
     S.el.voiceSel.addEventListener('change', (e)=> { S.state.voiceName = e.target.value; });
 
-    const start = ()=> { if (!S.state.playing){ playFromCurrent(); } };
-    //S.el.play.addEventListener('click', start);
-    S.el.play2 = S.el.wrap.querySelector('#sp-play2'); S.el.play2.addEventListener('click', start);
+    const toggle = ()=> { S.state.playing ? pause() : playFromCurrent(); };
+    S.el.play2 = S.el.wrap.querySelector('#sp-play2');
+    S.el.play2.addEventListener('click', toggle);
 
     //S.el.pause.addEventListener('click', ()=> pause());
     S.el.wrap.querySelector('#sp-stop').addEventListener('click', ()=> stopAll());
@@ -323,6 +334,13 @@
   }
 
   // ===== Navigation helpers (no hard coupling) ===============================
+  function syncToggleLabel(){
+  if (!S.el || !S.el.wrap) return;
+  const btn = S.el.play2 || S.el.wrap.querySelector('#sp-play2');
+  if (!btn) return;
+  btn.textContent = S.state.playing ? '⏸ Pause' : '▶ Play';
+}
+
   function hideAllSections(){
     // hide known sections safely if present
     ['level-shell','lesson-area','progress-section','leaderboard-section','mistakes-section','marked-section','signword-section','mix-section','speaking-section']
