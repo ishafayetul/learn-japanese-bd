@@ -64,7 +64,7 @@
 /* Bigger Japanese text on the card */
 .sp-ja{
   /* ↑ bigger floor and higher cap */
-  font-size: clamp(32px, 6vw, 60px); 
+  font-size: clamp(32px, 6vw, 72px); 
   font-weight: 800;
   text-align: center;        /* ensure horizontal center */
   margin: 0;                 /* remove stray margins */
