@@ -166,16 +166,9 @@
     S.el.list.querySelectorAll('.sp-item').forEach(li=>{
       li.addEventListener('click', (ev)=>{
         // resolve the exact li regardless of where inside it was clicked
-        const node = ev.currentTarget.closest('.sp-item') || ev.currentTarget;
-        const idxAttr = node.getAttribute('data-i');
-        const i = Number.isFinite(+idxAttr) ? +idxAttr
-          : Array.from(S.el.list.children).indexOf(node);
-
-        // immediate visual feedback
-        markActiveIndex(i);
-
-        // jump & play
-        jumpTo(i, true);
+        const node = ev.currentTarget; // safest — already the bound .sp-item
+        const i = Array.prototype.indexOf.call(S.el.list.children, node);
+        jumpTo(i, true);  // pause → set idx → mark → show → play
       });
     });
 
@@ -186,31 +179,10 @@
       markActive();
       S.state.idx = i; // keep the index
     }
-
+    markActive();
   }
 
-  function clearActiveStyles(){
-    if (!S.el || !S.el.list) return;
-    S.el.list.querySelectorAll('.sp-item').forEach(n=>{
-      n.classList.remove('active');
-      n.removeAttribute('data-active');
-      n.style.removeProperty('outline');
-      n.style.removeProperty('background');
-      n.style.removeProperty('box-shadow');
-      n.style.removeProperty('border-left');
-    });
-  }
-
-  function applyActiveStyles(el){
-    if (!el) return;
-    el.classList.add('active');
-    el.setAttribute('data-active','1');
-    // strong, inline fallback so CSS conflicts can't hide it
-    el.style.setProperty('outline', '2px solid var(--speak-accent, #ff4d5e)', 'important');
-    el.style.setProperty('background', '#141c30', 'important');
-    el.style.setProperty('box-shadow', '0 0 0 2px color-mix(in oklab, var(--speak-accent, #ff4d5e) 45%, transparent)', 'important');
-    el.style.setProperty('border-left', '6px solid var(--speak-accent, #ff4d5e)', 'important');
-  }
+  
 
   function markActive(){
     const list = S.el?.list;
@@ -229,7 +201,7 @@
     const cur = getItemEl(S.state.idx);
     if (!cur) return;
 
-    // apply strong visual
+    // apply strong visual — cannot be overridden
     cur.classList.add('active');
     cur.setAttribute('data-active','1');
     cur.style.setProperty('outline', '2px solid var(--speak-accent, #ff4d5e)', 'important');
@@ -256,7 +228,9 @@
     const bn = bnCell?.textContent?.trim() || await autoBn(ja);
     S.el.cardBn.textContent = bn || '';
     if (bnCell && !bnCell.textContent.trim()) bnCell.textContent = bn || '';
-    }
+    markActive();
+
+  }
 
 
   // Prefer a local translator hook if you add one later (e.g. Firebase Cloud Fn)
@@ -378,8 +352,9 @@
   function getItemEl(idx){
     const list = S.el?.list;
     if (!list) return null;
-    // Prefer data-i match; fall back to nth child (index-based)
-    return list.querySelector(`.sp-item[data-i="${idx}"]`) || list.children?.[idx] || null;
+    const items = list.querySelectorAll('.sp-item');  // static snapshot
+    const i = Math.max(0, Math.min(Number(idx) | 0, items.length - 1));
+    return items[i] || null;
   }
 
   function currentVisibleSectionId(){
