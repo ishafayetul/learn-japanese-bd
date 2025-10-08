@@ -75,14 +75,14 @@
     S.el.cardBn    = root.querySelector('#sp-bn');
     S.el.list      = root.querySelector('#sp-list');
   }
-
-  function renderShell(){
-    return `
-      <div class="topbar">
+{/* <div class="topbar">
         <button id="speaking-back" class="back" type="button">← Back</button>
         <div class="crumbs">Learn Japanese <span class="sep">›</span> <span class="speak-accent">Speaking Practice</span></div>
         <div class="topbar-right"></div>
-      </div>
+      </div> */}
+  function renderShell(){
+    return `
+      
 
       <div class="card">
         <div class="sp-head">
