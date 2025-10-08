@@ -108,7 +108,7 @@
 
         <div class="sp-transport">
           <button class="sp-big" id="sp-play2" type="button">▶ Play</button>
-          <button class="sp-big" id="sp-stop"  type="button">⏹ Stop</button>
+          <button class="sp-big" id="sp-stop"  type="button">🔁 Reset</button>
         </div>
 
         <div id="sp-list" class="sp-list"></div>
