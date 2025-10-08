@@ -101,7 +101,7 @@
 
   //<button id="sp-play"  type="button">▶ Play</button>
   //<button id="sp-pause" type="button">⏸ Pause</button>
-  
+
   // ===== Story Manifest ======================================================
   async function loadStories(){
     try{
@@ -297,10 +297,10 @@
     S.el.voiceSel.addEventListener('change', (e)=> { S.state.voiceName = e.target.value; });
 
     const start = ()=> { if (!S.state.playing){ playFromCurrent(); } };
-    S.el.play.addEventListener('click', start);
+    //S.el.play.addEventListener('click', start);
     S.el.play2 = S.el.wrap.querySelector('#sp-play2'); S.el.play2.addEventListener('click', start);
 
-    S.el.pause.addEventListener('click', ()=> pause());
+    //S.el.pause.addEventListener('click', ()=> pause());
     S.el.wrap.querySelector('#sp-stop').addEventListener('click', ()=> stopAll());
     S.el.prev.addEventListener('click', ()=> { if (S.state.idx>0){ S.state.idx--; showLine(); scrollActive(); } });
     S.el.next.addEventListener('click', ()=> { if (S.state.idx < S.state.story.lines.length-1){ S.state.idx++; showLine(); scrollActive(); } });
