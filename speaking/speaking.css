@@ -1,0 +1,76 @@
+/* =========================================
+   Speaking Practice (Shadowing) — UI styles
+   ========================================= */
+:root{
+  --speak-accent: #ff4d5e;         /* reddish highlight */
+  --speak-accent-2: #ff808b;       /* softer red/pink */
+  --speak-chip-bg: #2a1114;
+  --speak-chip-br: #6b1e28;
+  --speak-chip-fg: #ffd9de;
+}
+
+.speaking-chip{
+  background: var(--speak-chip-bg);
+  border-color: var(--speak-chip-br);
+  color: var(--speak-chip-fg);
+}
+
+/* Section wrapper */
+#speaking-section .card{
+  background: var(--card, #101a2e);
+  border: 1px solid var(--border, #25345a);
+  border-radius: var(--radius, 14px);
+  box-shadow: var(--shadow, 0 10px 40px rgba(0,0,0,.35));
+  padding: 14px;
+}
+
+/* Top controls row */
+.sp-head{
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin: 6px 0 10px;
+}
+.sp-head select, .sp-head button, .sp-head input[type="range"]{
+  background:#0f1726; color: var(--text,#eaf0ff);
+  border:1px solid var(--border,#25345a);
+  border-radius:10px; padding:8px 10px; font-weight:600;
+}
+.sp-head .rate-badge{
+  font-variant-numeric: tabular-nums;
+  border:1px solid var(--border); padding:6px 10px; border-radius:999px;
+  background:#111a2b; color:#eaf0ff;
+}
+
+/* Flashcard area */
+.sp-card{
+  margin-top:10px; padding:16px; border-radius:16px;
+  background: radial-gradient(600px 260px at -10% -10%, #2a2130 0%, transparent 60%), #0e1423;
+  border:1px solid #3b2730;
+  text-align:center; line-height:1.35;
+}
+.sp-ja{ font-size: clamp(20px, 2.2vw + 12px, 34px); font-weight: 800; }
+.sp-bn{ margin-top: 8px; color: var(--muted, #a9b4d0); font-size: clamp(16px, 1.2vw + 10px, 20px); }
+
+/* Progress + transport */
+.sp-transport{ display:flex; gap:8px; align-items:center; justify-content:center; margin-top:10px; flex-wrap:wrap; }
+.sp-transport .sp-big{
+  border:1px solid #3a1a1f; background:#1a0f12; color:#ffdbe0; padding:10px 14px; border-radius:12px;
+}
+
+/* Sentence list */
+.sp-list{ margin-top:12px; display:grid; gap:6px; }
+.sp-item{
+  text-align:left; padding:10px 12px; border-radius:12px;
+  background:#0f1627; border:1px solid var(--border,#25345a);
+  cursor:pointer;
+}
+.sp-item .bn{ color: var(--muted, #a9b4d0); font-size: .95em; margin-top:4px; }
+.sp-item.active{
+  outline: 2px solid color-mix(in oklab, var(--speak-accent) 60%, transparent);
+  background: #141c30;
+}
+
+/* Back button alignment (reuse .back styles) */
+#speaking-back{ margin-left: 0; }
+
+/* Tiny helper for the red accent text */
+.speak-accent{ color: var(--speak-accent); font-weight: 800; }

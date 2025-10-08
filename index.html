@@ -6,6 +6,7 @@
   <title>Learn Japanese — N5 to N3</title>
   <link rel="icon" href="data:," />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/speaking/speaking.css">
 </head>
 <body>
   <!-- ========== Auth Gate ========== -->
@@ -106,6 +107,7 @@
       <button onclick="navigateLevel('N4')">Learn N4</button>
       <button onclick="navigateLevel('N3')">Learn N3</button>
       <button id="nav-mix" onclick="openMixPractice()">Mix Practice</button>
+      <button id="nav-speaking" class="chip speaking-chip" type="button">🗣️ Speaking Practice</button>
       <hr style="opacity:.2;border:none;border-top:1px solid #ffffff30;margin:8px 0 12px">
       <button onclick="openSection('progress')">📈 Progress</button>
       <button onclick="openSection('leaderboard')">🏆 Overall Leaderboard</button>
@@ -496,6 +498,9 @@
             </div>
           </div>
         </section>
+
+        <section id="speaking-section" class="hidden"></section>
+
         <!-- Unmark modal -->
         <div id="unmark-modal" class="lightbox hidden" aria-hidden="true">
           <div class="lightbox-backdrop"></div>
@@ -527,8 +532,10 @@
 
   <!-- Scripts -->
   <script>window.SITE_AUTHOR = "Shafayetul Islam";</script>
+
   <script type="module" src="firebase.js"></script>
-  <!-- window.APP_LEVEL_BASE = "level"; -->
   <script src="script.js"></script>
+  <script src="/speaking/speaking.js"></script>
+
 </body>
 </html>
