@@ -40,7 +40,45 @@
   background:#111a2b; color:#eaf0ff;
 }
 
-/* Flashcard area */
+/* Flashcard area (bigger card) */
+.sp-card{
+  /* center + bigger box */
+  margin: 12px auto 20px;
+  padding: 32px 36px;           /* ↑ was 16px */
+  border-radius: 18px;          /* ↑ was 16px */
+  max-width: 1000px;            /* NEW: wider cap */
+  width: min(100%, 1000px);     /* NEW: responsive width */
+  min-height: 320px;            /* NEW: taller card */
+
+  /* keep your existing look */
+  background: radial-gradient(600px 260px at -10% -10%, #2a2130 0%, transparent 60%), #0e1423;
+  border:1px solid #3b2730;
+  text-align:center;
+  line-height:1.35;
+}
+
+/* Bigger Japanese text on the card */
+.sp-ja{
+  /* ↑ bigger floor and higher cap */
+  font-size: clamp(28px, 6vw, 60px); 
+  font-weight: 800;
+}
+
+/* Bangla is removed from the card, but if the node still exists, hide it */
+.sp-bn{ display:none !important; }
+
+/* Mobile fine-tuning */
+@media (max-width: 480px){
+  .sp-card{
+    min-height: 260px;
+    padding: 24px;
+    border-radius: 16px;
+  }
+  .sp-ja{
+    font-size: clamp(24px, 7vw, 44px);
+  }
+}
+/* Old styles (keep for reference)
 .sp-card{
   margin-top:10px; padding:16px; border-radius:16px;
   background: radial-gradient(600px 260px at -10% -10%, #2a2130 0%, transparent 60%), #0e1423;
@@ -48,7 +86,8 @@
   text-align:center; line-height:1.35;
 }
 .sp-ja{ font-size: clamp(20px, 2.2vw + 12px, 34px); font-weight: 800; }
-.sp-bn{ margin-top: 8px; color: var(--muted, #a9b4d0); font-size: clamp(16px, 1.2vw + 10px, 20px); }
+#sp-card .bn, .sp-card-bn { display: none !important; } */
+
 
 /* Progress + transport */
 .sp-transport{ display:flex; gap:8px; align-items:center; justify-content:center; margin-top:10px; flex-wrap:wrap; }
@@ -83,4 +122,4 @@
   border-left: 6px solid var(--speak-accent, #ff4d5e) !important;
 }
 /* Hide Bangla on the flashcard if any BN node still exists */
-#sp-card .bn, .sp-card-bn { display: none !important; }
+
