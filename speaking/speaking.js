@@ -216,7 +216,7 @@
   S.state.voiceName = sel.value || null;
 }
 
-  window.speechSynthesis.onvoiceschanged = ()=> loadVoices();
+ // window.speechSynthesis.onvoiceschanged = ()=> loadVoices();
 
   function pickVoice(){
     const name = S.state.voiceName;
@@ -328,6 +328,16 @@
     ['level-shell','lesson-area','progress-section','leaderboard-section','mistakes-section','marked-section','signword-section','mix-section','speaking-section']
       .forEach(id=> { const n = document.getElementById(id); if(n) n.classList.add('hidden'); });
   }
+function hideSpeakingOnly(){
+  pause(); // stop any ongoing TTS
+  const sec = document.getElementById('speaking-section');
+  if (sec) sec.classList.add('hidden');
+}
+
+function isVisible(node){
+  return !!node && !node.classList.contains('hidden');
+}
+
 
   function showSpeaking(){
     hideAllSections();
@@ -360,14 +370,76 @@
     }else{
       side.appendChild(btn);
     }
+    // After creating/inserting btn inside ensureNavButton()
+    // side.addEventListener('click', (ev)=>{
+    // const b = ev.target.closest('button');
+    // if (!b) return;
+    // if (b.id && b.id !== 'nav-speaking') {
+    //     hideSpeakingOnly();
+    // }
+    // });
+
   }
 
   // ===== Public init =========================================================
+  function observeOtherSections(){
+    const ids = [
+        'level-shell',
+        'lesson-area',
+        'progress-section',
+        'leaderboard-section',
+        'mistakes-section',
+        'marked-section',
+        'signword-section',
+        'mix-section'
+    ];
+
+    const targets = ids
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+
+    if (!targets.length) return;
+
+    const observer = new MutationObserver(() => {
+        // If ANY non-speaking section is visible, hide Speaking.
+        if (targets.some(isVisible)) hideSpeakingOnly();
+    });
+
+    const opts = { attributes: true, attributeFilter: ['class'] };
+    targets.forEach(t => observer.observe(t, opts));
+    }
+
   function boot(){
     ensureNavButton();
-    // if a central router exists, expose a hook
     window.openSpeaking = showSpeaking;
-  }
+
+    // 1) Hide Speaking when other known sections become visible
+    observeOtherSections();
+
+    // 2) Hide on hash changes (if your app uses # routes)
+    window.addEventListener('hashchange', hideSpeakingOnly);
+
+    // 3) Hide on any sidebar click that's NOT Speaking
+    const side = document.querySelector('.sidebar');
+    if (side){
+        side.addEventListener('click', (ev)=>{
+        const btn = ev.target.closest('button, a');
+        if (!btn) return;
+        if (btn.id !== 'nav-speaking') hideSpeakingOnly();
+        }, true);
+    }
+
+    // 4) Wide net: any anchor that navigates should hide Speaking
+    document.addEventListener('click', (ev)=>{
+        const a = ev.target.closest('a[href]');
+        if (!a) return;
+        const href = a.getAttribute('href') || '';
+        if (href && href !== '#' && !href.startsWith('javascript:')){
+        hideSpeakingOnly();
+        }
+    }, true);
+    }
+
 
   // util
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
