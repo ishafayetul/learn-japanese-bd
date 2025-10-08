@@ -453,6 +453,30 @@
   }
 
   // ===== Navigation helpers (no hard coupling) ===============================
+  // Find the app's global topbar (NOT the one we render inside #speaking-section)
+  function getGlobalTopbar(){
+    const sec = document.getElementById('speaking-section');
+    const bars = document.querySelectorAll('.topbar');
+    for (const el of bars){
+      if (!sec || !sec.contains(el)) return el; // first .topbar outside Speaking
+    }
+    return null;
+  }
+  function hideGlobalTopbar(){
+    const tb = getGlobalTopbar();
+    if (tb){
+      tb.dataset.__prevDisplay = tb.style.display || '';
+      tb.style.display = 'none';
+    }
+  }
+  function showGlobalTopbar(){
+    const tb = getGlobalTopbar();
+    if (tb){
+      tb.style.display = tb.dataset.__prevDisplay || '';
+      delete tb.dataset.__prevDisplay;
+    }
+  }
+
   function syncToggleLabel(){
   if (!S.el || !S.el.wrap) return;
   const btn = S.el.play2 || S.el.wrap.querySelector('#sp-play2');
@@ -469,6 +493,7 @@ function hideSpeakingOnly(){
   pause(); // stop any ongoing TTS
   const sec = document.getElementById('speaking-section');
   if (sec) sec.classList.add('hidden');
+  showGlobalTopbar();   
 }
 
 function isVisible(node){
@@ -480,6 +505,7 @@ function isVisible(node){
     S.state.prevSectionId = currentVisibleSectionId();
     hideAllSections();
     document.getElementById('speaking-section')?.classList.remove('hidden');
+    hideGlobalTopbar(); 
     mount();
   }
 
@@ -487,6 +513,7 @@ function isVisible(node){
     pause();
     window.speechSynthesis.onvoiceschanged = null; // optional cleanup
     hideSpeakingOnly();
+    showGlobalTopbar();  
     // If we remembered a real previous section, go there; else fall back.
     const prev = S.state.prevSectionId && document.getElementById(S.state.prevSectionId);
     if (prev){
