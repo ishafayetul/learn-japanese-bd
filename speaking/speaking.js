@@ -357,7 +357,8 @@
         S.state.idx++;
         showLine();                  // highlight and show new line
       } else {
-        S.state.playing = false;     // reached the end
+        stopAll();                   // ← after triple executes on the last line
+        break;  
       }
     }
 
