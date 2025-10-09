@@ -80,6 +80,18 @@ async function whenFBReady(timeout = 15000) {
   const elWriteBar = D("#write-progress-bar");
   const elWriteText = D("#write-progress-text");
 
+  // Draw (Kanji)
+  const elDraw      = D("#draw");
+  const elDrawCanvas= D("#draw-canvas");
+  const elDrawUndo  = D("#draw-undo");
+  const elDrawClear = D("#draw-clear");
+  const elDrawSubmit= D("#draw-submit");
+  const elDrawFeedback = D("#draw-feedback");
+  const elDrawPrompt   = D("#draw-prompt");
+  const elDrawTarget   = D("#draw-target");
+  const elDrawBar   = D("#draw-progress-bar");
+  const elDrawText  = D("#draw-progress-text");
+
   // Make sentence
   const elMake = D("#make");
   const elMakeCard = D("#make-card");
@@ -291,7 +303,8 @@ const App = Object.assign(window.App, {
   pg:   { rows: [], idx: 0 },
   buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
-  cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() }
+  cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() },
+  draw: { order: [], idx: 0, strokes: [], history: [], model: null, labels: null, ready:false },
 });
 // keep a stable global reference
 window.App = App;
@@ -705,6 +718,7 @@ async function cascadeUnmark({ src, id, markedId }){
     document.querySelector("#vocab-learn-menu")?.classList.add("hidden");
     document.querySelector("#vocab-mcq-menu")?.classList.add("hidden");
     document.querySelector("#vocab-write-menu")?.classList.add("hidden");
+    document.querySelector("#draw")?.classList.add("hidden");
   }
 
   // Hide/show the whole Vocabulary root card (not just the buttons)
@@ -746,6 +760,7 @@ window.updateBackVisibility = updateBackVisibility;
   const write = document.querySelector("#write");
   const make = document.querySelector("#make");
   const learnTbl = document.querySelector("#learn-table");
+  document.querySelector("#draw")?.classList.add("hidden");
   if (practice) practice.classList.add("hidden");
   if (learn) learn.classList.add("hidden");
   if (write) write.classList.add("hidden");

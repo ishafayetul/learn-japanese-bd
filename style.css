@@ -976,3 +976,18 @@ body.nav-open .scrim{ display:block; }
 
 /* small breathing room above table */
 #learn-table .table-wrap{ margin-top: 6px; }
+
+.draw-wrap{
+  display:grid; gap:8px; justify-items:center; margin-top:10px;
+}
+#draw-canvas{
+  background:#fff; border:1px solid var(--border);
+  border-radius:12px; touch-action:none; /* good on mobile */
+  width: min(360px, 86vw);
+  height: auto; aspect-ratio: 1 / 1;    /* square canvas on all screens */
+}
+.draw-tools{ display:flex; gap:8px; }
+button.primary{
+  border-color:#1c2a47; background:#13223d; color:#eaf0ff;
+  box-shadow: 0 0 0 1px rgba(34,211,238,.15) inset;
+}
