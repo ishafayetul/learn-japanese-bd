@@ -1839,7 +1839,13 @@ function buildLearnTable(){
     const vals = App.deckFiltered.map(w=>w[field]).filter(v=>v && v!==correct);
     const picks = shuffle(vals).slice(0, n-1); picks.push(correct); return shuffle(picks);
   }
-  window.skipQuestion = ()=>{ App.stats.skipped++; updateScorePanel(); App.qIndex++; updateDeckProgress(); renderQuestion(); };
+  window.skipQuestion = ()=>{
+    const w = App.deckFiltered[App.qIndex];
+    if (w) recordMistake(w);                     // ← log skipped word
+    App.stats.skipped++; updateScorePanel();
+    App.qIndex++; updateDeckProgress(); renderQuestion();
+  };
+
   window.showRomaji = ()=> toast("Romaji: (not available)");
   window.showMeaning = ()=>{ const w=App.deckFiltered[App.qIndex]; if(w) toast(`Meaning: ${w.en}`); };
 
@@ -1923,11 +1929,14 @@ function buildLearnTable(){
 // ==== Keyboard shortcuts for MCQ (incl. Dual) ====
 // 1..4 = pick options; 0 = Skip current question
   window.mcqSkip = function(){
-    if (!isVisible("#practice")) return;               // MCQ/Dual only
+    if (!isVisible("#practice")) return;
     A("#options button, .dual-grid button").forEach(b => b.disabled = true);
+    const w = App.deckFiltered[App.qIndex];
+    if (w) recordMistake(w);                     // ← log skipped word
     App.stats.skipped++; updateScorePanel();
     setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 120);
   };
+
 
   window.addEventListener("keydown", (e) => {
     // only when MCQ/Dual is on screen; ignore while typing
@@ -2031,7 +2040,14 @@ function buildLearnTable(){
     }
   };
 
-  window.writeSkip = ()=>{ App.stats.skipped++; updateScorePanel(); App.write.idx++; renderWriteCard(); };
+  window.writeSkip = ()=>{
+    const i = App.write.order[App.write.idx] ?? -1;
+    const w = App.deckFiltered[i];
+    if (w) recordMistake(w);                     // ← log skipped word
+    App.stats.skipped++; updateScorePanel();
+    App.write.idx++; renderWriteCard();
+  };
+
   window.writeShowDetails = ()=>{
     const i = App.write.order[App.write.idx] ?? -1; const w = App.deckFiltered[i];
     if (!w) return;
@@ -2079,7 +2095,14 @@ function buildLearnTable(){
     const text=(elMakeInput.value||"").trim(); if(!text) return;
     App.stats.right++; incrementPoints(1); elMakeFeedback.textContent="✓ Saved.";
   };
-  window.makeSkip = ()=>{ App.stats.skipped++; updateScorePanel(); App.make.idx++; renderMakeCard(); };
+  window.makeSkip = ()=>{
+    const i = App.make.order[App.make.idx] ?? -1;
+    const w = App.deck[i];
+    if (w) recordMistake(w);                     // ← log skipped word
+    App.stats.skipped++; updateScorePanel();
+    App.make.idx++; renderMakeCard();
+  };
+
   window.makeShowHints = ()=> toast("Hint: Use particles like は / を / に / で to connect.");
   window.makeNext = ()=>{ App.make.idx++; renderMakeCard(); };
 
