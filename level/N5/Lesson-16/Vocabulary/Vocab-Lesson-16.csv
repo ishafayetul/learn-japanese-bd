@@ -4,8 +4,11 @@
 ?,でんしゃをおります,get off a train
 乗り換えます,のりかえます,"change (trains, etc.)"
 ?,シャワーをあびます,take a shower
+?,あびます,take 
 入れます,いれます,"put in, insert"
-出します,だします,"take out, withdraw"
+出します,だします,"take out, hand in, submit, send"
+?,おろします,withdraw (money)
+?,おかねをおろします,withdraw money
 入ります,はいります,enter
 ?,だいがくにはいります,enter a university
 出ます,でます,graduate
@@ -13,13 +16,15 @@
 辞めます,やめます,"quit or retire from, stop, give up"
 ?,かいしゃをやめます,quit or retire from a company
 押します,おします,"press, push"
+?,はじめます,"begin, start"
+終わります,おわります,finish
+?,けんがくします,visit (a place) to study
+?,でんわします,make a phone call
 若い,わかい,young
 長い,ながい,long
 短い,みじかい,short
 明るい,あかるい,"bright, light"
 暗い,くらい,dark
-?,せがたかい,tall (referring to person)
-?,あたまがいい,"clever, smart"
 体,からだ,body
 頭,あたま,head
 髪,かみ,hair
@@ -30,6 +35,9 @@
 歯,は,tooth
 お腹,おなか,stomach
 足,あし,"leg, foot"
+?,せ,height
+?,せがたかい,tall (referring to person)
+?,あたまがいい,"clever, smart"
 サービス,サービス,service
 ジョギング,ジョギング,jogging
 ?,ジョギングをします,jog
