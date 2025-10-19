@@ -4,7 +4,7 @@
 たべます,たべない,to eat
 のみます,のまない,to drink
 すいます,すわない,to smoke / to inhale
-みます,みない,to see / to watch / to look at
+みます-II,みない,to see / to watch / to look at
 ききます,きかない,to listen / to ask; ask
 よみます,よまない,to read
 かきます,かかない,to write
@@ -17,14 +17,14 @@
 あげます,あげない,to give
 もらいます,もらわない,to receive
 かします,かさない,to lend
-かります,かりない,to borrow
+かります-II,かりない,to borrow
 おしえます,おしえない,to teach; tell
 ならいます,ならわない,to learn
 かけます,かけない,to make a telephone call
 わかります,わからない,to understand
 あります,ない,"to have / to exist (things); be held, take place"
-います,いない,to exist (people/animals)
-できます,できない,can
+います-II,いない,to exist (people/animals)
+できます-II,できない,can
 いります,いらない,need; require
 ふります,ふらない,to fall (rain/snow)
 かかります,かからない,to take (time/money)
@@ -55,14 +55,15 @@
 たちます,たたない,stand up
 すわります,すわらない,sit down
 つかいます,つかわない,use
-おきます,おかない,put
+おきます-I (put),おかない,put
+おきます-II (get up),おきない,get up
 つくります,つくらない,"make, produce"
 うります,うらない,sell
 しります,しらない,get to know
 すみます,すまない,live
 けんきゅうします,けんきゅうしない,do research
 のります,のらない,"ride, get on"
-おります,おりない,get off
+おります-II,おりない,get off
 のりかえます,のりかえない,"change (trains, etc.)"
 いれます,いれない,"put in, insert"
 やめます,やめない,"quit or retire from, stop, give up"
@@ -75,7 +76,7 @@
 でかけます,でかけない,go out
 ぬぎます,ぬがない,"take off (clothes, shoes, etc.)"
 もっていきます,もっていかない,take (something)
-もってきます,もってこない,bring (something)
+もってきます-III,もってこない,bring (something)
 しんぱいします,しんぱいしない,worry
 ざんぎょうします,ざんぎょうしない,work overtime
 しゅっちょうします,しゅっちょうしない,go on a business trip
@@ -111,7 +112,7 @@
 ひっこしします,ひっこししない,move (house)
 くれます,くれない,give(me)
 つれていきます,つれていかない,take (someone)
-つれてきます,つれてこない,bring (someone)
+つれてきます-III,つれてこない,bring (someone)
 しょうかいします,しょうかいしない,introduce
 あんないします,あんないしない,"show around, show the way"
 せつめいします,せつめいしない,explain
@@ -120,5 +121,5 @@
 りゅうがくします,りゅうがくしない,study abroad
 としをとります,としをとらない,grow old
 がんばります,がんばらない,do one's best
-あびます,あびない,to take a shower / to bathe
-たります,たりない,to be enough / to suffice
+あびます-II,あびない,to take a shower / to bathe
+たります-II,たりない,to be enough / to suffice

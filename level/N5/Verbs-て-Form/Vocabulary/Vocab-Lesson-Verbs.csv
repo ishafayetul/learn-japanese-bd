@@ -4,7 +4,7 @@
 たべます,たべて,to eat
 のみます,のんで,to drink
 すいます,すって,to smoke / to inhale
-みます,みて,to see / to watch / to look at
+みます-II,みて,to see / to watch / to look at
 ききます,きいて,"to listen / to ask; ask"
 よみます,よんで,to read
 かきます,かいて,to write
@@ -17,14 +17,14 @@
 あげます,あげて,to give
 もらいます,もらって,to receive
 かします,かして,to lend
-かります,かりて,to borrow
+かります-II,かりて,to borrow
 おしえます,おしえて,"to teach; tell"
 ならいます,ならって,to learn
 かけます,かけて,to make a telephone call
 わかります,わかって,to understand
 あります,あって,"to have / to exist (things); be held, take place"
-います,いて,to exist (people/animals)
-できます,できて,can
+います-II,いて,to exist (people/animals)
+できます-II,できて,can
 いります,いって,"need; require"
 ふります,ふって,to fall (rain/snow)
 かかります,かかって,to take (time/money)
@@ -55,14 +55,15 @@
 たちます,たって,stand up
 すわります,すわって,sit down
 つかいます,つかって,use
-おきます,おきて,put
+おきます-I (Put),おいて,put
+おきます-II (get-up),おきて,get up
 つくります,つくって,"make, produce"
 うります,うって,sell
 しります,しって,get to know
 すみます,すんで,live
 けんきゅうします,けんきゅうして,do research
 のります,のって,"ride, get on"
-おります,おりて,get off
+おります-II,おりて,get off
 のりかえます,のりかえて,"change (trains, etc.)"
 いれます,いれて,"put in, insert"
 やめます,やめて,"quit or retire from, stop, give up"
@@ -75,7 +76,7 @@
 でかけます,でかけて,go out
 ぬぎます,ぬいで,"take off (clothes, shoes, etc.)"
 もっていきます,もっていって,take (something)
-もってきます,もってきて,bring (something)
+もってきます-III,もってきて,bring (something)
 しんぱいします,しんぱいして,worry
 ざんぎょうします,ざんぎょうして,work overtime
 しゅっちょうします,しゅっちょうして,go on a business trip
@@ -111,7 +112,7 @@
 ひっこしします,ひっこしして,move (house)
 くれます,くれて,give(me)
 つれていきます,つれていって,take (someone)
-つれてきます,つれてきて,bring (someone)
+つれてきます-III,つれてきて,bring (someone)
 しょうかいします,しょうかいして,introduce
 あんないします,あんないして,"show around, show the way"
 せつめいします,せつめいして,explain
@@ -120,5 +121,5 @@
 りゅうがくします,りゅうがくして,study abroad
 としをとります,としをとって,grow old
 がんばります,がんばって,do one's best
-あびます,あびて,to take a shower / to bathe
-たります,たりて,to be enough / to suffice
+あびます-II,あびて,to take a shower / to bathe
+たります-II,たりて,to be enough / to suffice
