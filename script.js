@@ -1689,34 +1689,62 @@ function wireLearnTableBtn(){
 wireLearnTableBtn();
 document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
 
+  function buildLearnTable(){
+    const tb = document.querySelector("#lt-table tbody");
+    const q  = (document.querySelector("#lt-filter")?.value || "").trim().toLowerCase();
+    if (!tb) return;
 
-function buildLearnTable(){
-  const tb = document.querySelector("#lt-table tbody");
-  const q  = (document.querySelector("#lt-filter")?.value || "").trim().toLowerCase();
-  if (!tb) return;
+    const rows = (App.deck || []).filter(w => {
+      if (!q) return true;
+      return [w.kanji || "", w.hira || "", w.en || ""].join(" ").toLowerCase().includes(q);
+    });
 
-  // filter on kanji/hira/en
-  const rows = (App.deck || []).filter(w => {
-    if (!q) return true;
-    return [w.kanji || "", w.hira || "", w.en || ""].join(" ").toLowerCase().includes(q);
-  });
-
-  tb.innerHTML = "";
-  for (const w of rows){
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="kanji">${escapeHTML(w.kanji || "—")}</td>
-      <td class="hira">${escapeHTML(w.hira || "")}</td>
-      <td class="en">${escapeHTML(w.en || "")}</td>
-      <td class="acts">
-        <button class="lt-audio-btn" title="Play">🔊</button>
-        <button class="lt-mark-btn"  title="Mark this word">📌</button>
-      </td>
-    `;
-    tr.querySelector(".lt-audio-btn")?.addEventListener("click", () => speakJa(w.hira));
-    tb.appendChild(tr);
+    tb.innerHTML = "";
+    for (const w of rows){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="kanji">${escapeHTML(w.kanji || "—")}</td>
+        <td class="hira">${escapeHTML(w.hira || "")}</td>
+        <td class="en">${escapeHTML(w.en || "")}</td>
+        <td class="acts">
+          <button class="lt-audio-btn" title="Play">🔊</button>
+          <button class="lt-mark-btn"  title="Mark this word">📌</button>
+        </td>
+      `;
+      tr.querySelector(".lt-audio-btn")?.addEventListener("click", () => speakJa(w.hira));
+      tr.querySelector(".lt-mark-btn")?.addEventListener("click", () => markCurrentWord(w));
+      tb.appendChild(tr);
+    }
   }
-}
+
+// function buildLearnTable(){
+//   const tb = document.querySelector("#lt-table tbody");
+//   const q  = (document.querySelector("#lt-filter")?.value || "").trim().toLowerCase();
+//   if (!tb) return;
+
+//   // filter on kanji/hira/en
+//   const rows = (App.deck || []).filter(w => {
+//     if (!q) return true;
+//     return [w.kanji || "", w.hira || "", w.en || ""].join(" ").toLowerCase().includes(q);
+//   });
+
+//   tb.innerHTML = "";
+//   for (const w of rows){
+//     const tr = document.createElement("tr");
+//     tr.innerHTML = `
+//       <td class="kanji">${escapeHTML(w.kanji || "—")}</td>
+//       <td class="hira">${escapeHTML(w.hira || "")}</td>
+//       <td class="en">${escapeHTML(w.en || "")}</td>
+//       <td class="acts">
+//         <button class="lt-audio-btn" title="Play">🔊</button>
+//         <button class="lt-mark-btn"  title="Mark">📌</button>
+//       </td>
+//     `;
+//     tr.querySelector(".lt-audio-btn")?.addEventListener("click", () => speakJa(w.hira));
+//     tr.querySelector(".lt-mark-btn")?.addEventListener("click", () => markCurrentWord(w));
+//     tb.appendChild(tr);
+//   }
+// }
 
   function wireLearnTableOnce(){
     if (window.__ltWired) return;
