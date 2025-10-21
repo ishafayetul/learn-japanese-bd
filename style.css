@@ -907,7 +907,7 @@ body.nav-open .scrim{ display:block; }
 .learn-table td.hira{ color:#eaf0ff; }
 .learn-table td.en{ color:var(--muted); }
 
-.lt-audio-col.lt-mark-col{ width:82px; text-align:center; }
+.lt-audio-col{ width:82px; text-align:center; }
 .lt-audio-btn{ border-radius:999px; padding:6px 10px; }
 
 /* ===== Learn Table — responsive & column hide ===== */
@@ -926,10 +926,6 @@ body.nav-open .scrim{ display:block; }
 #learn-table.hide-col-hira   td.hira,   #learn-table.hide-col-hira   th[data-k="hira"]{  display:none; }
 #learn-table.hide-col-en     td.en,     #learn-table.hide-col-en     th[data-k="en"]{    display:none; }
 #learn-table.hide-col-audio  td.acts,   #learn-table.hide-col-audio  th.lt-audio-col{     display:none; }
-#learn-table.hide-mark-col   td.acts,   #learn-table.hide-mark-col  th.lt-mark-col{     display:none; }
-
-/* Word Table actions spacing */
-td.acts button + button { margin-left: 6px; }
 
 /* Mobile tweaks: tighter spacing + allow wrapping so it fits */
 @media (max-width: 900px){
@@ -940,7 +936,7 @@ td.acts button + button { margin-left: 6px; }
     padding: 8px 10px;
     white-space: normal;            /* allow wrap instead of forcing horizontal scroll */
   }
-  .lt-audio-col.lt-mark-col{ width: 56px; }     /* narrower audio col */
+  .lt-audio-col{ width: 56px; }     /* narrower audio col */
   #learn-table .table-wrap{
     max-width: 100%;
     overflow-x: auto;
