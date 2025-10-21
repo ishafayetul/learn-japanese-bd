@@ -927,6 +927,9 @@ body.nav-open .scrim{ display:block; }
 #learn-table.hide-col-en     td.en,     #learn-table.hide-col-en     th[data-k="en"]{    display:none; }
 #learn-table.hide-col-audio  td.acts,   #learn-table.hide-col-audio  th.lt-audio-col{     display:none; }
 
+/* Word Table actions spacing */
+td.acts button + button { margin-left: 6px; }
+
 /* Mobile tweaks: tighter spacing + allow wrapping so it fits */
 @media (max-width: 900px){
   .learn-table-bar{ flex-direction: column; align-items: stretch; gap:6px; }

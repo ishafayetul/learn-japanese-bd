@@ -1708,7 +1708,10 @@ function buildLearnTable(){
       <td class="kanji">${escapeHTML(w.kanji || "—")}</td>
       <td class="hira">${escapeHTML(w.hira || "")}</td>
       <td class="en">${escapeHTML(w.en || "")}</td>
-      <td class="acts"><button class="lt-audio-btn" title="Play">🔊</button></td>
+      <td class="acts">
+        <button class="lt-audio-btn" title="Play">🔊</button>
+        <button class="lt-mark-btn"  title="Mark this word">📌</button>
+      </td>
     `;
     tr.querySelector(".lt-audio-btn")?.addEventListener("click", () => speakJa(w.hira));
     tb.appendChild(tr);
@@ -2400,20 +2403,42 @@ function buildLearnTable(){
 
 
   // Mark current word (available across modes)
-  window.markCurrentWord = async () => {
-    const w = App.deckFiltered[App.qIndex] || App.deck[App.write.order[App.write.idx]] || null;
+  // Mark current word (available across modes) — now also accepts an explicit word
+  window.markCurrentWord = async (w0) => {
+    // Prefer the passed-in word (Word Table), else use the active one (flashcard/write)
+    const w =
+      w0 ||
+      App.deckFiltered[App.qIndex] ||
+      (App.write?.order ? App.deck[App.write.order[App.write.idx]] : null) ||
+      null;
+
     if (!w) return;
-    const id = (w.kanji && w.kanji!=="—" ? w.kanji : w.hira) + "::" + w.en;
+    const id = (w.kanji && w.kanji !== "—" ? w.kanji : w.hira) + "::" + w.en;
     try {
       const fb = await whenFBReady();
       await fb.markWord(id, { kanji: w.kanji, hira: w.hira, en: w.en, front: w.hira, back: w.en });
       toast("Marked ✓");
     } catch {
-        // Signed out or Firebase failed → store locally so Marked Words still works
-        addLocalMarked(w);
-        toast("Marked locally ✓ (sign in to sync)");
-      }
+      // Signed out or Firebase failed → store locally so Marked Words still works
+      addLocalMarked(w);
+      toast("Marked locally ✓ (sign in to sync)");
+    }
   };
+
+  // window.markCurrentWord = async () => {
+  //   const w = App.deckFiltered[App.qIndex] || App.deck[App.write.order[App.write.idx]] || null;
+  //   if (!w) return;
+  //   const id = (w.kanji && w.kanji!=="—" ? w.kanji : w.hira) + "::" + w.en;
+  //   try {
+  //     const fb = await whenFBReady();
+  //     await fb.markWord(id, { kanji: w.kanji, hira: w.hira, en: w.en, front: w.hira, back: w.en });
+  //     toast("Marked ✓");
+  //   } catch {
+  //       // Signed out or Firebase failed → store locally so Marked Words still works
+  //       addLocalMarked(w);
+  //       toast("Marked locally ✓ (sign in to sync)");
+  //     }
+  // };
 
   // ---------- Grammar ----------
   function wireGrammarTab(){
