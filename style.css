@@ -886,6 +886,23 @@ body.nav-open .scrim{ display:block; }
   margin: 0;
   text-align: center;
 }
+/* Make Word Matching grid fill the options area */
+#practice #options .match-grid{
+  grid-column: 1 / -1;
+}
+
+/* Tighten button sizing with the same scale knobs */
+#practice #options .match-grid .match-btn{
+  width: 100%;
+  text-align: center;
+}
+
+/* Mobile: keep columns readable and balanced */
+@media (max-width: 900px){
+  .match-grid.cols-2{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .match-grid.cols-3{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* slightly larger gaps on small screens already handled by --q-scale */
+}
 
 /* Learn → Table view */
 .learn-table-bar{
@@ -988,9 +1005,11 @@ body.nav-open .scrim{ display:block; }
 
 .match-col{
   display: grid;
-  grid-template-rows: repeat(5, minmax(0, 1fr));
+  /* Instead of forcing 5 rows, let the number of buttons define rows */
+  grid-auto-rows: minmax(0, 1fr);
   gap: 10px;
 }
+
 
 .match-col .match-btn{
   width: 100%;
@@ -1012,4 +1031,15 @@ body.nav-open .scrim{ display:block; }
   background:#0f1727;
   border-color:#243657;
   cursor: default;
+}
+/* Word Matching state colors */
+.match-col .match-btn.is-correct{
+  border-color: #1b5a2c;
+  background: #0e2a18;
+  color: #bcffc9;
+}
+.match-col .match-btn.is-wrong{
+  border-color: #5a1b1b;
+  background: #2a0e0e;
+  color: #ffd0d0;
 }

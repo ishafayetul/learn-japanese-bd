@@ -294,11 +294,19 @@ const App = Object.assign(window.App, {
   cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() },
   match: {
     active: false,
-    variant: null,    // "eh" or "keh"
-    roundWords: [],   // current 5 words (objects with {kanji,hira,en})
-    solved: new Set(),// keys solved this round
-    picks: { kanji:null, hira:null, en:null } // current selection by column
+    variant: null,                 // "eh" or "keh"
+    roundWords: [],                // current slice (up to 5)
+    solved: new Set(),             // solved keys within the current round
+    picks: { kanji:null, hira:null, en:null },   // current selection by column
+
+    // NEW – full-deck round scheduler
+    queue: [],                     // full unique, de-duped deck for this mode
+    pos: 0,                        // index of next slice start
+    total: 0,                      // total items in queue
+    solvedTotal: 0,                // how many have been solved across all rounds (no repeats)
+    dom: null                      // cached DOM refs for keyboard targeting
   }
+
 });
 // keep a stable global reference
 window.App = App;
@@ -1907,9 +1915,30 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
 
   window.startWordMatching = async (variant /* "eh" | "keh" */) => {
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
+
     App.mode = (variant === "keh") ? "match-keh" : "match-eh";
     App.match.active  = true;
     App.match.variant = (variant === "keh") ? "keh" : "eh";
+
+    // Build the full queue once (de-duped), filtered per variant
+    const hasKanji = w => {
+      const k = (w.kanji || "").trim();
+      return k && k !== "—" && k !== "?";
+    };
+    const base = (variant === "keh") ? (App.deck || []).filter(hasKanji) : (App.deck || []);
+    const seen = new Set();
+    const unique = [];
+    for (const w of base){
+      const k = keyForWord(w);
+      if (seen.has(k)) continue;
+      seen.add(k); unique.push(w);
+    }
+    // shuffle once for the whole session
+    App.match.queue = shuffle(unique);
+    App.match.pos = 0;
+    App.match.total = App.match.queue.length;
+    App.match.solvedTotal = 0;
+
     App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
 
     // strict linear like other finals
@@ -1920,7 +1949,6 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     elLearn.classList.add("hidden");
     elWrite.classList.add("hidden");
     elMake.classList.add("hidden");
-
     D("#practice").classList.remove("hidden");
 
     // build first round
@@ -1929,20 +1957,33 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     updateBackVisibility();
   };
 
- function newMatchRound(){
-    // 5 unique words for this round
-    App.match.roundWords = sampleFiveForMatch(App.match.variant);
+
+  function newMatchRound(){
+    // if finished, show all done + persist
+    if (App.match.pos >= App.match.total) {
+      elQuestionBox.textContent = "All done.";
+      elOptions.innerHTML = "";
+      updateDeckProgressForMatch();
+      // best-effort save
+      try { flushSession(); } catch {}
+      return;
+    }
+
+    const end = Math.min(App.match.pos + 5, App.match.total);
+    App.match.roundWords = App.match.queue.slice(App.match.pos, end);
     App.match.solved.clear();
     App.match.picks = { kanji:null, hira:null, en:null };
     renderMatchRound();
   }
 
+
   function updateDeckProgressForMatch(){
-    // progress: solved items out of 5; keep your deck bar consistent
-    const done = App.match.solved.size;
-    elDeckBar.style.width = pct(done, 5);
-    elDeckText.textContent = `${done} / 5 (${pct(done, 5)})`;
+    const done = App.match.solvedTotal;
+    const total = App.match.total || 0;
+    elDeckBar.style.width = pct(done, total);
+    elDeckText.textContent = `${done} / ${total} (${pct(done, total)})`;
   }
+
 
   function renderMatchRound(){
     const v = App.match.variant; // "eh" or "keh"
@@ -2065,50 +2106,57 @@ function onMatchPick(btn){
 
 function finalizeMatchTry(){
   const picks = App.match.picks;
-  const keys = Object.values(picks).filter(Boolean).map(b => b.dataset.key);
+  const chosen = Object.values(picks).filter(Boolean);
+  const keys = chosen.map(b => b.dataset.key);
   const allSame = keys.length && keys.every(k => k === keys[0]);
 
   if (allSame){
-    // ✓ correct
+    // ✓ correct — add green, then lock & count once
     App.stats.right++; incrementPoints(1); updateScorePanel();
-    // lock as solved
-    Object.values(picks).forEach(b=>{
-      if (!b) return;
+
+    chosen.forEach(b=>{
       b.classList.remove("is-selected");
-      b.classList.add("is-solved");
-      b.disabled = true;
+      b.classList.add("is-correct");
+      // small delay so the green shows, then freeze as solved
+      setTimeout(()=>{
+        b.classList.add("is-solved");
+        b.disabled = true;
+      }, 120);
     });
+
+    // mark this key as solved in the current round
     App.match.solved.add(keys[0]);
     App.match.picks = { kanji:null, hira:null, en:null };
+    // increment full-deck solved count
+    App.match.solvedTotal++;
     updateDeckProgressForMatch();
 
-    // round complete?
-    if (App.match.solved.size >= 5){
+    // when the current slice is done, advance to the next slice
+    if (App.match.solved.size >= App.match.roundWords.length){
+      App.match.pos += App.match.roundWords.length;
       setTimeout(() => {
         newMatchRound();
         updateDeckProgressForMatch();
-      }, 280);
+      }, 220);
     }
   } else {
-    // ✗ wrong → record mistake on a safe representative word
+    // ✗ wrong → record mistake (for the representative first key), flash red
     App.stats.wrong++; updateScorePanel();
     try {
-      // find the actual word via any selected key
       const k0 = keys[0];
       const w = (App.match.roundWords || []).find(w => keyForWord(w) === k0);
       if (w) recordMistake(w);
     } catch {}
 
-    // flash red and clear picks
-    Object.values(picks).forEach(b=>{
-      if (!b) return;
+    chosen.forEach(b=>{
       b.classList.add("is-wrong");
-      setTimeout(()=> b.classList.remove("is-wrong"), 280);
+      setTimeout(()=> b.classList.remove("is-wrong"), 350);
       b.classList.remove("is-selected");
     });
     App.match.picks = { kanji:null, hira:null, en:null };
   }
 }
+
 
 // ==== Keyboard shortcuts for Word Matching ====
 // 0 = Skip round; 1..5 select row in the current column (then auto-advance to next column)
