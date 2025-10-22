@@ -1840,6 +1840,24 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
   }
 
   // --- MCQ Modes ---
+  function requeueWrongItem(w, list, fromIdx){
+    const key = keyForWord(w);
+    const map = App.mastery.wrongs;
+    const n = (map.get(key) || 0) + 1;
+    map.set(key, n);
+
+    // Progressive spacing: min gap grows with wrong count (caps at +10)
+    const minGap = Math.min(3 + n, 10);
+    const len = list.length;
+    const insertAt = Math.min(fromIdx + minGap + Math.floor(Math.random() * Math.max(1, len - minGap)), len);
+
+    // Optional nudges
+    if (n === 2) toast("Hint: Watch for small vowel/long vowel differences.");
+    if (n === 4) toast(`Try focusing on: ${w.hira} — ${w.en}`);
+
+    list.splice(insertAt, 0, w);
+  }
+
   window.startPractice = async (mode)=>{
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
     App.mode = mode; setCrumbs();
@@ -1852,6 +1870,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       if (!seen.has(k)) { seen.add(k); unique.push(w); }
     }
     App.mastery = { pending: shuffle(unique), mastered: [] };
+    App.mastery.wrongs = new Map(); // key -> count this session
     App.deckFiltered = unique.slice();
     App.qIndex = 0;
     App.stats = { right: 0, wrong: 0, skipped: 0 };
@@ -1929,8 +1948,10 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       btn.classList.add("is-wrong");
       App.stats.wrong++; recordMistake(w);
       // reinsert the same word 3–N positions ahead
-      const insertAt = Math.min(App.qIndex + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
-      App.mastery.pending.splice(insertAt, 0, w);
+      //const insertAt = Math.min(App.qIndex + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
+      //App.mastery.pending.splice(insertAt, 0, w);
+      requeueWrongItem(w, App.mastery.pending, App.qIndex);
+
     }
     updateScorePanel();
     setTimeout(()=>{
@@ -1958,8 +1979,9 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     recordMistake(w);
     App.stats.skipped++; updateScorePanel();
     // reinsert later randomly
-    const insertAt = Math.min(App.qIndex + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
-    App.mastery.pending.splice(insertAt, 0, w);
+    //const insertAt = Math.min(App.qIndex + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
+    //App.mastery.pending.splice(insertAt, 0, w);
+    requeueWrongItem(w, App.mastery.pending, App.qIndex);
     App.qIndex = (App.qIndex + 1) % App.mastery.pending.length;
     updateDeckProgress(); renderQuestion();
   };
@@ -2405,7 +2427,7 @@ window.addEventListener("keydown", (e) => {
       if (!seen.has(k)) { seen.add(k); unique.push(w); }
     }
     App.mastery = { pending: shuffle(unique), mastered: [] };
-
+    App.mastery.wrongs = new Map(); // key -> count this session
     App.deckFiltered = shuffle(base);
     App.write.order = App.deckFiltered.map((_,i)=>i);
     App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
@@ -2455,8 +2477,10 @@ window.addEventListener("keydown", (e) => {
     } else {
       elWriteFeedback.innerHTML = `<span class="error-inline">❌ Wrong: ${w.hira}</span>`;
       App.stats.wrong++; recordMistake(w);
-      const insertAt = Math.min(App.write.idx + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
-      App.mastery.pending.splice(insertAt,0,w);
+      //const insertAt = Math.min(App.write.idx + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
+      //App.mastery.pending.splice(insertAt,0,w);
+      requeueWrongItem(w, App.mastery.pending, App.write.idx);
+
     }
     updateScorePanel();
     App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
