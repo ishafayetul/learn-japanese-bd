@@ -130,6 +130,8 @@ async function whenFBReady(timeout = 15000) {
   const elSWRomaji = D("#sw-romaji");
   const elSWList = D("#signword-list");
 
+  setupDeployToast();
+
   // Toast
   const elToast = D("#toast");
 // Mobile nav controls
@@ -354,12 +356,12 @@ function setupDeployToast(){
       const prev = localStorage.getItem(KEY);
       if (prev !== ver){
         // Show only when the version changed since last load
-        setTimeout(() => toast(`Updated to v${ver} 🚀`), 450);
+        setTimeout(() => toast(`You are Updated 🚀`), 450);
         localStorage.setItem(KEY, ver);
       }
     }catch{
       // If localStorage is blocked (e.g., private mode), still show once
-      setTimeout(() => toast(`Updated to v${ver} 🚀`), 450);
+      setTimeout(() => toast(`You are Updated 🚀`), 450);
     }
   }
 

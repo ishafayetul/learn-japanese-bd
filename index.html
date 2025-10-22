@@ -547,7 +547,14 @@
 
   <script type="module" src="firebase.js"></script>
   <!-- Replace your existing script include -->
-  <script src="/script.js?v=2025.10.23-01" data-version="2025.10.23-05" defer></script>
+  <!-- Version is injected automatically by GitHub Actions -->
+  <meta name="app-version" content="__VER__">
+    <script
+      src="script.js?v=__VER__"
+      data-version="__VER__"
+      defer
+    ></script>
+
   <script src="/speaking/speaking.js"></script>
 
 </body>
