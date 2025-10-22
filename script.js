@@ -3339,6 +3339,52 @@ window.addEventListener("keydown", (e) => {
 
 })();
 
+// ===== Mini deploy toast: only when a *new* version is detected =====
+(function setupDeployToast(){
+  const KEY = "lj_app_version";
+
+  // Read version from the <script> tag (data-version or ?v= param)
+  function readAppVersion(){
+    try{
+      // Prefer the script tag that loaded this file
+      const thisScript =
+        document.currentScript ||
+        Array.from(document.scripts).find(s => (s.src || "").includes("/script.js"));
+
+      if (!thisScript) return null;
+
+      // 1) data-version wins
+      const dv = thisScript.dataset?.version;
+      if (dv) return dv;
+
+      // 2) fallback to the query param ?v=...
+      const u = new URL(thisScript.src, location.href);
+      return u.searchParams.get("v");
+    }catch{ return null; }
+  }
+
+  function notifyOnNewDeploy(){
+    const ver = readAppVersion() || "dev";
+    try{
+      const prev = localStorage.getItem(KEY);
+      if (prev !== ver){
+        // Show only when the version changed since last load
+        setTimeout(() => toast(`Updated to v${ver} 🚀`), 450);
+        localStorage.setItem(KEY, ver);
+      }
+    }catch{
+      // If localStorage is blocked (e.g., private mode), still show once
+      setTimeout(() => toast(`Updated to v${ver} 🚀`), 450);
+    }
+  }
+
+  // Run after DOM is ready so toast can render
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", notifyOnNewDeploy, { once:true });
+  } else {
+    notifyOnNewDeploy();
+  }
+})();
 
 
 
