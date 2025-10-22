@@ -3353,6 +3353,7 @@ window.addEventListener("keydown", (e) => {
 
       if (!thisScript) return null;
 
+     
       // 1) data-version wins
       const dv = thisScript.dataset?.version;
       if (dv) return dv;
