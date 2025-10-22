@@ -1852,6 +1852,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       if (!seen.has(k)) { seen.add(k); unique.push(w); }
     }
     App.mastery = { pending: shuffle(unique), mastered: [] };
+    App.deckFiltered = unique.slice();
     App.qIndex = 0;
     App.stats = { right: 0, wrong: 0, skipped: 0 };
     updateScorePanel();
@@ -1933,16 +1934,24 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     }
     updateScorePanel();
     setTimeout(()=>{
-      App.qIndex = (App.qIndex + 1) % App.mastery.pending.length;
+      const len = App.mastery.pending.length;
+      App.qIndex = len ? ((App.qIndex + 1) % len) : 0;
       updateDeckProgress();
       renderQuestion();
     }, 450);
+
   }
 
   function buildOptions(correct, field, n=4){
-    const vals = App.deckFiltered.map(w=>w[field]).filter(v=>v && v!==correct);
-    const picks = shuffle(vals).slice(0, n-1); picks.push(correct); return shuffle(picks);
+    const pool =
+      (App.deckFiltered && App.deckFiltered.length) ? App.deckFiltered :
+      (App.mastery ? App.mastery.pending.concat(App.mastery.mastered) : App.deck || []);
+    const vals = pool.map(w=>w[field]).filter(v => v && v !== correct);
+    const picks = shuffle(vals).slice(0, n-1);
+    picks.push(correct);
+    return shuffle(picks);
   }
+
   window.skipQuestion = ()=>{
     const w = App.mastery?.pending?.[App.qIndex];
     if (!w) return;
