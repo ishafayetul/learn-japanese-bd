@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/speaking/speaking.css">
 </head>
 <body>
-  
+
   <!-- ========== Auth Gate ========== -->
   <div id="auth-gate" class="auth-gate">
     <!-- AUTH GATE / LANDING -->
@@ -535,51 +535,6 @@
                 <button id="unmark-clear" class="chip">Clear</button>
               </div>
               <button id="unmark-remove" class="danger">Remove Selected Words</button>
-            </div>
-          </div>
-        </div>
-        <!-- Mark: choose list modal -->
-        <div id="marklist-modal" class="lightbox hidden" aria-hidden="true">
-          <div class="lightbox-backdrop"></div>
-          <div class="lightbox-inner card" style="max-height:80vh; overflow:auto;">
-            <div class="lightbox-head">
-              <h4 style="margin:0;">Add to list</h4>
-              <button id="marklist-close" class="lightbox-close" aria-label="Close">✕</button>
-            </div>
-
-            <div>
-              <div class="pg-input-row">
-                <input id="marklist-newname" class="pg-input" placeholder="New list name…" />
-                <button id="marklist-create">＋ Create & Use</button>
-              </div>
-              <div id="marklist-rows" class="unmark-list" style="margin-top:8px;"></div>
-              <div class="unmark-actions" style="margin-top:10px;">
-                <span class="muted">Pick a list or create new.</span>
-                <button id="marklist-use" class="save">Add</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Move words between lists (in Marked) -->
-        <div id="movelist-modal" class="lightbox hidden" aria-hidden="true">
-          <div class="lightbox-backdrop"></div>
-          <div class="lightbox-inner card" style="max-height:80vh; overflow:auto;">
-            <div class="lightbox-head">
-              <h4 style="margin:0;">Move words between lists</h4>
-              <button id="movelist-close" class="lightbox-close" aria-label="Close">✕</button>
-            </div>
-            <div class="pg-input-row">
-              <select id="movelist-from" class="pg-input"></select>
-              <select id="movelist-to" class="pg-input"></select>
-            </div>
-            <div id="movelist-ids" class="unmark-list" style="margin-top:8px;"></div>
-            <div class="unmark-actions">
-              <div>
-                <button id="movelist-select-all" class="chip">Select All</button>
-                <button id="movelist-clear" class="chip">Clear</button>
-              </div>
-              <button id="movelist-apply" class="save">Move Selected</button>
             </div>
           </div>
         </div>
