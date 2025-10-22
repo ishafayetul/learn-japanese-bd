@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Learn Japanese — N5 to N3</title>
   <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/style.css?v=2025.10.23-01">
   <link rel="stylesheet" href="/speaking/speaking.css">
 </head>
 <body>
@@ -292,7 +292,10 @@
 
                     <div class="lt-toolbar">
                       <button id="lt-shuffle" type="button">Shuffle</button>
-
+                      <!-- Add these inside .lt-toolbar (right side of Word Table toolbar) -->
+                      <span id="lt-bulk-count" class="muted"></span>
+                      <button id="lt-bulk-toggle" type="button">Bulk Select</button>
+                      <button id="lt-bulk-mark" class="save" type="button" disabled>Add to List</button>
                       <!-- Column toggles -->
                       <div class="lt-cols" aria-label="Toggle columns">
                         <label class="chip"><input type="checkbox" data-col="kanji" checked> Kanji</label>
@@ -465,6 +468,10 @@
         <!-- ========= Marked ========= -->
         <section id="marked-section" class="hidden">
           <h2>📌 Marked Words</h2>
+          <div class="action-row" id="marked-actions">
+          <button id="btn-move-words" type="button">🔀 Move Words</button>
+          <button id="btn-unmark-some" class="danger" type="button">❌ Unmark Words</button>
+        </div>
           <p id="marked-status" class="muted" style="margin:8px 0;"></p>
           <div id="marked-container"></div>
           <!-- <div class="section-tools">
@@ -489,7 +496,6 @@
             <div id="signword-list"></div>
           </div>
         </section>
-        
          <!-- ========= Mix Section ========= -->
         <section id="mix-section" class="hidden">
           <div class="card">
@@ -531,6 +537,51 @@
             </div>
           </div>
         </div>
+        <!-- Mark: choose list modal -->
+        <div id="marklist-modal" class="lightbox hidden" aria-hidden="true">
+          <div class="lightbox-backdrop"></div>
+          <div class="lightbox-inner card" style="max-height:80vh; overflow:auto;">
+            <div class="lightbox-head">
+              <h4 style="margin:0;">Add to list</h4>
+              <button id="marklist-close" class="lightbox-close" aria-label="Close">✕</button>
+            </div>
+
+            <div>
+              <div class="pg-input-row">
+                <input id="marklist-newname" class="pg-input" placeholder="New list name…" />
+                <button id="marklist-create">＋ Create & Use</button>
+              </div>
+              <div id="marklist-rows" class="unmark-list" style="margin-top:8px;"></div>
+              <div class="unmark-actions" style="margin-top:10px;">
+                <span class="muted">Pick a list or create new.</span>
+                <button id="marklist-use" class="save">Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Move words between lists (in Marked) -->
+        <div id="movelist-modal" class="lightbox hidden" aria-hidden="true">
+          <div class="lightbox-backdrop"></div>
+          <div class="lightbox-inner card" style="max-height:80vh; overflow:auto;">
+            <div class="lightbox-head">
+              <h4 style="margin:0;">Move words between lists</h4>
+              <button id="movelist-close" class="lightbox-close" aria-label="Close">✕</button>
+            </div>
+            <div class="pg-input-row">
+              <select id="movelist-from" class="pg-input"></select>
+              <select id="movelist-to" class="pg-input"></select>
+            </div>
+            <div id="movelist-ids" class="unmark-list" style="margin-top:8px;"></div>
+            <div class="unmark-actions">
+              <div>
+                <button id="movelist-select-all" class="chip">Select All</button>
+                <button id="movelist-clear" class="chip">Clear</button>
+              </div>
+              <button id="movelist-apply" class="save">Move Selected</button>
+            </div>
+          </div>
+        </div>
 
         <!-- Toast -->
         <div id="toast" class="toast"></div>
@@ -542,7 +593,8 @@
   <script>window.SITE_AUTHOR = "Shafayetul Islam";</script>
 
   <script type="module" src="firebase.js"></script>
-  <script src="script.js"></script>
+  <!-- Replace your existing script include -->
+  <script src="/script.js?v=2025.10.23-01" data-version="2025.10.23-01" defer></script>
   <script src="/speaking/speaking.js"></script>
 
 </body>
