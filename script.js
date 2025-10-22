@@ -1843,39 +1843,63 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
   window.startPractice = async (mode)=>{
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
     App.mode = mode; setCrumbs();
-    App.deckFiltered = shuffle(filterDeckForMode(mode)); // randomized
-    App.qIndex = 0; App.stats = { right: 0, wrong: 0, skipped: 0 }; updateScorePanel();
 
-    // STRICT LINEAR
+    // Build Mastery Lists
+    const unique = [];
+    const seen = new Set();
+    for (const w of filterDeckForMode(mode)) {
+      const k = keyForWord(w);
+      if (!seen.has(k)) { seen.add(k); unique.push(w); }
+    }
+    App.mastery = { pending: shuffle(unique), mastered: [] };
+    App.qIndex = 0;
+    App.stats = { right: 0, wrong: 0, skipped: 0 };
+    updateScorePanel();
+
     hideLessonsHeaderAndList();
     hideLessonBar();
     hideVocabRootCard();
-
     hideVocabMenus();
     elLearn.classList.add("hidden");
     elWrite.classList.add("hidden");
     elMake.classList.add("hidden");
 
     D("#practice").classList.remove("hidden");
-    elQuestionBox.textContent=""; elOptions.innerHTML=""; elExtraInfo.textContent="";
-    updateDeckProgress(); renderQuestion();
+    elQuestionBox.textContent="";
+    elOptions.innerHTML="";
+    elExtraInfo.textContent="";
+    updateDeckProgress();
+    renderQuestion();
     updateBackVisibility();
 
+    toast("🎯 Mastery Mode — you’ll see wrong/skipped items again until all are correct!");
   };
-  function updateDeckProgress(){
-    const cur = Math.min(App.qIndex, App.deckFiltered.length);
-    elDeckBar.style.width = pct(cur, App.deckFiltered.length);
-    elDeckText.textContent = `${cur} / ${App.deckFiltered.length} (${pct(cur, App.deckFiltered.length)})`;
-  }
-  function renderQuestion(){
-    const w = App.deckFiltered[App.qIndex];
-    if (!w){ elQuestionBox.textContent = "All done."; elOptions.innerHTML=""; return; }
-    const mode = App.mode; let prompt="", correct="", poolField="";
 
+  function updateDeckProgress(){
+    const total = (App.mastery?.pending?.length || 0) + (App.mastery?.mastered?.length || 0);
+    const done  = (App.mastery?.mastered?.length || 0);
+    elDeckBar.style.width = pct(done, total);
+    elDeckText.textContent = `${done} / ${total} (${pct(done, total)})`;
+  }
+
+  function renderQuestion(){
+    const w = App.mastery?.pending?.[App.qIndex];
+    if (!w){
+      if (App.mastery && App.mastery.pending.length === 0) {
+        elQuestionBox.textContent = "🎉 All done! Every word mastered.";
+        elOptions.innerHTML="";
+        try { flushSession(); }catch{}
+        return;
+      }
+      App.qIndex = 0;
+      return renderQuestion();
+    }
+
+    const mode = App.mode; let prompt="", correct="", poolField="";
     if (mode === "k2h-e") return renderDualQuestion(w, "k2h-e");
     else if (mode === "e2h-k") return renderDualQuestion(w, "e2h-k");
-    else if (mode==="jp-en"){ prompt=w.hira; correct=w.en;   poolField="en"; }
-    else if (mode==="en-jp"){ prompt=w.en;   correct=w.hira; poolField="hira"; }
+    else if (mode==="jp-en"){ prompt=w.hira; correct=w.en; poolField="en"; }
+    else if (mode==="en-jp"){ prompt=w.en; correct=w.hira; poolField="hira"; }
     else if (mode==="kanji-hira"){ prompt=w.kanji; correct=w.hira; poolField="hira"; }
     else if (mode==="hira-kanji"){ prompt=w.hira; correct=w.kanji; poolField="kanji"; }
     else { prompt=w.hira; correct=w.en; poolField="en"; }
@@ -1887,28 +1911,50 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       const li=document.createElement("li");
       const btn=document.createElement("button");
       btn.textContent = opt;
-      btn.addEventListener("click", ()=> onPickOption(btn, opt===correct));
-      li.appendChild(btn); elOptions.appendChild(li);
+      btn.addEventListener("click", ()=> onPickOption(btn, opt===correct, w));
+      li.appendChild(btn);
+      elOptions.appendChild(li);
     }
   }
 
-  function onPickOption(btn, ok){
+  function onPickOption(btn, ok, w){
     A("#options button").forEach(b=>b.disabled=true);
-    if(ok){ btn.classList.add("is-correct"); App.stats.right++; incrementPoints(1); }
-    else { btn.classList.add("is-wrong"); App.stats.wrong++; recordMistake(App.deckFiltered[App.qIndex]); }
+    if(ok){
+      btn.classList.add("is-correct");
+      App.stats.right++; incrementPoints(1);
+      App.mastery.mastered.push(w);
+      App.mastery.pending.splice(App.qIndex,1);
+    } else {
+      btn.classList.add("is-wrong");
+      App.stats.wrong++; recordMistake(w);
+      // reinsert the same word 3–N positions ahead
+      const insertAt = Math.min(App.qIndex + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
+      App.mastery.pending.splice(insertAt, 0, w);
+    }
     updateScorePanel();
-    setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 450);
+    setTimeout(()=>{
+      App.qIndex = (App.qIndex + 1) % App.mastery.pending.length;
+      updateDeckProgress();
+      renderQuestion();
+    }, 450);
   }
+
   function buildOptions(correct, field, n=4){
     const vals = App.deckFiltered.map(w=>w[field]).filter(v=>v && v!==correct);
     const picks = shuffle(vals).slice(0, n-1); picks.push(correct); return shuffle(picks);
   }
   window.skipQuestion = ()=>{
-    const w = App.deckFiltered[App.qIndex];
-    if (w) recordMistake(w);                     // ← log skipped word
+    const w = App.mastery?.pending?.[App.qIndex];
+    if (!w) return;
+    recordMistake(w);
     App.stats.skipped++; updateScorePanel();
-    App.qIndex++; updateDeckProgress(); renderQuestion();
+    // reinsert later randomly
+    const insertAt = Math.min(App.qIndex + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
+    App.mastery.pending.splice(insertAt, 0, w);
+    App.qIndex = (App.qIndex + 1) % App.mastery.pending.length;
+    updateDeckProgress(); renderQuestion();
   };
+
 
   window.showRomaji = ()=> toast("Romaji: (not available)");
   window.showMeaning = ()=>{ const w=App.deckFiltered[App.qIndex]; if(w) toast(`Meaning: ${w.en}`); };
@@ -2343,6 +2389,14 @@ window.addEventListener("keydown", (e) => {
     App.write.variant = (variant==="k2h") ? "k2h" : "en2h";
     setCrumbs();
     const base = (variant==="k2h") ? filterDeckForMode("write-k2h") : App.deck.slice();
+    const unique = [];
+    const seen = new Set();
+    for (const w of base) {
+      const k = keyForWord(w);
+      if (!seen.has(k)) { seen.add(k); unique.push(w); }
+    }
+    App.mastery = { pending: shuffle(unique), mastered: [] };
+
     App.deckFiltered = shuffle(base);
     App.write.order = App.deckFiltered.map((_,i)=>i);
     App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
@@ -2378,27 +2432,28 @@ window.addEventListener("keydown", (e) => {
     const i = App.write.order[App.write.idx] ?? -1;
     const w = App.deckFiltered[i];
     if(!w) return;
-
     const ans = (elWriteInput.value || "").trim();
     if(!ans) return;
-
-    // normalize: remove spaces and wave-dash (〜 U+301C, ～ U+FF5E, and "~")
     const norm = s => (s || "")
-      .replace(/\s+/g, "")      // any spaces (incl. full-width)
-      .replace(/[〜～~]/g, "")  // wave dashes
+      .replace(/\s+/g, "")
+      .replace(/[〜～~]/g, "")
       .toLowerCase();
-
-    if (norm(ans) === norm(w.hira)) {
+    if (norm(ans)===norm(w.hira)){
       elWriteFeedback.innerHTML = `<span class="ok-inline">✓ Correct</span>`;
       App.stats.right++; incrementPoints(1);
-      App.write.idx++; updateScorePanel();
-      setTimeout(renderWriteCard, 250);
+      App.mastery.mastered.push(w);
+      App.mastery.pending.splice(App.write.idx,1);
     } else {
-      elWriteFeedback.innerHTML =
-        `Expected: <b>${escapeHTML(w.hira)}</b><br>Got: <span class="error-inline">${escapeHTML(ans)}</span>`;
-      App.stats.wrong++; updateScorePanel(); recordMistake(w);
+      elWriteFeedback.innerHTML = `<span class="error-inline">❌ Wrong: ${w.hira}</span>`;
+      App.stats.wrong++; recordMistake(w);
+      const insertAt = Math.min(App.write.idx + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
+      App.mastery.pending.splice(insertAt,0,w);
     }
+    updateScorePanel();
+    App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
+    renderWriteCard();
   };
+
 
   window.writeSkip = ()=>{
     const i = App.write.order[App.write.idx] ?? -1;
