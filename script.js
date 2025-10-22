@@ -291,7 +291,14 @@ const App = Object.assign(window.App, {
   pg:   { rows: [], idx: 0 },
   buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
-  cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() }
+  cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() },
+  match: {
+    active: false,
+    variant: null,    // "eh" or "keh"
+    roundWords: [],   // current 5 words (objects with {kanji,hira,en})
+    solved: new Set(),// keys solved this round
+    picks: { kanji:null, hira:null, en:null } // current selection by column
+  }
 });
 // keep a stable global reference
 window.App = App;
@@ -342,6 +349,24 @@ function attemptSig(){
       return `Mix:${list}`;
     }
     return (App.level && App.lesson) ? `${App.level}/${App.lesson}` : (App.lesson || App.level || "-");
+  }
+  function sampleFiveForMatch(variant){
+    // base pool depends on variant: "keh" requires actual kanji
+    const hasKanji = w => {
+      const k = (w.kanji || "").trim();
+      return k && k !== "—" && k !== "?";
+    };
+    const pool = (variant === "keh") ? (App.deck || []).filter(hasKanji) : (App.deck || []);
+    const uniq = [];
+    const seen = new Set();
+    for (const w of shuffle(pool)){
+      const k = keyForWord(w);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      uniq.push(w);
+      if (uniq.length === 5) break;
+    }
+    return uniq;
   }
 
   async function buildPickerRowsMerged(){
@@ -1880,7 +1905,186 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
   window.showRomaji = ()=> toast("Romaji: (not available)");
   window.showMeaning = ()=>{ const w=App.deckFiltered[App.qIndex]; if(w) toast(`Meaning: ${w.en}`); };
 
- 
+  window.startWordMatching = async (variant /* "eh" | "keh" */) => {
+    await ensureDeckLoaded(); try{ await flushSession(); }catch{}
+    App.mode = (variant === "keh") ? "match-keh" : "match-eh";
+    App.match.active  = true;
+    App.match.variant = (variant === "keh") ? "keh" : "eh";
+    App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
+
+    // strict linear like other finals
+    hideLessonsHeaderAndList();
+    hideLessonBar();
+    hideVocabRootCard();
+    hideVocabMenus();
+    elLearn.classList.add("hidden");
+    elWrite.classList.add("hidden");
+    elMake.classList.add("hidden");
+
+    D("#practice").classList.remove("hidden");
+
+    // build first round
+    newMatchRound();
+    updateDeckProgressForMatch();
+    updateBackVisibility();
+  };
+
+ function newMatchRound(){
+    // 5 unique words for this round
+    App.match.roundWords = sampleFiveForMatch(App.match.variant);
+    App.match.solved.clear();
+    App.match.picks = { kanji:null, hira:null, en:null };
+    renderMatchRound();
+  }
+
+  function updateDeckProgressForMatch(){
+    // progress: solved items out of 5; keep your deck bar consistent
+    const done = App.match.solved.size;
+    elDeckBar.style.width = pct(done, 5);
+    elDeckText.textContent = `${done} / 5 (${pct(done, 5)})`;
+  }
+
+  function renderMatchRound(){
+    const v = App.match.variant; // "eh" or "keh"
+    const list = App.match.roundWords.slice();
+
+    // Prompt text
+    const head = (v === "keh")
+      ? "Match Kanji ↔ Hiragana ↔ English"
+      : "Match Hiragana ↔ English";
+    elQuestionBox.innerHTML = `<div class="flashcard">${escapeHTML(head)}</div>`;
+
+    // Prepare per-column arrays (shuffle independently)
+    const colHira = shuffle(list.map(w => ({key:keyForWord(w), label:w.hira, col:"hira"})));
+    const colEn   = shuffle(list.map(w => ({key:keyForWord(w), label:w.en,   col:"en"  })));
+    const colKan  = (v === "keh")
+      ? shuffle(list.map(w => ({key:keyForWord(w), label:(w.kanji||"—"), col:"kanji"})))
+      : null;
+
+    // Build grid
+    elOptions.innerHTML = "";
+    const grid = document.createElement("div");
+    grid.className = "match-grid " + (v === "keh" ? "cols-3" : "cols-2");
+
+    function makeCol(items, colName){
+      const col = document.createElement("div");
+      col.className = "match-col";
+      for (const item of items){
+        const b = document.createElement("button");
+        b.className = "match-btn";
+        b.textContent = item.label || "—";
+        b.dataset.key = item.key;
+        b.dataset.col = colName;
+
+        // solved state?
+        if (App.match.solved.has(item.key)){
+          b.classList.add("is-solved");
+          b.disabled = true;
+        }
+
+        b.addEventListener("click", () => onMatchPick(b), { passive:true });
+        col.appendChild(b);
+      }
+      return col;
+    }
+
+    if (v === "keh"){
+      grid.appendChild(makeCol(colKan,  "kanji"));
+      grid.appendChild(makeCol(colHira, "hira"));
+      grid.appendChild(makeCol(colEn,   "en"));
+    } else {
+      grid.appendChild(makeCol(colHira, "hira"));
+      grid.appendChild(makeCol(colEn,   "en"));
+    }
+
+    elOptions.appendChild(grid);
+
+    // Practice action row (reuse your existing)
+    // nothing extra here; skip/romaji buttons continue to work
+  }
+function clearSelection(col){
+  // unselect currently picked button in a column
+  const prev = App.match.picks[col];
+  if (!prev) return;
+  prev.classList.remove("is-selected");
+  App.match.picks[col] = null;
+}
+
+function onMatchPick(btn){
+  if (btn.classList.contains("is-solved")) return;
+  const col = btn.dataset.col;
+  if (!col) return;
+
+  // toggle select/deselect
+  if (btn.classList.contains("is-selected")) {
+    btn.classList.remove("is-selected");
+    App.match.picks[col] = null;
+    return;
+  }
+
+  // ensure only one selection per column
+  clearSelection(col);
+  btn.classList.add("is-selected");
+  App.match.picks[col] = btn;
+
+  // evaluate when all required columns selected
+  const need3 = (App.match.variant === "keh");
+  const hasH = !!App.match.picks.hira;
+  const hasE = !!App.match.picks.en;
+  const hasK = !!App.match.picks.kanji;
+
+  if ((!need3 && hasH && hasE) || (need3 && hasH && hasE && hasK)){
+    finalizeMatchTry();
+  }
+}
+
+function finalizeMatchTry(){
+  const picks = App.match.picks;
+  const keys = Object.values(picks).filter(Boolean).map(b => b.dataset.key);
+  const allSame = keys.length && keys.every(k => k === keys[0]);
+
+  if (allSame){
+    // ✓ correct
+    App.stats.right++; incrementPoints(1); updateScorePanel();
+    // lock as solved
+    Object.values(picks).forEach(b=>{
+      if (!b) return;
+      b.classList.remove("is-selected");
+      b.classList.add("is-solved");
+      b.disabled = true;
+    });
+    App.match.solved.add(keys[0]);
+    App.match.picks = { kanji:null, hira:null, en:null };
+    updateDeckProgressForMatch();
+
+    // round complete?
+    if (App.match.solved.size >= 5){
+      setTimeout(() => {
+        newMatchRound();
+        updateDeckProgressForMatch();
+      }, 280);
+    }
+  } else {
+    // ✗ wrong → record mistake on a safe representative word
+    App.stats.wrong++; updateScorePanel();
+    try {
+      // find the actual word via any selected key
+      const k0 = keys[0];
+      const w = (App.match.roundWords || []).find(w => keyForWord(w) === k0);
+      if (w) recordMistake(w);
+    } catch {}
+
+    // flash red and clear picks
+    Object.values(picks).forEach(b=>{
+      if (!b) return;
+      b.classList.add("is-wrong");
+      setTimeout(()=> b.classList.remove("is-wrong"), 280);
+      b.classList.remove("is-selected");
+    });
+    App.match.picks = { kanji:null, hira:null, en:null };
+  }
+}
+
   function renderDualQuestion(w,mode){
     elOptions.innerHTML = "";
     // const mode = App.mode; // "k2h-e" or "e2h-k"
@@ -1960,13 +2164,23 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
 // ==== Keyboard shortcuts for MCQ (incl. Dual) ====
 // 1..4 = pick options; 0 = Skip current question
   window.mcqSkip = function(){
+    // NEW: handle Word Matching
+    if (App.match?.active && isVisible("#practice")){
+      App.stats.skipped++; updateScorePanel();
+      newMatchRound();                         // fresh 5-word round
+      updateDeckProgressForMatch();
+      return;
+    }
+
+    // …existing MCQ skip logic…
     if (!isVisible("#practice")) return;
     A("#options button, .dual-grid button").forEach(b => b.disabled = true);
     const w = App.deckFiltered[App.qIndex];
-    if (w) recordMistake(w);                     // ← log skipped word
+    if (w) recordMistake(w);
     App.stats.skipped++; updateScorePanel();
     setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 120);
   };
+
 
 
   window.addEventListener("keydown", (e) => {

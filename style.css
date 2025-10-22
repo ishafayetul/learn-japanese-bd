@@ -976,3 +976,40 @@ body.nav-open .scrim{ display:block; }
 
 /* small breathing room above table */
 #learn-table .table-wrap{ margin-top: 6px; }
+
+/* === Word Matching grid === */
+.match-grid{
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+.match-grid.cols-2{ grid-template-columns: 1fr 1fr; }
+.match-grid.cols-3{ grid-template-columns: 1fr 1fr 1fr; }
+
+.match-col{
+  display: grid;
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.match-col .match-btn{
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid var(--border);
+  background: #0c1321;
+  font-weight: 600;
+}
+
+.match-col .match-btn.is-selected{
+  outline: 2px solid #4d74ff;
+  background:#14234a;
+}
+
+.match-col .match-btn.is-solved{
+  opacity: .55;
+  background:#0f1727;
+  border-color:#243657;
+  cursor: default;
+}
