@@ -2193,11 +2193,10 @@ window.addEventListener("keydown", (e) => {
   const colName = order[dom.step] || order[0];
 
   // Find the Nth enabled button in that column
-  const btns = (dom.cols[colName] || []).filter(b => !b.disabled);
-  const btn = btns[idx];
-  if (btn) {
-    btn.click(); // delegates to onMatchPick(...) which toggles selection
-    // onMatchPick will advance to the next column via advanceMatchStep()
+  const list = (dom.cols[colName] || []);
+  const btn = list[idx];
+  if (btn && !btn.disabled) {
+    btn.click(); // delegates to onMatchPick(...)
   }
 });
 
