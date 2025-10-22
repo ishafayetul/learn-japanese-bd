@@ -1948,11 +1948,9 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     const v = App.match.variant; // "eh" or "keh"
     const list = App.match.roundWords.slice();
 
-    // Prompt text
-    const head = (v === "keh")
-      ? "Match Kanji ↔ Hiragana ↔ English"
-      : "Match Hiragana ↔ English";
-    elQuestionBox.innerHTML = `<div class="flashcard">${escapeHTML(head)}</div>`;
+    // No header/flashcard for Word Matching modes (as requested)
+    elQuestionBox.textContent = "";
+
 
     // Prepare per-column arrays (shuffle independently)
     const colHira = shuffle(list.map(w => ({key:keyForWord(w), label:w.hira, col:"hira"})));
@@ -1963,6 +1961,13 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
 
     // Build grid
     elOptions.innerHTML = "";
+    // Keep DOM refs for keyboard control
+    const dom = {
+      cols: { kanji: [], hira: [], en: [] },
+      order: (v === "keh") ? ["kanji","hira","en"] : ["hira","en"],
+      step: 0  // which column the keyboard is currently targeting
+    };
+
     const grid = document.createElement("div");
     grid.className = "match-grid " + (v === "keh" ? "cols-3" : "cols-2");
 
@@ -1976,7 +1981,6 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
         b.dataset.key = item.key;
         b.dataset.col = colName;
 
-        // solved state?
         if (App.match.solved.has(item.key)){
           b.classList.add("is-solved");
           b.disabled = true;
@@ -1984,9 +1988,13 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
 
         b.addEventListener("click", () => onMatchPick(b), { passive:true });
         col.appendChild(b);
+
+        // NEW: store for keyboard access
+        (dom.cols[colName] || (dom.cols[colName] = [])).push(b);
       }
       return col;
     }
+
 
     if (v === "keh"){
       grid.appendChild(makeCol(colKan,  "kanji"));
@@ -1998,10 +2006,26 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     }
 
     elOptions.appendChild(grid);
+    App.match.dom = dom;
 
     // Practice action row (reuse your existing)
     // nothing extra here; skip/romaji buttons continue to work
   }
+
+  function advanceMatchStep(){
+  if (!App.match?.dom) return;
+  const order = App.match.dom.order || [];
+  // Jump to the first column that hasn't been picked yet
+  for (let i = 0; i < order.length; i++){
+    if (!App.match.picks[order[i]]) {
+      App.match.dom.step = i;
+      return;
+    }
+  }
+  // If all picked (finalize will run), reset targeting back to first
+  App.match.dom.step = 0;
+}
+
 function clearSelection(col){
   // unselect currently picked button in a column
   const prev = App.match.picks[col];
@@ -2026,6 +2050,7 @@ function onMatchPick(btn){
   clearSelection(col);
   btn.classList.add("is-selected");
   App.match.picks[col] = btn;
+  advanceMatchStep();
 
   // evaluate when all required columns selected
   const need3 = (App.match.variant === "keh");
@@ -2084,6 +2109,49 @@ function finalizeMatchTry(){
     App.match.picks = { kanji:null, hira:null, en:null };
   }
 }
+
+// ==== Keyboard shortcuts for Word Matching ====
+// 0 = Skip round; 1..5 select row in the current column (then auto-advance to next column)
+window.addEventListener("keydown", (e) => {
+  if (!App.match?.active || !isVisible("#practice")) return;
+
+  // ignore while typing or with modifiers
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  const k = e.key;
+
+  // 0 → Skip = reshuffle a fresh 5-word round
+  if (k === "0") {
+    e.preventDefault();
+    window.mcqSkip();
+    return;
+  }
+
+  // Only 1..5 are valid
+  if (!/^[1-5]$/.test(k)) return;
+  e.preventDefault();
+
+  const idx = k.charCodeAt(0) - 49; // '1'..'5' → 0..4
+  const dom = App.match.dom;
+  if (!dom) return;
+
+  // Determine which column to target:
+  // follow fixed order: KEH = Kanji→Hiragana→English, EH = Hiragana→English
+  const order = dom.order || [];
+  // Ensure step points at the first unpicked column
+  advanceMatchStep();
+  const colName = order[dom.step] || order[0];
+
+  // Find the Nth enabled button in that column
+  const btns = (dom.cols[colName] || []).filter(b => !b.disabled);
+  const btn = btns[idx];
+  if (btn) {
+    btn.click(); // delegates to onMatchPick(...) which toggles selection
+    // onMatchPick will advance to the next column via advanceMatchStep()
+  }
+});
 
   function renderDualQuestion(w,mode){
     elOptions.innerHTML = "";
