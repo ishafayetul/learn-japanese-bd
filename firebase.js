@@ -311,7 +311,154 @@
         _cache.marked.delete(key2);
         return true;
       },
+ // Return array of lists, including the special "Flash Mark"
+  async list() {
+    if (!_user) throw new Error("Not signed in");
+    const rows = [];
 
+    // 1) Always include the special Flash list (count derived quickly by cache size or a single fetch)
+    let flashCount = _cache.marked?.size || 0;
+    if (!flashCount) {
+      try {
+        const snap = await getDocs(collection(db, Paths.userMarkedCol(_user.uid)));
+        flashCount = snap.size;
+      } catch {}
+    }
+    rows.push({
+      id: "flash",
+      name: "Flash Mark",
+      privacy: "private",
+      count: flashCount,
+      _special: true,
+    });
+
+    // 2) Real custom lists
+    const col = collection(db, `users/${_user.uid}/markedLists`);
+    const snap = await getDocs(col);
+    snap.forEach(d => {
+      const data = d.data() || {};
+      rows.push({
+        id: d.id,
+        name: data.name || "Untitled",
+        privacy: data.privacy || "private",
+        count: data.count || 0,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      });
+    });
+    // Sort: Flash first, then recent
+    rows.sort((a,b) => (a._special ? -1 : b._special ? 1 : 0));
+    return rows;
+  },
+
+  async create({ name, privacy = "private" }) {
+    if (!_user) throw new Error("Not signed in");
+    const ref = doc(collection(db, `users/${_user.uid}/markedLists`)); // auto-id
+    const payload = {
+      name: String(name || "Untitled"),
+      privacy: privacy === "public" ? "public" : "private",
+      count: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    await setDoc(ref, payload);
+    return { id: ref.id, ...payload };
+  },
+
+  async delete(listId) {
+    if (!_user) throw new Error("Not signed in");
+    if (listId === "flash") throw new Error("Flash Mark cannot be deleted.");
+    const base = `users/${_user.uid}/markedLists/${listId}`;
+    // delete subcollection words (batch)
+    const wordsCol = collection(db, `${base}/words`);
+    const wordsSnap = await getDocs(wordsCol);
+    const batch = writeBatch(db);
+    wordsSnap.forEach(d => batch.delete(d.ref));
+    await batch.commit().catch(()=>{});
+
+    await deleteDoc(doc(db, base)).catch(()=>{});
+    return true;
+  },
+
+  async words(listId) {
+    if (!_user) throw new Error("Not signed in");
+    // Flash is proxied to legacy Marked
+    if (listId === "flash") {
+      const rows = await window.FB.listMarked(); // legacy API
+      return rows.map(r => ({
+        id: r.id,
+        kanji: r.kanji || null,
+        hira:  r.hira  || r.front || "",
+        en:    r.en    || r.back  || "",
+        front: r.front || r.hira  || "",
+        back:  r.back  || r.en    || "",
+      }));
+    }
+    const wordsCol = collection(db, `users/${_user.uid}/markedLists/${listId}/words`);
+    const snap = await getDocs(wordsCol);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async addWords(listId, words = []) {
+    if (!_user) throw new Error("Not signed in");
+    // For Flash → just reuse legacy markWord for each (small batches)
+    if (listId === "flash") {
+      for (const w of words) {
+        const front = w.front || w.hira || "";
+        const back  = w.back  || w.en   || "";
+        if (front && back) {
+          await window.FB.markWord(`${front}::${back}`, {
+            kanji: w.kanji || null, hira: w.hira || front, en: w.en || back, front, back
+          });
+        }
+      }
+      return true;
+    }
+    // For custom lists → batch write
+    const base = `users/${_user.uid}/markedLists/${listId}`;
+    const wordsCol = collection(db, `${base}/words`);
+    const batch = writeBatch(db);
+    let addCount = 0;
+    for (const w of words) {
+      const front = w.front || w.hira || "";
+      const back  = w.back  || w.en   || "";
+      if (!front || !back) continue;
+      const id = safeKey(`${front}::${back}`);
+      const ref = doc(db, `${base}/words/${id}`);
+      batch.set(ref, {
+        kanji: w.kanji || null,
+        hira:  w.hira  || front,
+        en:    w.en    || back,
+        front, back,
+        createdAt: serverTimestamp(),
+      }, { merge: true });
+      addCount++;
+    }
+    if (addCount > 0) {
+      // Update list count optimistically
+      const listRef = doc(db, base);
+      batch.set(listRef, { count: increment(addCount), updatedAt: serverTimestamp() }, { merge: true });
+    }
+    await batch.commit();
+    return true;
+  },
+
+  async removeWords(listId, ids = []) {
+    if (!_user) throw new Error("Not signed in");
+    if (!ids.length) return true;
+    if (listId === "flash") {
+      // ids are safeKeys; remove via legacy unmark
+      for (const id of ids) { try { await window.FB.unmarkWord(id); } catch {} }
+      return true;
+    }
+    const base = `users/${_user.uid}/markedLists/${listId}`;
+    const batch = writeBatch(db);
+    ids.forEach(id => batch.delete(doc(db, `${base}/words/${id}`)));
+    // shrink count
+    batch.set(doc(db, base), { count: increment(-1 * ids.length), updatedAt: serverTimestamp() }, { merge: true });
+    await batch.commit();
+    return true;
+  },
       /* --------------- SIGN WORDS (per-user) --------------- */
       async signWordAdd({ front, back, romaji=null }) {
         if (!_user) throw new Error("Not signed in");

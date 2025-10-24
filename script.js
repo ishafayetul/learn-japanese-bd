@@ -1052,7 +1052,7 @@ window.openSection = async (name) => {
 
   // Mistakes / Marked behave like a lesson's Vocab tab using the shared helper
   if (name === "mistakes") { await openVocabDeckFromList("mistakes"); return; }
-  if (name === "marked")   { await openVocabDeckFromList("marked");   return; }
+  if (name === "marked")   { await openMarkedHome(); return; }
 
   // Other sections keep their own pages
   const map = {
@@ -2712,7 +2712,385 @@ window.addEventListener("keydown", (e) => {
   window.startMarkedLearn = async()=> setupListPractice("marked","learn");
   window.startMarkedPractice = async(m)=> setupListPractice("marked", m);
   window.startMarkedWrite = async()=> setupListPractice("marked","write");
-  
+  // ===== Marked Lists UI (landing + per-list) =====
+const FLASH_LIST_ID = "flash";
+
+async function openMarkedHome(){
+  hideContentPanes?.();
+  hideAllSections?.();
+  document.querySelector("#marked-section")?.classList.remove("hidden");
+
+  showSection("marked");              // your existing section switcher
+  const actions = document.querySelector("#marked-actions");
+  const status  = document.querySelector("#marked-status");
+  const body    = document.querySelector("#marked-container");
+  if (!actions || !status || !body) return;
+
+  actions.innerHTML = `
+    <button id="btn-marked-lists" class="primary">📚 Marked Lists</button>
+    <button id="btn-create-list">➕ Create List</button>
+  `;
+  status.textContent = "";
+  body.innerHTML = `<div class="muted">Pick an action above.</div>`;
+
+  document.querySelector("#btn-marked-lists")?.addEventListener("click", renderMarkedLists);
+  document.querySelector("#btn-create-list")?.addEventListener("click", createMarkedListModal);
+}
+
+async function renderMarkedLists(){
+  const actions = document.querySelector("#marked-actions");
+  const status  = document.querySelector("#marked-status");
+  const body    = document.querySelector("#marked-container");
+  if (!actions || !status || !body) return;
+
+  status.textContent = "Loading lists…";
+  body.innerHTML = "";
+
+  const fb = await whenFBReady();
+  const lists = await fb.markedLists.list();
+
+  status.textContent = `${lists.length} list(s).`;
+  const grid = document.createElement("div");
+  grid.className = "mw-grid";
+
+  for (const li of lists){
+    const card = document.createElement("div");
+    card.className = "mw-card";
+    card.innerHTML = `
+      <div class="mw-card-head">
+        <div class="mw-title">${escapeHTML(li.name)}</div>
+        ${li._special ? `<span class="badge">auto</span>` : ""}
+      </div>
+      <div class="mw-sub muted">${li.privacy || "private"} • ${li.count|0} words</div>
+      <div class="mw-actions">
+        <button data-id="${li.id}" class="primary mw-open">Open</button>
+        ${li._special ? "" : `<button data-id="${li.id}" class="danger mw-del">Delete</button>`}
+      </div>
+    `;
+    card.querySelector(".mw-open")?.addEventListener("click", () => openMarkedList(li));
+    if (!li._special) {
+      card.querySelector(".mw-del")?.addEventListener("click", async () => {
+        if (confirm(`Delete list "${li.name}"? This cannot be undone.`)){
+          await fb.markedLists.delete(li.id);
+          toast("List deleted");
+          renderMarkedLists();
+        }
+      });
+    }
+    grid.appendChild(card);
+  }
+  body.appendChild(grid);
+}
+
+function createMarkedListModal(){
+  const body = document.querySelector("#marked-container");
+  if (!body) return;
+  body.innerHTML = `
+    <div class="card">
+      <h3>Create List</h3>
+      <div class="pg-input-row">
+        <input id="mw-new-name" class="pg-input" placeholder="List name (e.g., N5 Kanji focus)" />
+        <select id="mw-new-privacy" class="pg-input">
+          <option value="private" selected>Private</option>
+          <option value="public">Public</option>
+        </select>
+        <button id="mw-create-go" class="primary">Create</button>
+      </div>
+    </div>
+  `;
+  document.querySelector("#mw-create-go")?.addEventListener("click", async ()=>{
+    const fb = await whenFBReady();
+    const name = (document.querySelector("#mw-new-name")?.value || "Untitled").trim();
+    const privacy = document.querySelector("#mw-new-privacy")?.value || "private";
+    const { id } = await fb.markedLists.create({ name, privacy });
+    toast("List created ✓");
+    openMarkedList({ id, name, privacy, count: 0 });
+  }, { once:true });
+}
+
+async function openMarkedList(list){
+  const actions = document.querySelector("#marked-actions");
+  const status  = document.querySelector("#marked-status");
+  const body    = document.querySelector("#marked-container");
+  if (!actions || !status || !body) return;
+
+  const listId = list.id;
+  const title  = escapeHTML(list.name || (listId === FLASH_LIST_ID ? "Flash Mark" : "List"));
+  actions.innerHTML = `
+    <button id="mw-back">← Back</button>
+    <span class="muted" style="margin-left:6px;">${title}</span>
+    <div style="flex:1"></div>
+    <button id="mw-learn" class="chip">Learn</button>
+    <button id="mw-mcq" class="chip">MCQ</button>
+    <button id="mw-write" class="chip">Write Words</button>
+    <button id="mw-make" class="chip">Make Sentence</button>
+    <button id="mw-add" class="primary">Add Words</button>
+    <button id="mw-unmark" class="">Unmark Words</button>
+    ${listId===FLASH_LIST_ID ? "" : `<button id="mw-delete" class="danger">Delete the list</button>`}
+  `;
+
+  document.querySelector("#mw-back")?.addEventListener("click", renderMarkedLists);
+  document.querySelector("#mw-delete")?.addEventListener("click", async ()=>{
+    if (confirm(`Delete list "${list.name}"?`)){
+      const fb = await whenFBReady();
+      await fb.markedLists.delete(listId);
+      toast("List deleted");
+      renderMarkedLists();
+    }
+  });
+
+  // wire modes
+  document.querySelector("#mw-learn")?.addEventListener("click", async ()=> startListPractice(listId,"learn"));
+  document.querySelector("#mw-mcq")?.addEventListener("click", async ()=> startListPractice(listId,"mcq"));
+  document.querySelector("#mw-write")?.addEventListener("click", async ()=> startListPractice(listId,"write"));
+  document.querySelector("#mw-make")?.addEventListener("click", async ()=> startListPractice(listId,"make"));
+
+  document.querySelector("#mw-add")?.addEventListener("click", ()=> openAddWordsToList(listId));
+  document.querySelector("#mw-unmark")?.addEventListener("click", ()=> openUnmarkForList(listId));
+
+  // show list preview
+  status.textContent = "Loading…";
+  body.innerHTML = "";
+  const fb = await whenFBReady();
+  const words = await fb.markedLists.words(listId);
+  status.textContent = `${words.length} word(s).`;
+  body.appendChild(renderWordTablePreview(words));
+}
+
+function renderWordTablePreview(words=[]){
+  const wrap = document.createElement("div");
+  wrap.className = "card";
+  if (!words.length) {
+    wrap.innerHTML = `<div class="muted">Empty.</div>`;
+    return wrap;
+  }
+  const ul = document.createElement("div");
+  for (const w of words){
+    const row = document.createElement("div");
+    row.className = "marked-item";
+    row.innerHTML = `<div>${escapeHTML(w.kanji || w.hira || w.front || "—")} — <span class="muted">${escapeHTML(w.en || w.back || "")}</span></div>`;
+    ul.appendChild(row);
+  }
+  wrap.appendChild(ul);
+  return wrap;
+}
+
+async function startListPractice(listId, mode="learn"){
+  // Build deck array from the list
+  const fb = await whenFBReady();
+  const words = await fb.markedLists.words(listId);
+  const deck = words.map(w => ({ kanji: w.kanji || null, hira: w.hira || w.front || "", en: w.en || w.back || "" }))
+                    .filter(x => x.hira && x.en);
+  if (!deck.length) { toast("No words to practice."); return; }
+
+  // Reuse your existing “custom deck” opener (same as Marked flow)
+  // If you already have helpers like setupListPractice("marked", mode) you can create a similar one:
+  openCustomDeck(deck, mode); // implement this tiny adapter below if needed
+}
+
+// Tiny adapter to open a custom deck with your current vocab UI
+function openCustomDeck(deck, mode){
+  // Example: set App.deck and jump into your existing mode switch
+  try {
+    window.App = window.App || {};
+    window.App.deck = deck;
+    if (mode === "write") return startWriteWithDeck(deck);
+    if (mode === "make")  return startMakeSentenceWithDeck(deck);
+    if (mode === "mcq")   return startMCQWithDeck(deck);
+    return startLearnWithDeck(deck);
+  } catch (e) {
+    console.warn("openCustomDeck fallback to Marked:", e);
+    // As a fallback you can call your existing "setupListPractice('marked', mode)" which already knows how to render
+    if (typeof setupListPractice === "function") setupListPractice("marked", mode);
+  }
+}
+
+// -------- Unmark for a specific list (Flash uses your existing picker) --------
+async function openUnmarkForList(listId){
+  if (listId === FLASH_LIST_ID) return openUnmarkModal(); // your current modal scope
+  const fb = await whenFBReady();
+  const words = await fb.markedLists.words(listId);
+  if (!words.length) { toast("Nothing to unmark"); return; }
+
+  // Simple inline picker
+  const body = document.querySelector("#marked-container");
+  if (!body) return;
+  body.innerHTML = `
+    <div class="card">
+      <h3>Unmark from this list</h3>
+      <div class="unmark-list" id="mw-unmark-list">
+        ${words.map(w => `
+          <label>
+            <input type="checkbox" class="mw-unmark-check" data-id="${escapeHTML(w.id)}">
+            <b>${escapeHTML(w.kanji || w.hira || w.front)}</b> — <span class="muted">${escapeHTML(w.en || w.back || "")}</span>
+          </label>
+        `).join("")}
+      </div>
+      <div class="unmark-actions">
+        <div>
+          <button class="chip" id="mw-unmark-all">Select All</button>
+          <button class="chip" id="mw-unmark-clear">Clear</button>
+        </div>
+        <button class="danger" id="mw-unmark-remove">Remove Selected Words</button>
+      </div>
+    </div>
+  `;
+  document.querySelector("#mw-unmark-all")?.addEventListener("click", ()=>{
+    document.querySelectorAll(".mw-unmark-check").forEach(ch => ch.checked = true);
+  }, { once:true });
+  document.querySelector("#mw-unmark-clear")?.addEventListener("click", ()=>{
+    document.querySelectorAll(".mw-unmark-check").forEach(ch => ch.checked = false);
+  }, { once:true });
+  document.querySelector("#mw-unmark-remove")?.addEventListener("click", async ()=>{
+    const ids = Array.from(document.querySelectorAll(".mw-unmark-check"))
+      .filter(ch => ch.checked).map(ch => ch.dataset.id);
+    if (!ids.length) return;
+    await fb.markedLists.removeWords(listId, ids);
+    toast("Removed ✓");
+    openMarkedList({ id:listId, name:listId===FLASH_LIST_ID?"Flash Mark":"List" });
+  }, { once:true });
+}
+
+// -------- Add Words: decks picker (Mix-like) → table with bulk add --------
+async function openAddWordsToList(listId){
+  const body = document.querySelector("#marked-container");
+  if (!body) return;
+  body.innerHTML = `
+    <div class="card">
+      <h3>Add Words → Pick decks (like Mix)</h3>
+      <div id="mw-mix-levels" class="mix-levels-wrap"></div>
+      <div class="row" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+        <button id="mw-mix-all" type="button">Select all</button>
+        <button id="mw-mix-clear" type="button">Clear</button>
+        <button id="mw-mix-build" class="primary" type="button">Build Deck</button>
+        <span id="mw-mix-status" class="muted" style="margin-left:6px;"></span>
+      </div>
+    </div>
+    <div id="mw-pick-table"></div>
+  `;
+
+  // reuse or lightweight picker
+  await renderMiniMixPicker("#mw-mix-levels"); // implemented below
+
+  document.querySelector("#mw-mix-all")?.addEventListener("click", ()=>{
+    document.querySelectorAll("#mw-mix-levels input[type=checkbox]").forEach(ch => ch.checked = true);
+  });
+  document.querySelector("#mw-mix-clear")?.addEventListener("click", ()=>{
+    document.querySelectorAll("#mw-mix-levels input[type=checkbox]").forEach(ch => ch.checked = false);
+  });
+  document.querySelector("#mw-mix-build")?.addEventListener("click", async ()=>{
+    const sel = Array.from(document.querySelectorAll("#mw-mix-levels input[type=checkbox]"))
+      .filter(ch => ch.checked).map(ch => ch.value);
+    if (!sel.length){ toast("Pick at least one deck."); return; }
+    const deck = await buildDeckFromSelections(sel); // to words
+    renderAddTable(listId, deck);
+  }, { once:true });
+}
+
+async function renderMiniMixPicker(mountSel){
+  // Minimal picker using current level manifest; adjust to your manifest shape if needed
+  const mount = document.querySelector(mountSel);
+  if (!mount) return;
+  // For brevity: show N5/N4/N3 lessons (.e.g., "N5/Lesson-01/Vocabulary/*.csv")
+  const LEVELS = ["N5","N4","N3"];
+  mount.innerHTML = LEVELS.map(lv => `
+    <div class="mix-level">
+      <div class="mix-level-head">${lv}</div>
+      <div class="mix-level-body" id="mw-${lv}-list">Loading…</div>
+    </div>
+  `).join("");
+
+  for (const lv of LEVELS){
+    try{
+      const manifestUrl = manifestCandidates(lv)[0];
+      const res = await fetch(manifestUrl);
+      const data = await res.json();
+      // Expect array like data.lessons[].id or data.paths — adapt as needed
+      const lessons = (data.lessons || data || []).map(x => x.id || x.lesson || x.path).filter(Boolean);
+      const host = document.querySelector(`#mw-${lv}-list`);
+      host.innerHTML = lessons.map(ls => {
+        const id = `${lv}/${ls}`;
+        return `<label><input type="checkbox" value="${id}"> ${escapeHTML(id)}</label>`;
+      }).join("");
+    }catch(e){
+      const host = document.querySelector(`#mw-${lv}-list`);
+      if (host) host.innerHTML = `<div class="muted">No manifest</div>`;
+    }
+  }
+}
+
+async function buildDeckFromSelections(selIds = []){
+  const words = [];
+  for (const id of selIds){
+    const [level, lesson] = id.split("/");
+    if (!level || !lesson) continue;
+    // find plausible CSV files & fetch first that exists
+    const candidates = buildVocabCandidates(level, lesson); // you already have this helper
+    let csvText = null;
+    for (const url of candidates){
+      try{
+        const res = await fetch(url);
+        if (res.ok){ csvText = await res.text(); break; }
+      }catch{}
+    }
+    if (!csvText) continue;
+    // very small CSV parser (masu,te,meaning or kanji,hira,en pattern); adapt if needed
+    const lines = csvText.split(/\r?\n/).filter(x => x.trim());
+    for (const ln of lines){
+      const cells = ln.split(","); // your decks are simple; if you have quoted commas, swap in a robust parser
+      const hira   = (cells[0]||"").trim();
+      const en     = (cells[2]||cells[1]||"").trim();
+      const kanji  = null;
+      if (hira && en) words.push({ hira, en, kanji, front:hira, back:en });
+    }
+  }
+  return words;
+}
+
+function renderAddTable(listId, deck){
+  const host = document.querySelector("#mw-pick-table");
+  if (!host) return;
+  if (!deck.length){
+    host.innerHTML = `<div class="card"><div class="muted">No words found in selected decks.</div></div>`;
+    return;
+  }
+  host.innerHTML = `
+    <div class="card">
+      <h3>Select words to add</h3>
+      <div class="row" style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+        <button id="mw-add-all" class="chip">Select All</button>
+        <button id="mw-add-clear" class="chip">Clear</button>
+        <button id="mw-add-commit" class="primary">Add Selected</button>
+        <span class="muted">${deck.length} total</span>
+      </div>
+      <div class="word-table">
+        ${deck.map((w,i)=>`
+          <label class="wt-row">
+            <input type="checkbox" class="mw-add-check" data-i="${i}">
+            <b>${escapeHTML(w.kanji || w.hira)}</b> — <span class="muted">${escapeHTML(w.en)}</span>
+          </label>
+        `).join("")}
+      </div>
+    </div>
+  `;
+  document.querySelector("#mw-add-all")?.addEventListener("click", ()=>{
+    document.querySelectorAll(".mw-add-check").forEach(ch => ch.checked = true);
+  });
+  document.querySelector("#mw-add-clear")?.addEventListener("click", ()=>{
+    document.querySelectorAll(".mw-add-check").forEach(ch => ch.checked = false);
+  });
+  document.querySelector("#mw-add-commit")?.addEventListener("click", async ()=>{
+    const idxs = Array.from(document.querySelectorAll(".mw-add-check"))
+      .filter(ch => ch.checked).map(ch => Number(ch.dataset.i));
+    if (!idxs.length) return;
+    const pick = idxs.map(i => deck[i]);
+    const fb = await whenFBReady();
+    await fb.markedLists.addWords(listId, pick);
+    toast("Added ✓");
+    openMarkedList({ id:listId, name:listId===FLASH_LIST_ID ? "Flash Mark" : "List" });
+  }, { once:true });
+}
+
   async function fetchAllMarkedForPicker(){
       let remote = [], local = [], signed = [];
       try { const fb = await whenFBReady(); remote = await fb.listMarked(); } catch {}

@@ -1043,3 +1043,18 @@ body.nav-open .scrim{ display:block; }
   background: #2a0e0e;
   color: #ffd0d0;
 }
+
+/* Marked Lists grid */
+.mw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
+  gap: 12px;
+}
+.mw-card { padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--surface); }
+.mw-card-head { display:flex; align-items:center; gap:8px; }
+.mw-title { font-weight:600; }
+.mw-sub { margin:6px 0 10px; }
+.mw-actions { display:flex; gap:8px; }
+
+.word-table { display:flex; flex-direction:column; gap:6px; max-height:60vh; overflow:auto; }
+.wt-row { display:flex; align-items:center; gap:8px; padding:6px 8px; border-bottom:1px dashed var(--border); }
