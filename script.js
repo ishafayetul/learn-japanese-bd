@@ -104,19 +104,6 @@ async function whenFBReady(timeout = 15000) {
   const elWrong = D("#wrong");
   const elSkipped = D("#skipped");
 
-  // Word List DOM
-  const elWLPSelect = D("#wl-practice-select");
-  const elWLTarget  = D("#wl-target-select");
-  const elWLNewName = D("#wl-new-name");
-  const elWLPrivacy = D("#wl-privacy");
-  const elWLPickHost = D("#wl-pick-host");
-  const elWLAddStatus = D("#wl-add-status");
-  const elWLMoveFrom = D("#wl-move-from");
-  const elWLMoveTo   = D("#wl-move-to");
-  const elWLMoveList = D("#wl-move-list");
-  const elWLMoveStatus = D("#wl-move-status");
-  const elWLManage   = D("#wl-manage");
-
   // Sections
   const elProgressSection = D("#progress-section");
   const elLeaderboardSection = D("#leaderboard-section");
@@ -1020,8 +1007,6 @@ async function openVocabDeckFromList(source) {
       renderMistakesLanding();
     } else {
       document.querySelector("#marked-section")?.classList.remove("hidden");
-      await wlRefreshLists();          // <— fill Practice / Target / Move selects + Manage cards
-      await wlRenderPick();     
       await renderMarkedList();
     }
     updateBackVisibility();
@@ -2722,19 +2707,6 @@ window.addEventListener("keydown", (e) => {
   }
 }
 
-async function afterMarkedOpened(){
-  await wlRefreshLists();
-  await wlRenderPick();
-}
-
-async function openSection(name){
-  // ... your existing router ...
-  if (name === "marked"){
-    await renderMarkedList();
-    await afterMarkedOpened();
-  }
-  // (leave others unchanged)
-}
 
 
   window.startMarkedLearn = async()=> setupListPractice("marked","learn");
@@ -3201,198 +3173,6 @@ async function openSection(name){
       }
     } catch { elSWList.innerHTML = `<div class="muted">Failed to load your signed words.</div>`; }
   }
-
-async function wlRefreshLists(){
-  try{
-    const fb = await whenFBReady();
-    const lists = await fb.wordLists.listMine();
-
-    // Fill selects: practice, target, move-from/to
-    const fill = (sel) => {
-      if (!sel) return;
-      sel.innerHTML = "";
-      for (const l of lists){
-        const opt = document.createElement("option");
-        opt.value = l.id; opt.textContent = `${l.name} (${l.count||0}) ${l.privacy==="public"?"🌐":""}`;
-        sel.appendChild(opt);
-      }
-    };
-    [elWLPSelect, elWLTarget, elWLMoveFrom, elWLMoveTo].forEach(fill);
-
-    // Manage cards
-    if (elWLManage){
-      elWLManage.innerHTML = lists.map(l=>`
-        <div class="wl-card">
-          <div><b>${escapeHTML(l.name)}</b> — <span class="muted">${l.count||0} items</span></div>
-          <div class="wl-inline" style="margin-top:6px;">
-            <button data-id="${l.id}" class="wl-rename">Rename</button>
-            <button data-id="${l.id}" class="wl-privacy">${l.privacy==="public"?"Make Private":"Make Public"}</button>
-            <button data-id="${l.id}" class="danger wl-delete">Delete</button>
-          </div>
-        </div>
-      `).join("");
-      elWLManage.querySelectorAll(".wl-rename").forEach(btn=>{
-        btn.addEventListener("click", async()=>{
-          const name = prompt("New name?");
-          if (name){ const fb=await whenFBReady(); await fb.wordLists.rename(btn.dataset.id, name); wlRefreshLists(); toast("Renamed ✓"); }
-        });
-      });
-      elWLManage.querySelectorAll(".wl-privacy").forEach(btn=>{
-        btn.addEventListener("click", async()=>{
-          const fb=await whenFBReady();
-          const lists = await fb.wordLists.listMine();
-          const cur = lists.find(x=>x.id===btn.dataset.id);
-          const to = (cur?.privacy==="public"?"private":"public");
-          await fb.wordLists.setPrivacy(btn.dataset.id, to);
-          wlRefreshLists(); toast(`Privacy: ${to}`);
-        });
-      });
-      elWLManage.querySelectorAll(".wl-delete").forEach(btn=>{
-        btn.addEventListener("click", async()=>{
-          if (!confirm("Delete this list?")) return;
-          const fb=await whenFBReady(); await fb.wordLists.deleteList(btn.dataset.id);
-          wlRefreshLists(); toast("Deleted ✓");
-        });
-      });
-    }
-  }catch{}
-}
-
-// Build deck checkbox UI same as Mix (N5/N4/N3 lessons)
-async function wlRenderPick(){
-  if (!elWLPickHost) return;
-  elWLPickHost.innerHTML = "";
-  const levels = ["N5","N4","N3"];
-  for (const lvl of levels){
-    const m = await loadLevelManifest(lvl);
-    const lessons = (m?.allLessons || []);
-    const box = document.createElement("div");
-    box.className = "mix-level";
-    box.innerHTML = `
-      <div class="mix-level-head"><b>${lvl}</b></div>
-      <div class="mix-lessons">
-        ${lessons.length
-          ? lessons.map(ls=>`<label><input type="checkbox" class="wl-lesson-check" data-level="${lvl}" data-lesson="${ls}"> ${ls.replace(/-/g," ")}</label>`).join("")
-          : `<div class="muted">No lessons — missing manifest.json</div>`
-        }
-      </div>`;
-    elWLPickHost.appendChild(box);
-  }
-}
-window.wlCreate = async ()=>{
-  const name = (elWLNewName.value||"").trim();
-  const privacy = elWLPrivacy?.value || "private";
-  if (!name) { toast("Enter a list name"); return; }
-  try{
-    const fb = await whenFBReady();
-    await fb.wordLists.create({ name, privacy });
-    elWLNewName.value = "";
-    await wlRefreshLists();
-    toast("List created ✓");
-  }catch{ toast("Sign in first."); }
-};
-
-// Build from selected lessons (like Mix), load CSVs, then add to target
-window.wlBuildAndAdd = async ()=>{
-  // reset status until we actually begin
-  elWLAddStatus.textContent = "";
-
-  const targetId = elWLTarget?.value;
-  if (!targetId){ elWLAddStatus.textContent = "Pick a target list."; toast("Pick a target list"); return; }
-
-  // collect picks
-  const checks = Array.from(document.querySelectorAll(".wl-lesson-check:checked"));
-  if (!checks.length){ elWLAddStatus.textContent = "Select at least one lesson."; toast("Select at least one lesson"); return; }
-
-  // we are really going to build now
-  elWLAddStatus.textContent = "Building…";
-
-  // Build deck (unchanged)
-  let deck = [];
-  for (const ch of checks){
-    const lvl = ch.dataset.level, ls = ch.dataset.lesson;
-    const rows = await loadVocabDeck(lvl, ls);
-    deck.push(...rows.map(r => ({
-      kanji: r.kanji || "—", hira: r.hira || r.front || "", en: r.en || r.back || "",
-      front: r.hira || r.front || "", back: r.en || r.back || ""
-    })));
-  }
-  const seen = new Set(), uniq = [];
-  for (const w of deck){
-    const key = (w.front || w.hira) + "::" + (w.back || w.en);
-    if (!w.front || !w.back) continue;
-    if (seen.has(key)) continue;
-    seen.add(key); uniq.push(w);
-  }
-
-  try{
-    const fb = await whenFBReady();
-    const res = await fb.wordLists.addWords(targetId, uniq);
-    elWLAddStatus.textContent = `Added ${res.added} word(s).`;
-    await wlRefreshLists();                     // <— immediate UI refresh
-    toast("Words added ✓");
-  }catch{
-    elWLAddStatus.textContent = "Failed.";
-  }
-};
-
-window.wlPractice = async (mode)=>{
-  const listId = elWLPSelect?.value;
-  if (!listId) { toast("Pick a list"); return; }
-  try{
-    const fb = await whenFBReady();
-    const rows = await fb.wordLists.words(listId);
-    const deck = rows.map(r => ({ kanji: r.kanji || "—", hira: r.hira || r.front || "", en: r.en || r.back || "" }))
-                     .filter(w => w.hira && w.en);
-
-    if (!deck.length){ toast("This list is empty."); return; }
-    App.deck = deck; App.mode = mode==="mcq" ? "mcq4" : (mode||"learn"); setCrumbs();
-    // identical to setupListPractice
-    hideVocabMenus();
-    elLearn.classList.add("hidden");
-    elWrite.classList.add("hidden");
-    D("#practice")?.classList.add("hidden");
-    elMake.classList.add("hidden");
-    if (App.mode==="learn"){ App.deckFiltered = deck.slice(); App.qIndex=0; App.stats={right:0,wrong:0,skipped:0}; updateScorePanel(); elLearn.classList.remove("hidden"); renderLearnCard(); }
-    else if (App.mode==="write"){ App.deckFiltered = shuffle(deck); App.write.order = App.deckFiltered.map((_,i)=>i); App.write.idx=0; App.stats={right:0,wrong:0,skipped:0}; updateScorePanel(); elWrite.classList.remove("hidden"); renderWriteCard(); }
-    else { App.deckFiltered = shuffle(filterDeckForMode(App.mode)); App.qIndex=0; App.stats={right:0,wrong:0,skipped:0}; updateScorePanel(); D("#practice").classList.remove("hidden"); updateDeckProgress(); renderQuestion(); }
-    updateBackVisibility();
-  }catch{ toast("Sign in to practice your lists."); }
-};
-let __wlMoveCache = { fromId:null, words:[] };
-
-window.wlOpenPicker = async ()=>{
-  const fromId = elWLMoveFrom?.value;
-  if (!fromId){ toast("Pick a source list"); return; }
-  const fb = await whenFBReady();
-  const rows = await fb.wordLists.words(fromId);
-  __wlMoveCache = { fromId, words: rows };
-
-  elWLMoveList.innerHTML = rows.length
-    ? rows.map(r => `
-      <label>
-        <input type="checkbox" class="wl-move-check" data-id="${escapeHTML(r.id)}">
-        <b>${escapeHTML(r.hira || r.front || "")}</b> — <span class="muted">${escapeHTML(r.en || r.back || "")}</span>
-      </label>
-    `).join("")
-    : `<div class="muted">No words in this list.</div>`;
-};
-
-window.wlMove = async ()=>{
-  const toId = elWLMoveTo?.value;
-  const fromId = __wlMoveCache.fromId;
-  if (!fromId || !toId){ toast("Pick both lists"); return; }
-  const picks = Array.from(document.querySelectorAll(".wl-move-check:checked")).map(ch => ch.dataset.id);
-  if (!picks.length){ toast("Select words to move"); return; }
-  try{
-    const fb = await whenFBReady();
-    const res = await fb.wordLists.moveWords({ fromId, toId, wordIds: picks });
-    elWLMoveStatus.textContent = `Moved ${res.moved} word(s).`;
-    await wlRefreshLists();
-    await wlOpenPicker(); // refresh source view
-    toast("Moved ✓");
-  }catch{ elWLMoveStatus.textContent = "Failed."; }
-};
 
   // Open the Mix picker UI
 window.openMixPractice = async () => {

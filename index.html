@@ -466,69 +466,15 @@
         <!-- ========= Marked ========= -->
         <section id="marked-section" class="hidden">
           <h2>📌 Marked Words</h2>
-          <div class="action-row" id="marked-actions">  
-            <!-- ========= Word List (under Marked) ========= -->
-            <div class="card" id="wordlist-shell" style="margin-top:12px;">
-              <h3>🗂 Word List</h3>
-
-              <!-- Row 1: Practice -->
-              <div class="wl-row">
-                <h4>Practice</h4>
-                <div class="wl-inline">
-                  <select id="wl-practice-select"></select>
-                  <button onclick="wlPractice('learn')">Learn</button>
-                  <button onclick="wlPractice('mcq')">MCQ</button>
-                  <button onclick="wlPractice('write')">Write</button>
-                </div>
-              </div>
-
-              <!-- Row 2: Create list or add words -->
-              <div class="wl-row">
-                <h4>Create List or Add Words</h4>
-                <div class="wl-inline">
-                  <input id="wl-new-name" class="pg-input" placeholder="New list name" />
-                  <select id="wl-privacy">
-                    <option value="private">Private</option>
-                    <option value="public">Public (visible to all)</option>
-                  </select>
-                  <button onclick="wlCreate()">Create</button>
-                </div>
-
-                <details style="margin-top:8px;">
-                  <summary>Select decks & add words (like Mix)</summary>
-                  <div id="wl-pick-host" class="mix-levels-wrap" style="margin-top:8px;"></div>
-                  <div class="row" style="display:flex; gap:6px; align-items:center; margin-top:6px;">
-                    <select id="wl-target-select"></select>
-                    <button class="primary" onclick="wlBuildAndAdd()">Add Selected Words to List</button>
-                    <span id="wl-add-status" class="muted"></span>
-                  </div>
-                </details>
-              </div>
-
-              <!-- Row 3: Move words between lists -->
-              <div class="wl-row">
-                <h4>Move Words</h4>
-                <div class="wl-inline">
-                  <select id="wl-move-from"></select>
-                  <select id="wl-move-to"></select>
-                  <button onclick="wlOpenPicker()">Pick Words…</button>
-                  <button onclick="wlMove()">Move</button>
-                  <span id="wl-move-status" class="muted"></span>
-                </div>
-                <div id="wl-move-list" class="unmark-list" style="margin-top:6px;"></div>
-              </div>
-
-              <!-- Row 4: Manage lists -->
-              <div class="wl-row">
-                <h4>Manage</h4>
-                <div id="wl-manage" class="wl-manage"></div>
-              </div>
-            </div>
-
-            <button id="btn-unmark-some" class="danger" type="button">❌ Unmark Words</button>
-          </div>
+          <div class="action-row" id="marked-actions">
+          
+          <button id="btn-unmark-some" class="danger" type="button">❌ Unmark Words</button>
+        </div>
           <p id="marked-status" class="muted" style="margin:8px 0;"></p>
           <div id="marked-container"></div>
+          <!-- <div class="section-tools">
+            <button id="marked-unmark-all">Unmark Wordss</button>
+          </div> -->
         </section>
 
         <!-- ========= Sign Word ========= -->
