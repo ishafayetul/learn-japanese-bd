@@ -1043,3 +1043,8 @@ body.nav-open .scrim{ display:block; }
   background: #2a0e0e;
   color: #ffd0d0;
 }
+
+.wl-row { margin-top:10px; }
+.wl-inline { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.wl-manage { display:grid; gap:8px; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); }
+.wl-card { border:1px solid #ffffff20; padding:10px; border-radius:12px; background:#ffffff08; }

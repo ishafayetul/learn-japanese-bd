@@ -33,10 +33,13 @@
   const _listeners = new Set(); // auth listeners
 
   const _cache = {
-    notes: new Map(),     // key -> {note, updatedAt}
-    marked: new Map(),    // id  -> data
-    signWords: new Map(), // id  -> data
+    notes: new Map(),
+    marked: new Map(),
+    signWords: new Map(),
+    wordLists: new Map(),         // listId -> {id,name,privacy,count,...}
+    listWords: new Map(),         // `${listId}` -> Map(wordId -> data)
   };
+
 
   const Local = {
     get(k, fallback=null) { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } },
@@ -53,9 +56,13 @@
     userSignCol:     (uid) => `users/${uid}/signwords`,
     userAttemptsCol: (uid) => `users/${uid}/attempts`,
     userWriteBestCol:(uid) => `users/${uid}/writeBest`,
-    dailyScoresCol:  (date) => `daily/${date}/scores`,      // shared daily leaderboard
-    overallLBCol:    ()    => `leaderboard_overall`,        // shared overall leaderboard
+    userWordListsCol:(uid) => `users/${uid}/wordlists`,
+    userListWordsCol:(uid, listId) => `users/${uid}/wordlists/${listId}/words`,
+    publicListsCol:  () => `wordlists_public`,
+    dailyScoresCol:  (date) => `daily/${date}/scores`,
+    overallLBCol:    ()    => `leaderboard_overall`,
   };
+
 
   // Normalize attempts collection path (handles both function or string)
   const attemptsPath = () =>
@@ -311,6 +318,233 @@
         _cache.marked.delete(key2);
         return true;
       },
+      //================================Marked List==================
+      wordLists: {
+      // List my lists
+      async listMine() {
+        if (!_user) throw new Error("Not signed in");
+        if (_cache.wordLists.size) return Array.from(_cache.wordLists.values());
+        const col = collection(db, Paths.userWordListsCol(_user.uid));
+        const snap = await getDocs(col);
+        const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        rows.forEach(r => _cache.wordLists.set(r.id, r));
+        return rows;
+      },
+
+      // List public lists (simple discovery)
+      async listPublic({ max=100 } = {}) {
+        const qy = query(collection(db, Paths.publicListsCol()), orderBy("updatedAt","desc"), limit(max));
+        const snap = await getDocs(qy);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      },
+
+      // Create a new list
+      async create({ name, privacy="private" }){
+        if (!_user) throw new Error("Not signed in");
+        const row = {
+          name: String(name||"Untitled").trim(),
+          privacy: (privacy==="public" ? "public" : "private"),
+          count: 0,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        const ref = await addDoc(collection(db, Paths.userWordListsCol(_user.uid)), row);
+        const item = { id: ref.id, ...row };
+        _cache.wordLists.set(ref.id, item);
+        if (item.privacy === "public") {
+          const pubId = `${_user.uid}__${ref.id}`;
+          await setDoc(doc(db, Paths.publicListsCol(), pubId), {
+            uid:_user.uid, listId: ref.id, name: item.name, count: 0, updatedAt: serverTimestamp()
+          }, { merge:true });
+        }
+        return { id: ref.id, ...item };
+      },
+
+      // Rename list
+      async rename(listId, name){
+        if (!_user) throw new Error("Not signed in");
+        const ref = doc(db, `${Paths.userWordListsCol(_user.uid)}/${listId}`);
+        await setDoc(ref, { name: String(name||"Untitled"), updatedAt: serverTimestamp() }, { merge:true });
+        const cur = _cache.wordLists.get(listId) || {};
+        _cache.wordLists.set(listId, { ...cur, name });
+        // public mirror if needed
+        const curPriv = cur.privacy || "private";
+        if (curPriv === "public") {
+          const pubId = `${_user.uid}__${listId}`;
+          await setDoc(doc(db, Paths.publicListsCol(), pubId), { name, updatedAt: serverTimestamp() }, { merge:true });
+        }
+        return true;
+      },
+
+      // Set privacy
+      async setPrivacy(listId, privacy){
+        if (!_user) throw new Error("Not signed in");
+        const p = (privacy==="public" ? "public" : "private");
+        const ref = doc(db, `${Paths.userWordListsCol(_user.uid)}/${listId}`);
+        await setDoc(ref, { privacy: p, updatedAt: serverTimestamp() }, { merge:true });
+        const cur = _cache.wordLists.get(listId) || {};
+        _cache.wordLists.set(listId, { ...cur, privacy: p });
+
+        const pubId = `${_user.uid}__${listId}`;
+        if (p === "public") {
+          await setDoc(doc(db, Paths.publicListsCol(), pubId), {
+            uid:_user.uid, listId, name: cur.name || "Untitled", count: cur.count||0, updatedAt: serverTimestamp()
+          }, { merge:true });
+        } else {
+          try { await deleteDoc(doc(db, Paths.publicListsCol(), pubId)); } catch {}
+        }
+        return true;
+      },
+
+      // Get words of a list (cached)
+      async words(listId){
+        if (!_user) throw new Error("Not signed in");
+        if (_cache.listWords.has(listId)) {
+          return Array.from(_cache.listWords.get(listId).values());
+        }
+        const mp = new Map();
+        const snap = await getDocs(collection(db, Paths.userListWordsCol(_user.uid, listId)));
+        snap.docs.forEach(d => mp.set(d.id, { id:d.id, ...d.data() }));
+        _cache.listWords.set(listId, mp);
+        return Array.from(mp.values());
+      },
+
+      // Add words (idempotent; wordId = safeKey(front::back))
+      async addWords(listId, words){
+        if (!_user) throw new Error("Not signed in");
+        if (!Array.isArray(words) || !words.length) return { ok:true, added:0 };
+        const batch = writeBatch(db);
+        const mp = _cache.listWords.get(listId) || new Map();
+
+        let added = 0;
+        for (const w of words){
+          const front = String(w.front || w.hira || "").trim();
+          const back  = String(w.back  || w.en   || "").trim();
+          if (!front || !back) continue;
+          const key   = (front + "::" + back);
+          const wid   = safeKey(key);
+          const ref   = doc(db, `${Paths.userListWordsCol(_user.uid, listId)}/${wid}`);
+          if (!mp.has(wid)) added++;
+          batch.set(ref, {
+            front, back,
+            hira: w.hira || front,
+            en:   w.en   || back,
+            kanji: w.kanji ?? "—",
+            addedAt: serverTimestamp()
+          }, { merge: true });
+          mp.set(wid, { id: wid, front, back, hira: w.hira || front, en: w.en || back, kanji: w.kanji ?? "—" });
+        }
+
+        if (added > 0){
+          const listRef = doc(db, `${Paths.userWordListsCol(_user.uid)}/${listId}`);
+          batch.set(listRef, { count: increment(added), updatedAt: serverTimestamp() }, { merge:true });
+
+          const cur = _cache.wordLists.get(listId) || {};
+          _cache.wordLists.set(listId, { ...cur, count: (cur.count|0) + added });
+
+          if ((cur.privacy||"private")==="public") {
+            const pubId = `${_user.uid}__${listId}`;
+            batch.set(doc(db, Paths.publicListsCol(), pubId), { count: increment(added), updatedAt: serverTimestamp() }, { merge:true });
+          }
+        }
+
+        await batch.commit();
+        _cache.listWords.set(listId, mp);
+        return { ok:true, added };
+      },
+
+      // Move between lists (copy+delete minimal writes)
+      async moveWords({ fromId, toId, wordIds=[] }){
+        if (!_user) throw new Error("Not signed in");
+        if (!wordIds.length || fromId===toId) return { ok:true, moved:0 };
+
+        const fromMp = _cache.listWords.get(fromId) || new Map();
+        const toMp   = _cache.listWords.get(toId)   || new Map();
+
+        const batch = writeBatch(db);
+        let moved = 0;
+
+        for (const wid of wordIds){
+          const src = fromMp.get(wid);
+          if (!src) continue;
+          // upsert into dest
+          const dref = doc(db, `${Paths.userListWordsCol(_user.uid, toId)}/${wid}`);
+          if (!toMp.has(wid)) moved++;
+          batch.set(dref, { ...src, addedAt: serverTimestamp() }, { merge:true });
+          toMp.set(wid, { ...src });
+          // delete from source
+          const sref = doc(db, `${Paths.userListWordsCol(_user.uid, fromId)}/${wid}`);
+          batch.delete(sref);
+          fromMp.delete(wid);
+        }
+
+        if (moved>0){
+          const fromRef = doc(db, `${Paths.userWordListsCol(_user.uid)}/${fromId}`);
+          const toRef   = doc(db, `${Paths.userWordListsCol(_user.uid)}/${toId}`);
+          batch.set(fromRef, { count: increment(-moved), updatedAt: serverTimestamp() }, { merge:true });
+          batch.set(toRef,   { count: increment( moved), updatedAt: serverTimestamp() }, { merge:true });
+
+          // public mirrors
+          const fromMeta = _cache.wordLists.get(fromId) || {};
+          const toMeta   = _cache.wordLists.get(toId)   || {};
+          if ((fromMeta.privacy||"private")==="public"){
+            const pubFrom = `${_user.uid}__${fromId}`;
+            batch.set(doc(db, Paths.publicListsCol(), pubFrom), { count: increment(-moved), updatedAt: serverTimestamp() }, { merge:true });
+          }
+          if ((toMeta.privacy||"private")==="public"){
+            const pubTo = `${_user.uid}__${toId}`;
+            batch.set(doc(db, Paths.publicListsCol(), pubTo), { count: increment(moved), updatedAt: serverTimestamp() }, { merge:true });
+          }
+
+          _cache.wordLists.set(fromId, { ...fromMeta, count: (fromMeta.count|0) - moved });
+          _cache.wordLists.set(toId,   { ...toMeta,   count: (toMeta.count|0)   + moved });
+        }
+
+        await batch.commit();
+        _cache.listWords.set(fromId, fromMp);
+        _cache.listWords.set(toId, toMp);
+        return { ok:true, moved };
+      },
+
+      // Remove words from a list
+      async removeWords(listId, wordIds=[]){
+        if (!_user) throw new Error("Not signed in");
+        if (!wordIds.length) return { ok:true, removed:0 };
+
+        const mp = _cache.listWords.get(listId) || new Map();
+        const batch = writeBatch(db);
+        let removed = 0;
+
+        for (const wid of wordIds){
+          if (!mp.has(wid)) continue;
+          batch.delete(doc(db, `${Paths.userListWordsCol(_user.uid, listId)}/${wid}`));
+          mp.delete(wid); removed++;
+        }
+        if (removed>0){
+          batch.set(doc(db, `${Paths.userWordListsCol(_user.uid)}/${listId}`), { count: increment(-removed), updatedAt: serverTimestamp() }, { merge:true });
+          const cur = _cache.wordLists.get(listId) || {};
+          _cache.wordLists.set(listId, { ...cur, count:(cur.count|0)-removed });
+          if ((cur.privacy||"private")==="public"){
+            const pubId = `${_user.uid}__${listId}`;
+            batch.set(doc(db, Paths.publicListsCol(), pubId), { count: increment(-removed), updatedAt: serverTimestamp() }, { merge:true });
+          }
+        }
+        await batch.commit();
+        _cache.listWords.set(listId, mp);
+        return { ok:true, removed };
+      },
+
+      async deleteList(listId){
+        if (!_user) throw new Error("Not signed in");
+        // shallow delete: client never loads all to avoid costs — you can cloud-function a TTL cleanup if needed
+        await deleteDoc(doc(db, `${Paths.userWordListsCol(_user.uid)}/${listId}`)).catch(()=>{});
+        _cache.wordLists.delete(listId);
+        const pubId = `${_user.uid}__${listId}`;
+        try { await deleteDoc(doc(db, Paths.publicListsCol(), pubId)); } catch {}
+        _cache.listWords.delete(listId);
+        return true;
+      }
+    },
 
       /* --------------- SIGN WORDS (per-user) --------------- */
       async signWordAdd({ front, back, romaji=null }) {
