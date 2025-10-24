@@ -7,6 +7,10 @@
 // - Global daily/overall leaderboards remain shared
 //
 // NOTE: Set window.FIREBASE_CONFIG in index.html before this file.
+import {
+  getFirestore, collection, doc, getDocs, setDoc, addDoc, deleteDoc,
+  query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 (() => {
   // ---- Guard: single init ----
@@ -566,4 +570,198 @@ window.FB.markedLists = {
                 .filter(w => w.hira && w.en);
     } catch { return []; }
   };
+  // ================= Marked Lists API =================
+// Put this AFTER window.FB is created and Firestore/Auth are ready.
+(function attachMarkedLists(FB){
+  if (!FB || FB.markedLists) return;            // don't double-attach
+
+  const db   = FB.db;
+  const auth = FB.auth;
+
+  const FLASH_LIST_ID = "flash";                // used by script.js
+
+  // Same safe key scheme you use in script.js (base64 without '=')
+  function safeKey(s){
+    try { return btoa(unescape(encodeURIComponent(String(s)))).replace(/=+$/,""); }
+    catch { return String(s).toLowerCase().replace(/\W+/g,'_'); }
+  }
+
+  // ----- Legacy "Marked" helpers (already exist in your app) -----
+  // If your file already defines these, keep them — we just re-use them:
+  // FB.listMarked(): Promise<Array<{id, kanji?, hira?, en?, front?, back?}>> 
+  // FB.unmarkWord(id): Promise<void>
+
+  // ----- New Lists collection -----
+  // users/{uid}/marked_lists/{listId} (doc: {name, privacy, count?, createdAt})
+  // users/{uid}/marked_lists/{listId}/words/{wordId} (doc: {kanji?, hira?, en?, front?, back?, createdAt})
+  function listsCol(uid){ return collection(db, `users/${uid}/marked_lists`); }
+  function listDoc(uid, listId){ return doc(db, `users/${uid}/marked_lists/${listId}`); }
+  function wordsCol(uid, listId){ return collection(db, `users/${uid}/marked_lists/${listId}/words`); }
+  function wordDoc(uid, listId, wordId){ return doc(db, `users/${uid}/marked_lists/${listId}/words/${wordId}`); }
+
+  async function requireUID(){
+    const u = auth.currentUser;
+    if (!u) throw new Error("Not signed in");
+    return u.uid;
+  }
+
+  FB.markedLists = {
+    // 1) List all lists (includes the special "Flash Mark")
+    async list(){
+      const uid = await requireUID();
+
+      // Special: Flash Mark (legacy)
+      let flashCount = 0;
+      try {
+        const rows = await FB.listMarked();     // legacy collection you already have
+        flashCount = Array.isArray(rows) ? rows.length : 0;
+      } catch {}
+
+      // Custom lists from Firestore
+      const qSnap = await getDocs(listsCol(uid));
+      const out = [];
+      qSnap.forEach(d => {
+        const v = d.data() || {};
+        out.push({
+          id: d.id,
+          name: v.name || "Untitled",
+          privacy: v.privacy || "private",
+          count: Number(v.count || 0),
+          _special: false
+        });
+      });
+
+      // Put Flash first
+      out.unshift({
+        id: FLASH_LIST_ID,
+        name: "Flash Mark",
+        privacy: "private",
+        count: flashCount,
+        _special: true
+      });
+
+      return out;
+    },
+
+    // 2) Create a new custom list
+    async create({ name="Untitled", privacy="private" } = {}){
+      const uid = await requireUID();
+      const ref = await addDoc(listsCol(uid), {
+        name, privacy, count: 0, createdAt: serverTimestamp()
+      });
+      return { id: ref.id };
+    },
+
+    // 3) Delete a custom list (and its words)
+    async delete(listId){
+      if (listId === FLASH_LIST_ID) throw new Error("Cannot delete Flash Mark");
+      const uid = await requireUID();
+
+      // delete all words in subcollection
+      const ws = await getDocs(wordsCol(uid, listId));
+      const batchDeletes = [];
+      ws.forEach(w => batchDeletes.push(deleteDoc(wordDoc(uid, listId, w.id))));
+      await Promise.all(batchDeletes);
+
+      await deleteDoc(listDoc(uid, listId));
+      return true;
+    },
+
+    // 4) Get words in a list
+    async words(listId){
+      const uid = await requireUID();
+
+      if (listId === FLASH_LIST_ID){
+        // Read from your legacy Marked collection
+        const legacy = await FB.listMarked();
+        // normalize fields
+        return (legacy || []).map(r => ({
+          id: r.id,
+          kanji: r.kanji ?? null,
+          hira:  r.hira  ?? (r.front || ""),
+          en:    r.en    ?? (r.back  || ""),
+          front: r.front ?? r.hira ?? "",
+          back:  r.back  ?? r.en   ?? ""
+        }));
+      }
+
+      const qs = await getDocs(wordsCol(uid, listId));
+      const items = [];
+      qs.forEach(d=>{
+        const v = d.data() || {};
+        items.push({
+          id: d.id,
+          kanji: v.kanji ?? null,
+          hira:  v.hira  ?? (v.front || ""),
+          en:    v.en    ?? (v.back  || ""),
+          front: v.front ?? v.hira ?? "",
+          back:  v.back  ?? v.en   ?? ""
+        });
+      });
+      return items;
+    },
+
+    // 5) Add words to a list (bulk)
+    //    words: Array<{kanji?, hira?, en?, front?, back?}>
+    async addWords(listId, words){
+      if (!Array.isArray(words) || !words.length) return 0;
+      const uid = await requireUID();
+
+      if (listId === FLASH_LIST_ID){
+        // We DO NOT add into Flash — Flash is fed by legacy "marked" flow
+        // (marking happens from Learn/Write/MCQ via FB.markWord / your existing logic).
+        throw new Error("Flash Mark is read-only here. Use 📌 Mark during practice.");
+      }
+
+      let added = 0;
+      await Promise.all(words.map(async (wRaw)=>{
+        const w = wRaw || {};
+        const front = w.front ?? w.hira ?? "";
+        const back  = w.back  ?? w.en   ?? "";
+        const k = w.kanji ?? null;
+
+        if (!front || !back) return;
+
+        const id = safeKey(`${front}::${back}`);
+        await setDoc(wordDoc(uid, listId, id), {
+          kanji: k, hira: w.hira ?? front, en: w.en ?? back,
+          front, back, createdAt: serverTimestamp()
+        }, { merge: true });
+        added++;
+      }));
+
+      // best-effort: update count on the list doc
+      try {
+        const all = await getDocs(wordsCol(uid, listId));
+        await setDoc(listDoc(uid, listId), { count: all.size }, { merge: true });
+      } catch {}
+
+      return added;
+    },
+
+    // 6) Remove words from a list (bulk)
+    //    ids: array of word doc ids (safe keys). For Flash → unmark legacy.
+    async removeWords(listId, ids){
+      const uid = await requireUID();
+      if (!Array.isArray(ids) || !ids.length) return 0;
+
+      if (listId === FLASH_LIST_ID){
+        // Legacy unmark
+        await Promise.all(ids.map(id => FB.unmarkWord(id)));
+        return ids.length;
+      }
+
+      await Promise.all(ids.map(id => deleteDoc(wordDoc(uid, listId, id))));
+
+      // best-effort: update count
+      try {
+        const all = await getDocs(wordsCol(uid, listId));
+        await setDoc(listDoc(uid, listId), { count: all.size }, { merge: true });
+      } catch {}
+
+      return ids.length;
+    }
+  };
+})(window.FB);
+
 })();

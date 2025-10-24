@@ -2736,6 +2736,7 @@ async function openMarkedHome(){
   document.querySelector("#btn-create-list")?.addEventListener("click", createMarkedListModal);
 }
 
+
 async function renderMarkedLists(){
   const actions = document.querySelector("#marked-actions");
   const status  = document.querySelector("#marked-status");
