@@ -1020,6 +1020,8 @@ async function openVocabDeckFromList(source) {
       renderMistakesLanding();
     } else {
       document.querySelector("#marked-section")?.classList.remove("hidden");
+      await wlRefreshLists();          // <— fill Practice / Target / Move selects + Manage cards
+      await wlRenderPick();     
       await renderMarkedList();
     }
     updateBackVisibility();
@@ -3292,25 +3294,29 @@ window.wlCreate = async ()=>{
 
 // Build from selected lessons (like Mix), load CSVs, then add to target
 window.wlBuildAndAdd = async ()=>{
-  elWLAddStatus.textContent = "Building…";
+  // reset status until we actually begin
+  elWLAddStatus.textContent = "";
+
   const targetId = elWLTarget?.value;
-  if (!targetId){ toast("Pick a target list"); return; }
+  if (!targetId){ elWLAddStatus.textContent = "Pick a target list."; toast("Pick a target list"); return; }
 
   // collect picks
   const checks = Array.from(document.querySelectorAll(".wl-lesson-check:checked"));
-  if (!checks.length){ toast("Select at least one lesson"); return; }
+  if (!checks.length){ elWLAddStatus.textContent = "Select at least one lesson."; toast("Select at least one lesson"); return; }
 
-  // Load decks similarly to Mix builder
+  // we are really going to build now
+  elWLAddStatus.textContent = "Building…";
+
+  // Build deck (unchanged)
   let deck = [];
   for (const ch of checks){
     const lvl = ch.dataset.level, ls = ch.dataset.lesson;
-    const rows = await loadVocabDeck(lvl, ls);           // you already have this helper
+    const rows = await loadVocabDeck(lvl, ls);
     deck.push(...rows.map(r => ({
       kanji: r.kanji || "—", hira: r.hira || r.front || "", en: r.en || r.back || "",
       front: r.hira || r.front || "", back: r.en || r.back || ""
     })));
   }
-  // de-dupe by (front::back)
   const seen = new Set(), uniq = [];
   for (const w of deck){
     const key = (w.front || w.hira) + "::" + (w.back || w.en);
@@ -3323,10 +3329,13 @@ window.wlBuildAndAdd = async ()=>{
     const fb = await whenFBReady();
     const res = await fb.wordLists.addWords(targetId, uniq);
     elWLAddStatus.textContent = `Added ${res.added} word(s).`;
-    await wlRefreshLists();
+    await wlRefreshLists();                     // <— immediate UI refresh
     toast("Words added ✓");
-  }catch{ elWLAddStatus.textContent="Failed."; }
+  }catch{
+    elWLAddStatus.textContent = "Failed.";
+  }
 };
+
 window.wlPractice = async (mode)=>{
   const listId = elWLPSelect?.value;
   if (!listId) { toast("Pick a list"); return; }
