@@ -2720,7 +2720,6 @@ async function openMarkedHome(){
   hideAllSections?.();
   document.querySelector("#marked-section")?.classList.remove("hidden");
 
-  showSection("marked");              // your existing section switcher
   const actions = document.querySelector("#marked-actions");
   const status  = document.querySelector("#marked-status");
   const body    = document.querySelector("#marked-container");

@@ -542,6 +542,15 @@
     // Keep a handle to Firestore module if needed elsewhere
     async function fsMods() { return fsMod; }
   };
+// Back-compat namespace so script.js can call fb.markedLists.*
+window.FB.markedLists = {
+  list:      (...a) => window.FB.list(...a),
+  create:    (...a) => window.FB.create(...a),
+  delete:    (...a) => window.FB.delete(...a),
+  words:     (...a) => window.FB.words(...a),
+  addWords:  (...a) => window.FB.addWords(...a),
+  removeWords:(...a) => window.FB.removeWords(...a),
+};
 
   // Boot
   init().catch(err => {
