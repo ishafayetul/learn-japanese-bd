@@ -2506,7 +2506,8 @@ window.addEventListener("keydown", (e) => {
     elWriteBar.style.width = pct(cur, App.write.order.length);
     elWriteText.textContent = `${cur} / ${App.write.order.length} (${pct(cur, App.write.order.length)})`;
   }
-  
+
+// Write → Submit (no auto-advance on WRONG)
 window.writeSubmit = () => {
   const i = App.write.order[App.write.idx] ?? -1;
   const w = App.deckFiltered[i];
@@ -2523,31 +2524,39 @@ window.writeSubmit = () => {
   const isCorrect = norm(ans) === norm(w.hira);
 
   if (isCorrect) {
+    // ✅ correct → record + advance
     elWriteFeedback.innerHTML = `<span class="ok-inline">✓ Correct</span>`;
     App.stats.right++; incrementPoints(1);
+
     App.mastery.mastered.push(w);
+    // remove one pending item at this index
     App.mastery.pending.splice(App.write.idx, 1);
-  } else {
-    elWriteFeedback.innerHTML = `<span class="error-inline">❌ Wrong: ${w.hira}</span>`;
-    App.stats.wrong++; recordMistake(w);
-    // push this word a bit later in the queue
-    requeueWrongItem(w, App.mastery.pending, App.write.idx);
-  }
+    updateScorePanel();
 
-  updateScorePanel();
-
-  // ⏳ Let the user see the feedback before moving on
-  const delay = isCorrect ? 350 : 900;
-  setTimeout(() => {
-    // if finished, just re-render to show "All done."
-    if ((App.mastery.pending?.length || 0) === 0) {
+    // if nothing pending → show completion
+    if (App.mastery.pending.length === 0) {
+      App.write.idx = App.write.order.length;  // forces "All done."
       renderWriteCard();
       return;
     }
+
+    // otherwise advance
     App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
     renderWriteCard();
-  }, delay);
+  } else {
+    // ❌ wrong → stay on same card, log mistake, requeue later
+    elWriteFeedback.innerHTML = `<span class="error-inline">❌ Wrong: ${w.hira}</span>`;
+    App.stats.wrong++; recordMistake(w);
+    requeueWrongItem(w, App.mastery.pending, App.write.idx);
+    updateScorePanel();
+
+    // keep focus so you can fix and re-submit
+    elWriteInput.focus();
+    if (elWriteInput.select) elWriteInput.select();
+    // (no renderWriteCard + no idx change → no auto-advance)
+  }
 };
+
 
 
 
