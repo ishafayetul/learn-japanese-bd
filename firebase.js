@@ -4,13 +4,10 @@
 // - Auth (Google)
 // - Firestore helpers (per-user data) + batched writes
 // - Offline persistence (best effort)
-// - Global daily/overall leaderboards remain shared
+// - Leaderboards (shared)
+// - Marked Lists API (custom lists + special "Flash Mark")
 //
 // NOTE: Set window.FIREBASE_CONFIG in index.html before this file.
-import {
-  getFirestore, collection, doc, getDocs, setDoc, addDoc, deleteDoc,
-  query, orderBy, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 (() => {
   // ---- Guard: single init ----
@@ -27,11 +24,13 @@ import {
     measurementId: "G-9KB1WBZ847"
   };
 
-  // ---- Load Firebase v10 modules from CDN ----
-  const appModuleUrl = "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-  const authModuleUrl = "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-  const fsModuleUrl   = "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  // ---- Load Firebase v10 modules from CDN (single version) ----
+  const FB_VER = "10.14.0";
+  const appModuleUrl = `https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`;
+  const authModuleUrl = `https://www.gstatic.com/firebasejs/${FB_VER}/firebase-auth.js`;
+  const fsModuleUrl   = `https://www.gstatic.com/firebasejs/${FB_VER}/firebase-firestore.js`;
 
+  // ---- Private state ----
   let app, auth, db;
   let _user = null;
   const _listeners = new Set(); // auth listeners
@@ -42,6 +41,7 @@ import {
     signWords: new Map(), // id  -> data
   };
 
+  // ---- Local storage helpers ----
   const Local = {
     get(k, fallback=null) { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
@@ -52,13 +52,14 @@ import {
 
   const Paths = {
     users: (uid) => `users/${uid}`,
-    userMarkedCol:   (uid) => `users/${uid}/marked`,
+    userMarkedCol:   (uid) => `users/${uid}/marked`,         // legacy Marked (Flash Mark)
     userNotesCol:    (uid) => `users/${uid}/notes`,
     userSignCol:     (uid) => `users/${uid}/signwords`,
     userAttemptsCol: (uid) => `users/${uid}/attempts`,
     userWriteBestCol:(uid) => `users/${uid}/writeBest`,
-    dailyScoresCol:  (date) => `daily/${date}/scores`,      // shared daily leaderboard
-    overallLBCol:    ()    => `leaderboard_overall`,        // shared overall leaderboard
+    dailyScoresCol:  (date) => `daily/${date}/scores`,       // shared daily leaderboard
+    overallLBCol:    ()    => `leaderboard_overall`,         // shared overall leaderboard
+    // If you also define Paths.attemptsCol elsewhere, attemptsPath() below will honor it.
   };
 
   // Normalize attempts collection path (handles both function or string)
@@ -67,7 +68,7 @@ import {
       ? Paths.attemptsCol()
       : (Paths.attemptsCol || "attempts"));
 
-  // Utilities
+  // ---- Utilities ----
   const todayKey = () => {
     const d = new Date();
     const mm = String(d.getMonth()+1).padStart(2,'0');
@@ -81,6 +82,158 @@ import {
     catch { return String(s).toLowerCase().replace(/\W+/g,'_'); }
   };
 
+  // ---------- Marked Lists (custom) attach function (declared now, called after init) ----------
+  function attachMarkedLists(FB){
+    if (!FB || FB.markedLists) return;   // don’t double-attach
+
+    // Use the real Firebase handles created in init()
+    const db   = FB._raw.db;
+    const auth = FB._raw.auth;
+
+    // Pull firestore functions from the loaded module (exposed in _mods)
+    const {
+      collection, doc, getDocs, addDoc, setDoc, deleteDoc, serverTimestamp
+    } = FB._mods.firestore;
+
+    const FLASH = "flash"; // special list id
+
+    const listsCol  = (uid) => collection(db, `users/${uid}/marked_lists`);
+    const listDoc   = (uid, id) => doc(db, `users/${uid}/marked_lists/${id}`);
+    const wordsCol  = (uid, id) => collection(db, `users/${uid}/marked_lists/${id}/words`);
+    const wordDoc   = (uid, id, wid) => doc(db, `users/${uid}/marked_lists/${id}/words/${wid}`);
+
+    const uidOrThrow = () => {
+      const u = auth.currentUser;
+      if (!u) throw new Error("Not signed in");
+      return u.uid;
+    };
+
+    FB.markedLists = {
+      // List all lists (includes the special "Flash Mark")
+      async list(){
+        const uid = uidOrThrow();
+
+        // Flash Mark count from legacy Marked
+        let flashCount = 0;
+        try { flashCount = (await FB.listMarked())?.length || 0; } catch {}
+
+        // Custom lists
+        const snap = await getDocs(listsCol(uid));
+        const items = [];
+        snap.forEach(d=>{
+          const v = d.data() || {};
+          items.push({
+            id: d.id,
+            name: v.name || "Untitled",
+            privacy: v.privacy || "private",
+            count: Number(v.count || 0),
+            _special: false
+          });
+        });
+
+        // Flash first
+        items.unshift({ id: FLASH, name: "Flash Mark", privacy: "private", count: flashCount, _special: true });
+        return items;
+      },
+
+      // Create a new custom list
+      async create({ name="Untitled", privacy="private" } = {}){
+        const uid = uidOrThrow();
+        const ref = await addDoc(listsCol(uid), { name, privacy, count: 0, createdAt: serverTimestamp() });
+        return { id: ref.id };
+      },
+
+      // Delete a custom list (and its words)
+      async delete(listId){
+        if (listId === FLASH) throw new Error("Cannot delete Flash Mark");
+        const uid = uidOrThrow();
+        const ws = await getDocs(wordsCol(uid, listId));
+        await Promise.all(ws.docs.map(d => deleteDoc(wordDoc(uid, listId, d.id))));
+        await deleteDoc(listDoc(uid, listId));
+        return true;
+      },
+
+      // Get words in a list
+      async words(listId){
+        const uid = uidOrThrow();
+        if (listId === FLASH){
+          const legacy = await FB.listMarked();   // from legacy store
+          return (legacy||[]).map(r => ({
+            id: r.id,
+            kanji: r.kanji ?? null,
+            hira:  r.hira  ?? (r.front || ""),
+            en:    r.en    ?? (r.back  || ""),
+            front: r.front ?? r.hira ?? "",
+            back:  r.back  ?? r.en   ?? ""
+          }));
+        }
+        const qs = await getDocs(wordsCol(uid, listId));
+        return qs.docs.map(d => ({ id: d.id, ...d.data() }));
+      },
+
+      // Add words (bulk). Flash accepts adds via legacy markWord for convenience.
+      async addWords(listId, words){
+        const uid = uidOrThrow();
+        if (!Array.isArray(words) || !words.length) return 0;
+
+        if (listId === FLASH){
+          let added = 0;
+          for (const w of words){
+            const front = w.front ?? w.hira ?? "";
+            const back  = w.back  ?? w.en   ?? "";
+            if (!front || !back) continue;
+            await FB.markWord(`${front}::${back}`, {
+              kanji: w.kanji ?? null, hira: w.hira ?? front, en: w.en ?? back, front, back
+            });
+            added++;
+          }
+          return added;
+        }
+
+        let added = 0;
+        await Promise.all(words.map(async (w)=>{
+          const front = w.front ?? w.hira ?? "";
+          const back  = w.back  ?? w.en   ?? "";
+          if (!front || !back) return;
+          const id = safeKey(`${front}::${back}`);
+          await setDoc(wordDoc(uid, listId, id), {
+            kanji: w.kanji ?? null,
+            hira:  w.hira  ?? front,
+            en:    w.en    ?? back,
+            front, back,
+            createdAt: serverTimestamp()
+          }, { merge: true });
+          added++;
+        }));
+        // best-effort count refresh
+        try {
+          const all = await getDocs(wordsCol(uid, listId));
+          await setDoc(listDoc(uid, listId), { count: all.size }, { merge: true });
+        } catch {}
+        return added;
+      },
+
+      // Remove words (bulk). For Flash → unmark legacy docs.
+      async removeWords(listId, ids){
+        const uid = uidOrThrow();
+        if (!Array.isArray(ids) || !ids.length) return 0;
+
+        if (listId === FLASH){
+          await Promise.all(ids.map(id => FB.unmarkWord(id)));
+          return ids.length;
+        }
+
+        await Promise.all(ids.map(id => deleteDoc(wordDoc(uid, listId, id))));
+        try {
+          const all = await getDocs(wordsCol(uid, listId));
+          await setDoc(listDoc(uid, listId), { count: all.size }, { merge: true });
+        } catch {}
+        return ids.length;
+      }
+    };
+  }
+
+  // ---------- Init (loads modules, sets up window.FB, then attaches markedLists) ----------
   const init = async () => {
     if (!CONFIG || !CONFIG.projectId) {
       console.error("[Firebase] Missing window.FIREBASE_CONFIG. Please set your real config.");
@@ -129,6 +282,7 @@ import {
     window.FB = {
       isReady: true,
       _raw: { app, auth, db },
+      _mods: { firestore: fsMod, auth: authMod },
 
       /* --------------- AUTH --------------- */
       auth: {
@@ -137,13 +291,15 @@ import {
         async signInWithGoogle() {
           const provider = new GoogleAuthProvider();
           try { await signInWithPopup(auth, provider); }
-          catch (e) { console.warn("[Firebase] Popup sign-in failed, trying redirect…", e.code || e); await signInWithRedirect(auth, provider); }
+          catch (e) {
+            console.warn("[Firebase] Popup sign-in failed, trying redirect…", e.code || e);
+            await signInWithRedirect(auth, provider);
+          }
         },
         async signOut() { await _signOut(auth); }
       },
 
       /* --------------- SESSIONS / PROGRESS (per-user) --------------- */
-      // ---- Firestore Helpers ----
       async commitSession({ attempts, points, date = todayKey() }) {
         if (!_user) throw new Error("Not signed in");
         const batch = writeBatch(db);
@@ -205,24 +361,16 @@ import {
       // Attempts — recent list (per current user)
       async getRecentAttempts({ max = 10 } = {}) {
         if (!_user) throw new Error("Not signed in");
-        const { collection, query, where, getDocs } = await fsMods();
-
-        // Fetch only your docs; we’ll sort by clientAtMs/createdAt locally.
         const col = collection(db, attemptsPath());
         const snap = await getDocs(query(col, where("uid", "==", _user.uid)));
-
         const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // Prefer clientAtMs (stable, unique), else createdAt
         rows.sort((a, b) => {
           const ta = (a.clientAtMs || (a.createdAt?.toMillis?.() || 0));
           const tb = (b.clientAtMs || (b.createdAt?.toMillis?.() || 0));
           return tb - ta;
         });
-
         return rows.slice(0, max);
       },
-
 
       async getWriteBestByDeck({ max = 300 } = {}) {
         if (!_user) throw new Error("Not signed in");
@@ -273,7 +421,7 @@ import {
       getNoteForKey(key){ return this.notes.get(key); },
       setNoteForKey(key, text){ return this.notes.set(key, text); },
 
-      /* --------------- MARKED WORDS (per-user) --------------- */
+      /* --------------- MARKED WORDS (legacy "Flash Mark") --------------- */
       async listMarked() {
         if (!_user) throw new Error("Not signed in");
         if (_cache.marked.size) return Array.from(_cache.marked.values());
@@ -302,167 +450,16 @@ import {
       async unmarkWord(id) {
         if (!_user) throw new Error("Not signed in");
         const raw = String(id);
-        const key1 = raw;                 // maybe already the doc id (safe)
-        const key2 = safeKey(raw);        // definitely the doc id if raw was "front::back"
-
+        const key1 = raw;          // maybe already the doc id (safe)
+        const key2 = safeKey(raw); // definitely the doc id if raw was "front::back"
         const path = (key) => doc(db, `${Paths.userMarkedCol(_user.uid)}/${key}`);
-
-        // Firestore delete is idempotent; deleting a non-existent doc is fine.
         try { await deleteDoc(path(key1)); } catch {}
         try { if (key2 !== key1) await deleteDoc(path(key2)); } catch {}
-
         _cache.marked.delete(key1);
         _cache.marked.delete(key2);
         return true;
       },
- // Return array of lists, including the special "Flash Mark"
-  async list() {
-    if (!_user) throw new Error("Not signed in");
-    const rows = [];
 
-    // 1) Always include the special Flash list (count derived quickly by cache size or a single fetch)
-    let flashCount = _cache.marked?.size || 0;
-    if (!flashCount) {
-      try {
-        const snap = await getDocs(collection(db, Paths.userMarkedCol(_user.uid)));
-        flashCount = snap.size;
-      } catch {}
-    }
-    rows.push({
-      id: "flash",
-      name: "Flash Mark",
-      privacy: "private",
-      count: flashCount,
-      _special: true,
-    });
-
-    // 2) Real custom lists
-    const col = collection(db, `users/${_user.uid}/markedLists`);
-    const snap = await getDocs(col);
-    snap.forEach(d => {
-      const data = d.data() || {};
-      rows.push({
-        id: d.id,
-        name: data.name || "Untitled",
-        privacy: data.privacy || "private",
-        count: data.count || 0,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-      });
-    });
-    // Sort: Flash first, then recent
-    rows.sort((a,b) => (a._special ? -1 : b._special ? 1 : 0));
-    return rows;
-  },
-
-  async create({ name, privacy = "private" }) {
-    if (!_user) throw new Error("Not signed in");
-    const ref = doc(collection(db, `users/${_user.uid}/markedLists`)); // auto-id
-    const payload = {
-      name: String(name || "Untitled"),
-      privacy: privacy === "public" ? "public" : "private",
-      count: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-    await setDoc(ref, payload);
-    return { id: ref.id, ...payload };
-  },
-
-  async delete(listId) {
-    if (!_user) throw new Error("Not signed in");
-    if (listId === "flash") throw new Error("Flash Mark cannot be deleted.");
-    const base = `users/${_user.uid}/markedLists/${listId}`;
-    // delete subcollection words (batch)
-    const wordsCol = collection(db, `${base}/words`);
-    const wordsSnap = await getDocs(wordsCol);
-    const batch = writeBatch(db);
-    wordsSnap.forEach(d => batch.delete(d.ref));
-    await batch.commit().catch(()=>{});
-
-    await deleteDoc(doc(db, base)).catch(()=>{});
-    return true;
-  },
-
-  async words(listId) {
-    if (!_user) throw new Error("Not signed in");
-    // Flash is proxied to legacy Marked
-    if (listId === "flash") {
-      const rows = await window.FB.listMarked(); // legacy API
-      return rows.map(r => ({
-        id: r.id,
-        kanji: r.kanji || null,
-        hira:  r.hira  || r.front || "",
-        en:    r.en    || r.back  || "",
-        front: r.front || r.hira  || "",
-        back:  r.back  || r.en    || "",
-      }));
-    }
-    const wordsCol = collection(db, `users/${_user.uid}/markedLists/${listId}/words`);
-    const snap = await getDocs(wordsCol);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  },
-
-  async addWords(listId, words = []) {
-    if (!_user) throw new Error("Not signed in");
-    // For Flash → just reuse legacy markWord for each (small batches)
-    if (listId === "flash") {
-      for (const w of words) {
-        const front = w.front || w.hira || "";
-        const back  = w.back  || w.en   || "";
-        if (front && back) {
-          await window.FB.markWord(`${front}::${back}`, {
-            kanji: w.kanji || null, hira: w.hira || front, en: w.en || back, front, back
-          });
-        }
-      }
-      return true;
-    }
-    // For custom lists → batch write
-    const base = `users/${_user.uid}/markedLists/${listId}`;
-    const wordsCol = collection(db, `${base}/words`);
-    const batch = writeBatch(db);
-    let addCount = 0;
-    for (const w of words) {
-      const front = w.front || w.hira || "";
-      const back  = w.back  || w.en   || "";
-      if (!front || !back) continue;
-      const id = safeKey(`${front}::${back}`);
-      const ref = doc(db, `${base}/words/${id}`);
-      batch.set(ref, {
-        kanji: w.kanji || null,
-        hira:  w.hira  || front,
-        en:    w.en    || back,
-        front, back,
-        createdAt: serverTimestamp(),
-      }, { merge: true });
-      addCount++;
-    }
-    if (addCount > 0) {
-      // Update list count optimistically
-      const listRef = doc(db, base);
-      batch.set(listRef, { count: increment(addCount), updatedAt: serverTimestamp() }, { merge: true });
-    }
-    await batch.commit();
-    return true;
-  },
-
-  async removeWords(listId, ids = []) {
-    if (!_user) throw new Error("Not signed in");
-    if (!ids.length) return true;
-    if (listId === "flash") {
-      // ids are safeKeys; remove via legacy unmark
-      for (const id of ids) { try { await window.FB.unmarkWord(id); } catch {} }
-      return true;
-    }
-    const base = `users/${_user.uid}/markedLists/${listId}`;
-    const batch = writeBatch(db);
-    ids.forEach(id => batch.delete(doc(db, `${base}/words/${id}`)));
-    // shrink count
-    batch.set(doc(db, base), { count: increment(-1 * ids.length), updatedAt: serverTimestamp() }, { merge: true });
-    await batch.commit();
-    return true;
-  },
       /* --------------- SIGN WORDS (per-user) --------------- */
       async signWordAdd({ front, back, romaji=null }) {
         if (!_user) throw new Error("Not signed in");
@@ -478,7 +475,7 @@ import {
         const item = { id: docRef.id, front, back, romaji, markedId, createdAt: new Date() };
         _cache.signWords.set(item.id, item);
 
-        // also mark it
+        // also mark it (legacy)
         try {
           await this.markWord(`${front}::${back}`, {
             hira: front, en: back, front, back
@@ -502,7 +499,6 @@ import {
         const s = await getDoc(ref);
         if (s.exists()) {
           const data = s.data();
-          // also unmark corresponding marked word
           const mk = data.markedId || safeKey(`${data.front}::${data.back}`);
           try { await this.unmarkWord(mk); } catch {}
         }
@@ -543,18 +539,9 @@ import {
       window.FB._setCachedTodayLB = (rows) => Local.set(lbKey, rows);
     } catch {}
 
-    // Keep a handle to Firestore module if needed elsewhere
-    async function fsMods() { return fsMod; }
+    // Attach Marked Lists API now that FB is ready
+    attachMarkedLists(window.FB);
   };
-// Back-compat namespace so script.js can call fb.markedLists.*
-window.FB.markedLists = {
-  list:      (...a) => window.FB.list(...a),
-  create:    (...a) => window.FB.create(...a),
-  delete:    (...a) => window.FB.delete(...a),
-  words:     (...a) => window.FB.words(...a),
-  addWords:  (...a) => window.FB.addWords(...a),
-  removeWords:(...a) => window.FB.removeWords(...a),
-};
 
   // Boot
   init().catch(err => {
@@ -570,198 +557,5 @@ window.FB.markedLists = {
                 .filter(w => w.hira && w.en);
     } catch { return []; }
   };
-  // ================= Marked Lists API =================
-// Put this AFTER window.FB is created and Firestore/Auth are ready.
-(function attachMarkedLists(FB){
-  if (!FB || FB.markedLists) return;            // don't double-attach
-
-  const db   = FB.db;
-  const auth = FB.auth;
-
-  const FLASH_LIST_ID = "flash";                // used by script.js
-
-  // Same safe key scheme you use in script.js (base64 without '=')
-  function safeKey(s){
-    try { return btoa(unescape(encodeURIComponent(String(s)))).replace(/=+$/,""); }
-    catch { return String(s).toLowerCase().replace(/\W+/g,'_'); }
-  }
-
-  // ----- Legacy "Marked" helpers (already exist in your app) -----
-  // If your file already defines these, keep them — we just re-use them:
-  // FB.listMarked(): Promise<Array<{id, kanji?, hira?, en?, front?, back?}>> 
-  // FB.unmarkWord(id): Promise<void>
-
-  // ----- New Lists collection -----
-  // users/{uid}/marked_lists/{listId} (doc: {name, privacy, count?, createdAt})
-  // users/{uid}/marked_lists/{listId}/words/{wordId} (doc: {kanji?, hira?, en?, front?, back?, createdAt})
-  function listsCol(uid){ return collection(db, `users/${uid}/marked_lists`); }
-  function listDoc(uid, listId){ return doc(db, `users/${uid}/marked_lists/${listId}`); }
-  function wordsCol(uid, listId){ return collection(db, `users/${uid}/marked_lists/${listId}/words`); }
-  function wordDoc(uid, listId, wordId){ return doc(db, `users/${uid}/marked_lists/${listId}/words/${wordId}`); }
-
-  async function requireUID(){
-    const u = auth.currentUser;
-    if (!u) throw new Error("Not signed in");
-    return u.uid;
-  }
-
-  FB.markedLists = {
-    // 1) List all lists (includes the special "Flash Mark")
-    async list(){
-      const uid = await requireUID();
-
-      // Special: Flash Mark (legacy)
-      let flashCount = 0;
-      try {
-        const rows = await FB.listMarked();     // legacy collection you already have
-        flashCount = Array.isArray(rows) ? rows.length : 0;
-      } catch {}
-
-      // Custom lists from Firestore
-      const qSnap = await getDocs(listsCol(uid));
-      const out = [];
-      qSnap.forEach(d => {
-        const v = d.data() || {};
-        out.push({
-          id: d.id,
-          name: v.name || "Untitled",
-          privacy: v.privacy || "private",
-          count: Number(v.count || 0),
-          _special: false
-        });
-      });
-
-      // Put Flash first
-      out.unshift({
-        id: FLASH_LIST_ID,
-        name: "Flash Mark",
-        privacy: "private",
-        count: flashCount,
-        _special: true
-      });
-
-      return out;
-    },
-
-    // 2) Create a new custom list
-    async create({ name="Untitled", privacy="private" } = {}){
-      const uid = await requireUID();
-      const ref = await addDoc(listsCol(uid), {
-        name, privacy, count: 0, createdAt: serverTimestamp()
-      });
-      return { id: ref.id };
-    },
-
-    // 3) Delete a custom list (and its words)
-    async delete(listId){
-      if (listId === FLASH_LIST_ID) throw new Error("Cannot delete Flash Mark");
-      const uid = await requireUID();
-
-      // delete all words in subcollection
-      const ws = await getDocs(wordsCol(uid, listId));
-      const batchDeletes = [];
-      ws.forEach(w => batchDeletes.push(deleteDoc(wordDoc(uid, listId, w.id))));
-      await Promise.all(batchDeletes);
-
-      await deleteDoc(listDoc(uid, listId));
-      return true;
-    },
-
-    // 4) Get words in a list
-    async words(listId){
-      const uid = await requireUID();
-
-      if (listId === FLASH_LIST_ID){
-        // Read from your legacy Marked collection
-        const legacy = await FB.listMarked();
-        // normalize fields
-        return (legacy || []).map(r => ({
-          id: r.id,
-          kanji: r.kanji ?? null,
-          hira:  r.hira  ?? (r.front || ""),
-          en:    r.en    ?? (r.back  || ""),
-          front: r.front ?? r.hira ?? "",
-          back:  r.back  ?? r.en   ?? ""
-        }));
-      }
-
-      const qs = await getDocs(wordsCol(uid, listId));
-      const items = [];
-      qs.forEach(d=>{
-        const v = d.data() || {};
-        items.push({
-          id: d.id,
-          kanji: v.kanji ?? null,
-          hira:  v.hira  ?? (v.front || ""),
-          en:    v.en    ?? (v.back  || ""),
-          front: v.front ?? v.hira ?? "",
-          back:  v.back  ?? v.en   ?? ""
-        });
-      });
-      return items;
-    },
-
-    // 5) Add words to a list (bulk)
-    //    words: Array<{kanji?, hira?, en?, front?, back?}>
-    async addWords(listId, words){
-      if (!Array.isArray(words) || !words.length) return 0;
-      const uid = await requireUID();
-
-      if (listId === FLASH_LIST_ID){
-        // We DO NOT add into Flash — Flash is fed by legacy "marked" flow
-        // (marking happens from Learn/Write/MCQ via FB.markWord / your existing logic).
-        throw new Error("Flash Mark is read-only here. Use 📌 Mark during practice.");
-      }
-
-      let added = 0;
-      await Promise.all(words.map(async (wRaw)=>{
-        const w = wRaw || {};
-        const front = w.front ?? w.hira ?? "";
-        const back  = w.back  ?? w.en   ?? "";
-        const k = w.kanji ?? null;
-
-        if (!front || !back) return;
-
-        const id = safeKey(`${front}::${back}`);
-        await setDoc(wordDoc(uid, listId, id), {
-          kanji: k, hira: w.hira ?? front, en: w.en ?? back,
-          front, back, createdAt: serverTimestamp()
-        }, { merge: true });
-        added++;
-      }));
-
-      // best-effort: update count on the list doc
-      try {
-        const all = await getDocs(wordsCol(uid, listId));
-        await setDoc(listDoc(uid, listId), { count: all.size }, { merge: true });
-      } catch {}
-
-      return added;
-    },
-
-    // 6) Remove words from a list (bulk)
-    //    ids: array of word doc ids (safe keys). For Flash → unmark legacy.
-    async removeWords(listId, ids){
-      const uid = await requireUID();
-      if (!Array.isArray(ids) || !ids.length) return 0;
-
-      if (listId === FLASH_LIST_ID){
-        // Legacy unmark
-        await Promise.all(ids.map(id => FB.unmarkWord(id)));
-        return ids.length;
-      }
-
-      await Promise.all(ids.map(id => deleteDoc(wordDoc(uid, listId, id))));
-
-      // best-effort: update count
-      try {
-        const all = await getDocs(wordsCol(uid, listId));
-        await setDoc(listDoc(uid, listId), { count: all.size }, { merge: true });
-      } catch {}
-
-      return ids.length;
-    }
-  };
-})(window.FB);
 
 })();
