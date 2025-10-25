@@ -2506,33 +2506,49 @@ window.addEventListener("keydown", (e) => {
     elWriteBar.style.width = pct(cur, App.write.order.length);
     elWriteText.textContent = `${cur} / ${App.write.order.length} (${pct(cur, App.write.order.length)})`;
   }
-  window.writeSubmit = ()=>{
-    const i = App.write.order[App.write.idx] ?? -1;
-    const w = App.deckFiltered[i];
-    if(!w) return;
-    const ans = (elWriteInput.value || "").trim();
-    if(!ans) return;
-    const norm = s => (s || "")
-      .replace(/\s+/g, "")
-      .replace(/[〜～~]/g, "")
-      .toLowerCase();
-    if (norm(ans)===norm(w.hira)){
-      elWriteFeedback.innerHTML = `<span class="ok-inline">✓ Correct</span>`;
-      App.stats.right++; incrementPoints(1);
-      App.mastery.mastered.push(w);
-      App.mastery.pending.splice(App.write.idx,1);
-    } else {
-      elWriteFeedback.innerHTML = `<span class="error-inline">❌ Wrong: ${w.hira}</span>`;
-      App.stats.wrong++; recordMistake(w);
-      //const insertAt = Math.min(App.write.idx + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
-      //App.mastery.pending.splice(insertAt,0,w);
-      requeueWrongItem(w, App.mastery.pending, App.write.idx);
+  
+window.writeSubmit = () => {
+  const i = App.write.order[App.write.idx] ?? -1;
+  const w = App.deckFiltered[i];
+  if (!w) return;
 
+  const ans = (elWriteInput.value || "").trim();
+  if (!ans) return;
+
+  const norm = s => (s || "")
+    .replace(/\s+/g, "")
+    .replace(/[〜～~]/g, "")
+    .toLowerCase();
+
+  const isCorrect = norm(ans) === norm(w.hira);
+
+  if (isCorrect) {
+    elWriteFeedback.innerHTML = `<span class="ok-inline">✓ Correct</span>`;
+    App.stats.right++; incrementPoints(1);
+    App.mastery.mastered.push(w);
+    App.mastery.pending.splice(App.write.idx, 1);
+  } else {
+    elWriteFeedback.innerHTML = `<span class="error-inline">❌ Wrong: ${w.hira}</span>`;
+    App.stats.wrong++; recordMistake(w);
+    // push this word a bit later in the queue
+    requeueWrongItem(w, App.mastery.pending, App.write.idx);
+  }
+
+  updateScorePanel();
+
+  // ⏳ Let the user see the feedback before moving on
+  const delay = isCorrect ? 350 : 900;
+  setTimeout(() => {
+    // if finished, just re-render to show "All done."
+    if ((App.mastery.pending?.length || 0) === 0) {
+      renderWriteCard();
+      return;
     }
-    updateScorePanel();
     App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
     renderWriteCard();
-  };
+  }, delay);
+};
+
 
 
   window.writeSkip = ()=>{
