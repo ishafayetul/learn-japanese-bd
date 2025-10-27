@@ -289,7 +289,11 @@ function injectListActions(source, payload){
         <button id="btn-wl-delete" class="danger">🗑 Delete list</button>
       </div>
     `;
-    row.querySelector("#btn-wl-add").addEventListener("click", ()=> openWLAddWords(listId, listName));
+    row.querySelector("#btn-wl-add").addEventListener("click", ()=>{
+    hideContentPanes();
+    document.querySelector("#wordlist-section")?.classList.remove("hidden");
+    openWLAddWords(listId, listName);
+    });
     row.querySelector("#btn-wl-rename").addEventListener("click", async ()=>{
       const nn = prompt("Rename list to:", listName||""); if (!nn) return;
       const fb = await whenFBReady(); await fb.lists.renameList(listId, nn);
@@ -1041,11 +1045,7 @@ window.navigateLevel = async (level) => {
     const rows = await fb.lists.listWords(listId); // [{id,kanji,hira,en},…]
     const deck = rows.map(x => ({ kanji:x.kanji||"—", hira:x.hira||"", en:x.en||"" })).filter(x=> x.hira && x.en);
 
-    if (!deck.length){
-      toast("This list is empty. Use Settings → Add words.");
-      await openSection("wordlist");
-      return;
-    }
+    const isEmpty = deck.length === 0;
 
     // 2) Drive the UI like a lesson's Vocab tab
     hideContentPanes();
@@ -1123,7 +1123,7 @@ async function openVocabDeckFromList(source) {
 
   // 3) Load the deck and show the Vocab root menus (Learn / MCQ / Write / Make)
   App.deck = deck.slice();
-  document.querySelector("#vocab-status").textContent = "Pick an option.";
+  document.querySelector("#vocab-status").textContent = isEmpty ? "This list is empty. Click ‘Add words’ to start." : "Pick an option.";
   showVocabRootMenu();
   showVocabRootCard();
   injectListActions(source === "mistakes" ? "mistakes" : "marked");
@@ -1145,7 +1145,7 @@ window.openSection = async (name) => {
   if (name === "wordlist") {
     hideContentPanes?.();
     document.querySelector("#wordlist-section")?.classList.remove("hidden");
-    await renderWordListLanding();
+    await window.renderWordListLanding();
     updateBackVisibility?.();
     return;
   }
@@ -2849,7 +2849,7 @@ window.writeSubmit = () => {
   window.startMarkedPractice = async(m)=> setupListPractice("marked", m);
   window.startMarkedWrite = async()=> setupListPractice("marked","write");
   
-  async function renderWordListLanding(){
+  window.renderWordListLanding = async function renderWordListLanding(){
     const fb = await whenFBReady();
     // prefer cache first
     let lists = null;
@@ -2867,7 +2867,15 @@ window.writeSubmit = () => {
       left.innerHTML = `<strong>${escapeHTML(it.name)}</strong> <span class="muted">(${it.wordCount||0})</span>`;
       right.innerHTML = `<button data-id="${it.id}" class="primary">Open</button>`;
       li.appendChild(left); li.appendChild(right);
-      li.querySelector("button").addEventListener("click", ()=> openWordListAsVocab(it.id, it.name));
+      li.querySelector("button").addEventListener("click", ()=>{
+    if ((it.wordCount|0) === 0) {
+      hideContentPanes();
+      document.querySelector("#wordlist-section")?.classList.remove("hidden");
+      openWLAddWords(it.id, it.name);
+    } else {
+      openWordListAsVocab(it.id, it.name);
+    }
+  });
       elWLListUL.appendChild(li);
     }
   }
@@ -2894,6 +2902,9 @@ window.writeSubmit = () => {
   let __WL_CTX = { listId:null, listName:null, stagedDeck:[] };
 
   async function openWLAddWords(listId, listName){
+    hideContentPanes();
+    document.querySelector("#wordlist-section")?.classList.remove("hidden");
+   __WL_CTX = { listId, listName, stagedDeck: [] };
     __WL_CTX = { listId, listName, stagedDeck: [] };
     elWLFlow.classList.remove("hidden");
     elWLMix.classList.remove("hidden");
