@@ -314,6 +314,17 @@ const App = Object.assign(window.App, {
 // keep a stable global reference
 window.App = App;
 
+// Tell UI if we're practicing "list-like" decks (Mistakes / Marked / Word List)
+function inListVocabContext(){
+  try {
+    return (
+      App?.level === "Mistakes" ||
+      App?.level === "Marked"   ||
+      !!(App?.wordlist && App.wordlist.active)
+    );
+  } catch { return false; }
+}
+
 function attemptSig(){
   return JSON.stringify({
     level:  App.level || null,
@@ -780,6 +791,34 @@ async function cascadeUnmark({ src, id, markedId }){
   }
   window.hideContentPanes = hideContentPanes;          // ← add this
 
+// Show ONLY the Vocab tab area as a standalone page for list-like contexts
+function showListVocabShell(titleText){
+  // hide everything on the right
+  hideContentPanes();
+
+  // explicitly hide the Word List section if it is currently open
+  document.querySelector("#wordlist-section")?.classList.add("hidden");
+
+  // turn ON the lesson shell and the vocab tab pane only
+  document.querySelector("#level-shell")?.classList.remove("hidden");
+  document.querySelector("#lesson-area")?.classList.remove("hidden");
+
+  ["#tab-videos", "#tab-grammar"].forEach(sel =>
+    document.querySelector(sel)?.classList.add("hidden")
+  );
+  document.querySelector("#tab-vocab")?.classList.remove("hidden");
+
+  // list-like decks should not show the Video/Vocab/Grammar bar
+  hideLessonBar();
+  document.querySelector(".lesson-meta")?.classList.add("hidden");
+
+  if (titleText){
+    document.querySelector("#crumb-level").textContent  = "Mix";
+    document.querySelector("#crumb-lesson").textContent = titleText;
+    document.querySelector("#crumb-mode").textContent   = "vocab";
+  }
+  updateBackVisibility?.();
+}
 
   function hideVocabMenus(){
     hideVocabRootCard();
@@ -2895,6 +2934,11 @@ window.writeSubmit = () => {
 }
 
   async function setupListPractice(source, mode){
+      if (inListVocabContext()){
+        // Optional: pass the list name to show in crumbs if you store it in App.lesson
+        showListVocabShell(App?.lesson || "Word List");
+      }
+
       // If App.deck is already loaded (enterListMode), prefer that.
       let deck = (App.deck && App.deck.length) ? App.deck.slice() : [];
       if (!deck.length) {
