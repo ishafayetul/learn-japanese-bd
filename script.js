@@ -3421,60 +3421,49 @@ window.mixBuildDeck = async ()=>{
 
 // ===== Word List — UI + flows =====
 // Build the "Practice this list" card and wire up actions
-// ===== Word List — UI + flows =====
-async function renderWLPracticeCard(list) {
+async function renderWLPracticeCard(list){
   const wrap = document.querySelector("#wl-practice");
   const actions = document.querySelector("#wl-practice-actions");
   if (!wrap || !actions) return;
-
-  // Load deck for this list
-  try {
+  actions.innerHTML = ""; // reset any prior content
+  // load deck for this list (cache to App.wordlist.deck)
+  try{
     const fb = await whenFBReady();
     App.wordlist.deck = await fb.wordListGetWords(list.id);
-  } catch {
+  }catch{
     App.wordlist.deck = [];
   }
 
-  // If no words, show message
-  if (!App.wordlist.deck.length) {
+  // if nothing, show muted state & hide actions
+  if (!App.wordlist.deck.length){
     actions.innerHTML = `<div class="muted">No words in this list.</div>`;
     wrap.classList.remove("hidden");
-    return;
+    
   }
 
-  // Show the 4 main practice buttons (same as Vocabulary)
+  // mirror Vocabulary root card (Learn / MCQ / Write / Make)
   actions.innerHTML = `
-    <button onclick="startWLMode('learn')">🧠 Learn</button>
-    <button onclick="startWLMode('mcq')">❓ MCQ</button>
-    <button onclick="startWLMode('write')">✍️ Write Words</button>
-    <button onclick="startWLMode('make')">📝 Make Sentence</button>
+    <button id="wl-learn" class="chip">Learn</button>
+    <button id="wl-mcq" class="chip">MCQ</button>
+    <button id="wl-write" class="chip">Write Words</button>
+    <button id="wl-make" class="chip">Make Sentence</button>
   `;
+  const go = (mode) => {
+    App.wordlist.active = true;
+    App.wordlist.currentId = list.id;
+    // always hide the Word List pane before opening a practice view
+    hideContentPanes();
+    wlStart(mode); // this function already builds the shared Vocab UI for lists
+  };
+  document.querySelector("#wl-learn")?.addEventListener("click", () => go("learn"));
+  document.querySelector("#wl-mcq")?.addEventListener("click",   () => go("mcq"));
+  document.querySelector("#wl-write")?.addEventListener("click", () => go("write"));
+  document.querySelector("#wl-make")?.addEventListener("click",  () => go("make"));
+  // hook buttons → reuse existing Vocab flows, but swap in this deck
+  
+
   wrap.classList.remove("hidden");
 }
-// Mode starters for Word List practice
-function startWLMode(mode) {
-  if (!App.wordlist.deck?.length) return;
-
-  switch (mode) {
-    case 'learn':
-      App.deck = [...App.wordlist.deck];
-      openVocabLearnMenu();
-      break;
-    case 'mcq':
-      App.deck = [...App.wordlist.deck];
-      openVocabMCQMenu();
-      break;
-    case 'write':
-      App.deck = [...App.wordlist.deck];
-      openVocabWriteMenu();
-      break;
-    case 'make':
-      App.deck = [...App.wordlist.deck];
-      startMakeSentence();
-      break;
-  }
-}
-
 window.renderWLPracticeCard = renderWLPracticeCard;
 
 async function renderWordListHome(){
