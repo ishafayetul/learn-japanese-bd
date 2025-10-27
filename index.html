@@ -548,20 +548,11 @@
               </div>
             </div>
 
-            <div class="card">
-              <!-- Same primary actions as Vocabulary -->
-              <div class="lesson-bar">
-                <div class="lesson-meta">
-                  <div class="muted">Practice this list</div>
-                </div>
-                <div class="lesson-tabs">
-                  <button class="tab-btn" onclick="wlStart('learn')">Learn</button>
-                  <button class="tab-btn" onclick="wlStart('mcq')">MCQ</button>
-                  <button class="tab-btn" onclick="wlStart('write')">Write Words</button>
-                  <button class="tab-btn" onclick="wlStart('make')">Make Sentence</button>
-                </div>
-              </div>
-            </div>
+            <!-- Practice this list (Word List) -->
+            <section id="wl-practice" class="card hidden">
+              <h3>Practice this list</h3>
+              <div id="wl-practice-actions" class="practice-actions"></div>
+            </section>
 
             <!-- Unselect modal-ish area (simple inline list with checkboxes) -->
             <div id="wl-unselect" class="card hidden">

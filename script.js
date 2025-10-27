@@ -294,7 +294,7 @@ const App = Object.assign(window.App, {
   buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
   cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() },
-  wordlist: { active:false, currentId:null, currentMeta:null, addMode:false, pendingAdds:[] },
+  wordlist: { active:false, currentId:null, currentMeta:null, addMode:false, pendingAdds:[], deck:[] },
   match: {
     active: false,
     variant: null,                 // "eh" or "keh"
@@ -434,6 +434,11 @@ function setupDeployToast(){
       if (uniq.length === 5) break;
     }
     return uniq;
+  }
+  function setWLContextCrumbs(name){
+    document.querySelector("#crumb-level").textContent  = "Word List";
+    document.querySelector("#crumb-lesson").textContent = name || "—";
+    document.querySelector("#crumb-mode").textContent   = "vocab";
   }
 
   async function buildPickerRowsMerged(){
@@ -785,6 +790,7 @@ async function cascadeUnmark({ src, id, markedId }){
     document.querySelector("#marked-section")?.classList.add("hidden");
     document.querySelector("#signword-section")?.classList.add("hidden");
     document.querySelector("#mix-section")?.classList.add("hidden");
+    document.querySelector("#wordlist-section")?.classList.add("hidden");
     clearVideosPane();
     clearVocabPane();
     clearGrammarPane();
@@ -3414,6 +3420,52 @@ window.mixBuildDeck = async ()=>{
 };
 
 // ===== Word List — UI + flows =====
+// Build the "Practice this list" card and wire up actions
+async function renderWLPracticeCard(list){
+  const wrap = document.querySelector("#wl-practice");
+  const actions = document.querySelector("#wl-practice-actions");
+  if (!wrap || !actions) return;
+  actions.innerHTML = ""; // reset any prior content
+  // load deck for this list (cache to App.wordlist.deck)
+  try{
+    const fb = await whenFBReady();
+    App.wordlist.deck = await fb.wordListGetWords(list.id);
+  }catch{
+    App.wordlist.deck = [];
+  }
+
+  // if nothing, show muted state & hide actions
+  if (!App.wordlist.deck.length){
+    actions.innerHTML = `<div class="muted">No words in this list.</div>`;
+    wrap.classList.remove("hidden");
+    return;
+  }
+
+  // mirror Vocabulary root card (Learn / MCQ / Write / Make)
+  actions.innerHTML = `
+    <button id="wl-learn" class="chip">Learn</button>
+    <button id="wl-mcq" class="chip">MCQ</button>
+    <button id="wl-write" class="chip">Write Words</button>
+    <button id="wl-make" class="chip">Make Sentence</button>
+  `;
+  const go = (mode) => {
+    App.wordlist.active = true;
+    App.wordlist.currentId = list.id;
+    // always hide the Word List pane before opening a practice view
+    hideContentPanes();
+    wlStart(mode); // this function already builds the shared Vocab UI for lists
+  };
+  document.querySelector("#wl-learn")?.addEventListener("click", () => go("learn"));
+  document.querySelector("#wl-mcq")?.addEventListener("click",   () => go("mcq"));
+  document.querySelector("#wl-write")?.addEventListener("click", () => go("write"));
+  document.querySelector("#wl-make")?.addEventListener("click",  () => go("make"));
+  // hook buttons → reuse existing Vocab flows, but swap in this deck
+  
+
+  wrap.classList.remove("hidden");
+}
+window.renderWLPracticeCard = renderWLPracticeCard;
+
 async function renderWordListHome(){
   const root = D("#wordlist-section");
   const home = D("#wl-home");
@@ -3483,6 +3535,7 @@ async function wlOpen(id){
 
   const words = await fb.listWordListWords(id);
   D("#wl-count").textContent = `${words.length} words`;
+   try { await renderWLPracticeCard(meta); } catch {}
 }
 
 window.wlRename = async function(){
@@ -3562,6 +3615,7 @@ window.wlStart = async function(mode){
 
     // Show the shared lesson UI (no Video/Grammar tabs)
     hideContentPanes();
+    D("#wordlist-section")?.classList.add("hidden"); // make sure the WL screen is off
     D("#level-shell")?.classList.remove("hidden");
     D("#lesson-area")?.classList.remove("hidden");
     hideLessonsHeaderAndList();
