@@ -2012,7 +2012,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       requeueWrongItem(w, App.mastery.pending, App.qIndex);
 
       // Wait 5 seconds so the learner can see both markings
-      delayMs = 5000;
+      delayMs = 3000;
     }
 
     updateScorePanel();
