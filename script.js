@@ -1473,41 +1473,6 @@ window.closeVideoLightbox = closeVideoLightbox;
     return files;
   }
 
-
-
-  // async function ensureDeckLoaded(){
-  //   const key = `${App.level}/${App.lesson}`;
-  //   // If Mix is active, use the prebuilt deck
-  //   if (App.mix?.active && App.mix.deck?.length){
-  //     App.deck = App.mix.deck.slice();
-  //     if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
-  //     return;
-  //   }
-
-  //   if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
-  //   elVocabStatus.textContent = "Loading vocabulary…";
-
-  //   const files = await listVocabCsvFiles(App.level, App.lesson); // absolute URLs
-  //   const deck = [];
-  //   for (const url of files){
-  //     try{
-  //       const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
-  //       const csv = parseCSV(txt);
-  //       for (const r of csv){
-  //         const kanji = (r[0]||"").trim();
-  //         const hira  = (r[1]||"").trim();
-  //         const en    = (r[2]||"").trim();
-  //         if (!hira || !en) continue;
-  //         deck.push({ kanji, hira, en });
-  //       }
-  //     } catch {}
-  //   }
-
-  //   App.deck = deck;
-  //   App.cache.vocab.set(key, deck);
-  //   elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
-  // }
-
   // treat Word List like a list-sourced deck
 function inListVocabContext(){
   return ["Mistakes","Marked","Mix","Word List"].includes(App.level);
@@ -2931,12 +2896,80 @@ window.writeSubmit = () => {
     drawWLMixPicker();
   }
 
-  function drawWLMixPicker(){
-    // simple version: offer N5/N4/N3 → Lessons discovered through your discoverLessons()
-    // Each selection pushes {level, lesson} into __WL_CTX and shows a little chip.
-    // (Implementation can mirror your existing Mix UI code paths.)
-    elWLMixPicker.innerHTML = `<em>Use your existing Mix selection UI here (scoped) or quick-select lessons.</em>`;
+  async function drawWLMixPicker(){
+  elWLMixPicker.innerHTML = "Loading lessons…";
+
+  // Build a scoped, lightweight Mix picker inside #wl-mix-picker
+  const levels = ["N5","N4","N3"];
+  const frag = document.createDocumentFragment();
+
+  for (const lvl of levels){
+    const m = await loadLevelManifest(lvl);
+    const lessons = (m?.allLessons || []);
+
+    const box = document.createElement("div");
+    box.className = "wl-level";
+    box.innerHTML = `
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+        <strong>${lvl}</strong>
+        <span>
+          <button type="button" data-level="${lvl}" class="wl-sel-all">All</button>
+          <button type="button" data-level="${lvl}" class="wl-clear">Clear</button>
+        </span>
+      </div>
+      <div class="wl-lessons">
+        ${
+          lessons.length
+            ? lessons.map(ls =>
+                `<label class="wl-chip">
+                   <input type="checkbox" class="wl-lesson-check"
+                          data-level="${lvl}" data-lesson="${ls}">
+                   ${ls.replace(/-/g," ")}
+                 </label>`
+              ).join("")
+            : `<div class="muted">No lessons — missing or invalid manifest.json</div>`
+        }
+      </div>`;
+    frag.appendChild(box);
   }
+
+  elWLMixPicker.innerHTML = "";
+  elWLMixPicker.appendChild(frag);
+
+  // Per-level helpers
+  elWLMixPicker.querySelectorAll(".wl-sel-all").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      const lvl = e.currentTarget.dataset.level;
+      elWLMixPicker.querySelectorAll(`.wl-lesson-check[data-level="${lvl}"]`).forEach(ch => ch.checked = true);
+    });
+  });
+  elWLMixPicker.querySelectorAll(".wl-clear").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      const lvl = e.currentTarget.dataset.level;
+      elWLMixPicker.querySelectorAll(`.wl-lesson-check[data-level="${lvl}"]`).forEach(ch => ch.checked = false);
+    });
+  });
+}
+elWLBuildFromMix.onclick = async ()=>{
+  const picks = Array.from(
+    elWLMixPicker.querySelectorAll('.wl-lesson-check:checked')
+  ).map(cb => ({ level: cb.dataset.level, lesson: cb.dataset.lesson }));
+
+  if (!picks.length){ toast("Pick at least one deck."); return; }
+
+  // Load + stage words
+  const words = [];
+  for (const p of picks){
+    const batch = await loadDeckFor(p.level, p.lesson);
+    batch.forEach(r => words.push({ kanji:r.kanji||"—", hira:r.hira||"", en:r.en||"" }));
+  }
+  __WL_CTX.stagedDeck = words.filter(x=>x.hira && x.en);
+
+  // Switch to confirmation table
+  elWLMix.classList.add("hidden");
+  renderWLWordTable();
+};
+
 
   elWLCancelMix?.addEventListener("click", ()=>{
     elWLFlow.classList.add("hidden");
@@ -3566,9 +3599,6 @@ async function renderMixPicker(){
   if (st) st.textContent = "Select lessons, then click Build Deck.";
 }
 
-function inListVocabContext(){
-  return App.level === "Mistakes" || App.level === "Marked" || App.level === "Mix";
-}
 
 // Global select/clear helpers (buttons below the picker)
 window.mixSelectAll = ()=>{
