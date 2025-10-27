@@ -2987,68 +2987,91 @@ elWLBuildFromMix.onclick = async ()=>{
   });
 
 
-  function renderWLWordTable(){
-    elWLWordTable.classList.remove("hidden");
-    elWLTitleTable.textContent = __WL_CTX.listName||__WL_CTX.listId;
+  window.renderWLWordTable = () => {
+  const ctx = window.WLAddCtx || {};
+  const listName = ctx.listName || "Untitled";
+  const rows = Array.isArray(ctx.staged) ? ctx.staged : [];
+  const t = document.querySelector("#wl-tbody");
+  const ttl = document.querySelector("#wl-wordtable-title");
+  const cnt = document.querySelector("#wl-wordtable-count");
+  if (!t) return;
 
-    const rows = __WL_CTX.stagedDeck.slice();
-    elWLTableWrap.innerHTML = `
-      <table>
-        <thead><tr><th></th><th>Kanji</th><th>Hiragana</th><th>English</th></tr></thead>
-        <tbody></tbody>
-      </table>`;
-    const tb = elWLTableWrap.querySelector("tbody");
-    rows.forEach((r,i)=>{
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td><input type="checkbox" data-i="${i}"></td>
-                      <td>${escapeHTML(r.kanji||"—")}</td>
-                      <td>${escapeHTML(r.hira||"")}</td>
-                      <td>${escapeHTML(r.en||"")}</td>`;
-      tb.appendChild(tr);
+  if (ttl) ttl.textContent = `Word Table — ${listName}`;
+  if (cnt) cnt.textContent = ` (${rows.length} words)`;
+
+  // render all rows
+  t.innerHTML = rows.map((w, i) => {
+    const id = (String(w.hira||"").trim().toLowerCase()) + "|" + (String(w.en||"").trim().toLowerCase());
+    return `
+      <tr data-id="${id}">
+        <td><input type="checkbox" class="wl-pick" data-idx="${i}" checked /></td>
+        <td class="kanji">${w.kanji || "—"}</td>
+        <td class="hira">${w.hira || ""}</td>
+        <td class="en">${w.en || ""}</td>
+      </tr>`;
+  }).join("");
+
+  // search/filter
+  const q = document.querySelector("#wl-search");
+  if (q && !q._wlBound){
+    q._wlBound = true;
+    q.addEventListener("input", () => {
+      const val = (q.value || "").trim().toLowerCase();
+      const trs = t.querySelectorAll("tr");
+      trs.forEach(tr => {
+        const hira = tr.querySelector(".hira")?.textContent.toLowerCase() || "";
+        const en   = tr.querySelector(".en")?.textContent.toLowerCase() || "";
+        tr.style.display = (!val || hira.includes(val) || en.includes(val)) ? "" : "none";
+      });
     });
-
-    elWLSearch.oninput = () => {
-      const q = (elWLSearch.value||"").toLowerCase();
-      Array.from(tb.children).forEach(tr=>{
-        const t = tr.textContent.toLowerCase();
-        tr.style.display = t.includes(q) ? "" : "none";
-      });
-    };
-
-    elWLAddSelected.onclick = async ()=>{
-      const picks = [];
-      elWLTableWrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
-        const r = rows[Number(cb.dataset.i)];
-        if (r) picks.push(r);
-      });
-      if (!picks.length){ toast("No rows selected."); return; }
-      const fb = await whenFBReady();
-      const n = await fb.lists.addWordsToList(__WL_CTX.listId, picks);
-      toast(`Added ${n} word(s).`);
-    };
-
-    elWLBulkAdd.onclick = async ()=>{
-      const txt = (elWLBulkCsv.value||"").trim(); if (!txt){ toast("Paste CSV lines first."); return; }
-      const parsed = [];
-      txt.split(/\r?\n/).forEach(line=>{
-        const parts = line.split(",").map(s=> s.trim());
-        if (parts.length >= 2){
-          // accept 2 or 3 columns: (kanji?,hiragana,english) OR (kanji,hiragana,english)
-          let kanji="—", hira="", en="";
-          if (parts.length === 2){ [hira,en] = parts; }
-          else { [kanji,hira,en] = parts; }
-          if (hira && en) parsed.push({ kanji, hira, en });
-        }
-      });
-      if (!parsed.length){ toast("Couldn’t parse any rows."); return; }
-      const fb = await whenFBReady();
-      const n = await fb.lists.addWordsToList(__WL_CTX.listId, parsed);
-      toast(`Added ${n} word(s).`);
-      elWLBulkCsv.value = "";
-    };
-
-    elWLCloseWordTable.onclick = ()=>{ elWLWordTable.classList.add("hidden"); elWLFlow.classList.add("hidden"); };
   }
+
+  // select all
+  const selAll = document.querySelector("#wl-select-all");
+  if (selAll && !selAll._wlBound){
+    selAll._wlBound = true;
+    selAll.addEventListener("click", () => {
+      const checks = t.querySelectorAll(".wl-pick");
+      const allOn = Array.from(checks).every(ch => ch.checked);
+      checks.forEach(ch => ch.checked = !allOn);
+    });
+  }
+
+  // save selected → Firestore
+  const saveBtn = document.querySelector("#wl-save");
+  const status = document.querySelector("#wl-status");
+  if (saveBtn && !saveBtn._wlBound){
+    saveBtn._wlBound = true;
+    saveBtn.addEventListener("click", async () => {
+      const picks = [];
+      t.querySelectorAll(".wl-pick:checked").forEach(ch => {
+        const w = rows[Number(ch.dataset.idx)];
+        if (w && w.hira && w.en) picks.push(w);
+      });
+      if (!picks.length){
+        if (status) status.textContent = "Pick at least one word.";
+        return;
+      }
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving…";
+      try {
+        const n = await window.FB.lists.addWordsToList(ctx.listId, picks);
+        if (status) status.textContent = `Saved ${n} word(s) to “${listName}”.`;
+        // Optional: fetch fresh words and go back to the list detail so user can start Learn/MCQ/Write/Make
+        if (typeof openWordListDetail === "function"){
+          openWordListDetail(ctx.listId);
+        }
+      } catch (e){
+        console.error(e);
+        if (status) status.textContent = "Save failed. Check console.";
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Add selected to list";
+      }
+    });
+  }
+};
+
 
   // Optional manage modal for “Unselect individually”
   async function openWLManage(listId, listName){
