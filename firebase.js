@@ -55,6 +55,11 @@
     userWriteBestCol:(uid) => `users/${uid}/writeBest`,
     dailyScoresCol:  (date) => `daily/${date}/scores`,      // shared daily leaderboard
     overallLBCol:    ()    => `leaderboard_overall`,        // shared overall leaderboard
+    // Word Lists (per-user) string paths
+    listsCol:      (uid) => `users/${uid}/lists`,
+    listDoc:       (uid, listId) => `users/${uid}/lists/${listId}`,
+    listWordsCol:  (uid, listId) => `users/${uid}/lists/${listId}/words`,
+
   };
 
   // Normalize attempts collection path (handles both function or string)
@@ -310,6 +315,104 @@
         _cache.marked.delete(key1);
         _cache.marked.delete(key2);
         return true;
+      },
+      /* --------------- WORD LISTS (per-user) --------------- */
+      lists: {
+        _mergeLocal(arr, words){
+          const seen = new Set(arr.map(x=>x.id));
+          const out = arr.slice();
+          for (const w of (words||[])){
+            const id = ((String(w.hira||"").trim().toLowerCase())+"|"+(String(w.en||"").trim().toLowerCase()));
+            if (!seen.has(id)){ out.push({ id, kanji:w.kanji||"—", hira:w.hira, en:w.en }); seen.add(id); }
+          }
+          return out;
+        },
+        _key(w){
+          return (String(w.hira||"").trim().toLowerCase())+"|"+(String(w.en||"").trim().toLowerCase());
+        },
+
+        async listLists(){
+          const uid = auth.currentUser?.uid; if (!uid) return [];
+          if (_wlCache.listsMeta) return _wlCache.listsMeta;
+          const snap = await getDocs(collection(db, Paths.listsCol(uid)));
+          const out = [];
+          snap.forEach(d=>{
+            const v = d.data() || {};
+            out.push({ id:d.id, name:v.name || "Untitled", wordCount: v.wordCount|0, updatedAt: v.updatedAt?.toMillis?.()||0 });
+          });
+          _wlCache.listsMeta = out.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
+          try{ localStorage.setItem("lj_wl_lists", JSON.stringify(_wlCache.listsMeta)); }catch{}
+          return _wlCache.listsMeta;
+        },
+
+        async createList(name){
+          const uid = auth.currentUser?.uid; if (!uid) throw new Error("Not signed in");
+          name = (name||"").trim() || "Untitled";
+          const ref = doc(collection(db, Paths.listsCol(uid))); // auto-id
+          await setDoc(ref, { name, wordCount:0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+          _wlCache.listsMeta = null; // bust cache
+          return ref.id;
+        },
+
+        async renameList(listId, name){
+          const uid = auth.currentUser?.uid; if (!uid) throw new Error("Not signed in");
+          await updateDoc(doc(db, Paths.listDoc(uid, listId)), { name, updatedAt: serverTimestamp() });
+          _wlCache.listsMeta = null;
+        },
+
+        async deleteList(listId){
+          const uid = auth.currentUser?.uid; if (!uid) throw new Error("Not signed in");
+          const wordsSnap = await getDocs(collection(db, Paths.listWordsCol(uid, listId)));
+          const batch = writeBatch(db);
+          wordsSnap.forEach(d=> batch.delete(d.ref));
+          batch.delete(doc(db, Paths.listDoc(uid, listId)));
+          await batch.commit();
+          _wlCache.listsMeta = null;
+          _wlCache.listWords.delete(listId);
+        },
+
+        async listWords(listId){
+          const uid = auth.currentUser?.uid; if (!uid) return [];
+          const cached = _wlCache.listWords.get(listId);
+          if (cached) return cached;
+          const snap = await getDocs(collection(db, Paths.listWordsCol(uid, listId)));
+          const arr = [];
+          snap.forEach(d=> {
+            const v = d.data() || {};
+            arr.push({ id:d.id, kanji: v.kanji||"—", hira: v.hira||"", en: v.en||"" });
+          });
+          _wlCache.listWords.set(listId, arr);
+          return arr;
+        },
+
+        async addWordsToList(listId, words){
+          const uid = auth.currentUser?.uid; if (!uid) throw new Error("Not signed in");
+          const colRef = collection(db, Paths.listWordsCol(uid, listId));
+          const batch = writeBatch(db);
+          let added = 0;
+          (words||[]).forEach(w=>{
+            if (!w || !w.hira || !w.en) return;
+            const id = this._key(w);
+            batch.set(doc(colRef, id), { kanji: w.kanji||"—", hira:w.hira, en:w.en, addedAt: serverTimestamp() }, { merge:true });
+            added++;
+          });
+          if (!added) return 0;
+          batch.update(doc(db, Paths.listDoc(uid, listId)), { wordCount: increment(added), updatedAt: serverTimestamp() });
+          await batch.commit();
+          _wlCache.listsMeta = null;
+          const arr = _wlCache.listWords.get(listId) || [];
+          _wlCache.listWords.set(listId, this._mergeLocal(arr, words));
+          return added;
+        },
+
+        async removeWordFromList(listId, wordId){
+          const uid = auth.currentUser?.uid; if (!uid) throw new Error("Not signed in");
+          await deleteDoc(doc(db, `${Paths.listWordsCol(uid, listId)}/${wordId}`));
+          await updateDoc(doc(db, Paths.listDoc(uid, listId)), { wordCount: increment(-1), updatedAt: serverTimestamp() });
+          _wlCache.listsMeta = null;
+          const arr = (_wlCache.listWords.get(listId)||[]).filter(x=> x.id!==wordId);
+          _wlCache.listWords.set(listId, arr);
+        },
       },
 
       /* --------------- SIGN WORDS (per-user) --------------- */

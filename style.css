@@ -1043,3 +1043,11 @@ body.nav-open .scrim{ display:block; }
   background: #2a0e0e;
   color: #ffd0d0;
 }
+#wordlist-section .row { display:flex; gap:.5rem; align-items:center; }
+#wordlist-section .row.spread { justify-content:space-between; }
+#wordlist-section .simple-list { list-style:none; padding:0; margin:0; }
+#wordlist-section .simple-list li { display:flex; justify-content:space-between; align-items:center; padding:.5rem .25rem; border-bottom:1px solid var(--hairline); }
+#wordlist-section .muted { opacity:.8; }
+#wl-table-wrap table { width:100%; border-collapse:collapse; }
+#wl-table-wrap th, #wl-table-wrap td { border-bottom:1px solid var(--hairline); padding:.4rem .35rem; text-align:left; }
+#wl-table-wrap tr.selected { background: var(--card-alt); }

@@ -110,11 +110,12 @@
       <button id="nav-mix" onclick="openMixPractice()">Mix Practice</button>
       <!-- <button id="nav-speaking" class="chip speaking-chip" type="button">🗣️ Speaking Practice</button> -->
       <hr style="opacity:.2;border:none;border-top:1px solid #ffffff30;margin:8px 0 12px">
+      <button onclick="openSection('wordlist')">🗂️ Word List</button>
+      <button onclick="openSection('marked')">📌 Marked Words</button>
+      <button onclick="openSection('signword')">✍️ Sign Word</button>
       <button onclick="openSection('progress')">📈 Progress</button>
       <button onclick="openSection('leaderboard')">🏆 Overall Leaderboard</button>
       <button onclick="openSection('mistakes')">❗ Mistakes</button>
-      <button onclick="openSection('marked')">📌 Marked Words</button>
-      <button onclick="openSection('signword')">✍️ Sign Word</button>
       <hr style="opacity:.2;border:none;border-top:1px solid #ffffff30;margin:12px 0">
       <button onclick="saveCurrentScore()">💾 Save Progress</button>
       <button id="signout-btn" class="danger">🚪 Sign out</button>
@@ -461,6 +462,57 @@
           <!-- <div class="section-tools">
             <button id="mistakes-clear-all">Clear Mistakes</button>
           </div> -->
+        </section>
+
+        <!-- ========= wordlist ========= -->
+        <section id="wordlist-section" class="hidden">
+          <div class="card">
+            <h3>🗂️ Word List</h3>
+            <div class="row">
+              <input id="wl-new-name" class="pg-input" placeholder="New list name…" />
+              <button id="wl-create-btn">Create</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px;">
+            <div class="row spread">
+              <h4>Your lists</h4>
+              <button id="wl-refresh-btn" class="muted">↻ Refresh</button>
+            </div>
+            <ul id="wl-list-ul" class="simple-list"></ul>
+            <p id="wl-empty" class="muted">No lists yet. Create one above.</p>
+          </div>
+
+          <!-- “Add words” flow (Mix-like -> Word Table) lives here when invoked -->
+          <div id="wl-flow" class="hidden">
+            <!-- STEP 1: Mix-like picker (reuses existing #mix-section UI text, but scoped here) -->
+            <div id="wl-mix" class="card hidden">
+              <h4>Pick decks to add to <span id="wl-list-title-mix"></span></h4>
+              <div id="wl-mix-picker"></div>
+              <div class="row">
+                <button id="wl-build-from-mix">Build deck</button>
+                <button id="wl-cancel-mix" class="muted">Cancel</button>
+              </div>
+            </div>
+
+            <!-- STEP 2: Word Table with search + bulk add -->
+            <div id="wl-wordtable" class="card hidden">
+              <div class="row spread">
+                <h4>Word Table — <span id="wl-list-title-table"></span></h4>
+                <input id="wl-search" class="pg-input" placeholder="Search…" />
+              </div>
+              <div class="muted" style="margin:.25rem 0 .75rem;">Select rows and add them in bulk, or paste CSV.</div>
+              <div id="wl-table-wrap"></div>
+              <div class="row" style="gap:.5rem; margin-top:.5rem;">
+                <button id="wl-add-selected">➕ Add selected</button>
+                <textarea id="wl-bulk-csv" rows="3" style="flex:1" placeholder="Optional paste: kanji,hiragana,english per line…"></textarea>
+                <button id="wl-add-bulk">➕ Add bulk</button>
+              </div>
+              <div class="row" style="margin-top:.5rem;">
+                <button id="wl-close-wordtable" class="muted">Close</button>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- ========= Marked ========= -->
