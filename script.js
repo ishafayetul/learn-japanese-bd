@@ -169,6 +169,8 @@ function setNavOpen(open){
   if (elNavToggle) elNavToggle.setAttribute("aria-expanded", on ? "true" : "false");
 }
 
+window.WLAddCtx = { active: false, listId: null, listName: null, staged: [] };
+
 elNavToggle?.addEventListener("click", () => {
   setNavOpen(!document.body.classList.contains("nav-open"));
 });
@@ -2881,19 +2883,19 @@ window.writeSubmit = () => {
   let __WL_CTX = { listId:null, listName:null, stagedDeck:[] };
 
   async function openWLAddWords(listId, listName){
-    hideContentPanes();
-    document.querySelector("#wordlist-section")?.classList.remove("hidden");
-   __WL_CTX = { listId, listName, stagedDeck: [] };
-    __WL_CTX = { listId, listName, stagedDeck: [] };
-    elWLFlow.classList.remove("hidden");
-    elWLMix.classList.remove("hidden");
-    elWLWordTable.classList.add("hidden");
-    elWLTitleMix.textContent = listName||listId;
+  // mark context so Mix will hand the deck back to Word List
+  WLAddCtx.active   = true;
+  WLAddCtx.listId   = listId;
+  WLAddCtx.listName = listName;
+  WLAddCtx.staged   = [];
 
-    // reuse your Mix discovery: draw a level/lesson picker into #wl-mix-picker
-    // to keep reads minimal, mirror your existing mix UI, but scoped here.
-    drawWLMixPicker();
-  }
+  // Optional: show a one-line hint in Mix (if you have a toast or banner API)
+  toast?.(`Pick lessons for “${listName}”, then click Build Deck to bring them back.`);
+
+  // Navigate to the existing Mix Practice section
+  openSection("mix-section");  // <-- use the same name you already use to open Mix Practice
+}
+
 
   async function drawWLMixPicker(){
   elWLMixPicker.innerHTML = "Loading lessons…";
@@ -3595,54 +3597,85 @@ window.mixClear = ()=>{
 };
 
 // Build the combined deck and enter the Vocab root menus (no Video/Grammar)
-window.mixBuildDeck = async ()=>{
-  const picks = Array.from(document.querySelectorAll('.mix-lesson-check:checked'))
+window.mixBuildDeck = async () => {
+  // 1) Collect selected lessons
+  const picks = Array.from(document.querySelectorAll(".mix-lesson-check:checked"))
     .map(ch => ({ level: ch.dataset.level, lesson: ch.dataset.lesson }));
 
   const st = document.querySelector("#mix-status");
-  if (!picks.length){ if (st) st.textContent = "Pick at least one lesson."; return; }
+  if (!picks.length) { if (st) st.textContent = "Pick at least one lesson."; return; }
 
+  // 2) Load words from each lesson
   let combined = [];
-  for (const p of picks){
+  for (const p of picks) {
     const d = await loadDeckFor(p.level, p.lesson);
     combined = combined.concat(d);
   }
-  // de-duplicate
-  const seen = new Set(); const deck = [];
-  for (const w of combined){ const k=keyForWord(w); if (!seen.has(k)){ seen.add(k); deck.push(w); } }
 
-  App.mix = { active:true, selection:picks, deck };
-  App.level = "Mix"; 
+  // 3) De-duplicate
+  const seen = new Set();
+  const deck = [];
+  for (const w of combined) {
+    const k = keyForWord(w);
+    if (!seen.has(k)) { seen.add(k); deck.push(w); }
+  }
+
+  // 4) Word List intercept — if user came from "Add words" in Word List,
+  //    route the built deck back to the Word List "Word Table"
+  if (window.WLAddCtx?.active) {
+    WLAddCtx.staged = deck
+      .map(r => ({ kanji: r.kanji || "—", hira: r.hira || "", en: r.en || "" }))
+      .filter(w => w.hira && w.en);
+
+    // Return to Word List and open the Word Table prefilled with these rows
+    openSection("wordlist");
+    document.querySelector("#wordlist-section")?.classList.remove("hidden");
+
+    window.__WL_CTX = {
+      listId:   WLAddCtx.listId,
+      listName: WLAddCtx.listName,
+      stagedDeck: WLAddCtx.staged
+    };
+
+    document.querySelector("#wl-flow")?.classList.remove("hidden");
+    document.querySelector("#wl-mix")?.classList.add("hidden");
+    document.querySelector("#wl-wordtable")?.classList.remove("hidden");
+    if (typeof renderWLWordTable === "function") renderWLWordTable();
+
+    WLAddCtx.active = false; // reset for normal Mix next time
+    return; // stop normal Mix flow
+  }
+
+  // 5) Normal Mix flow (unchanged)
+  App.mix = { active: true, selection: picks, deck };
+  App.level = "Mix";
   App.lesson = `${picks.length} lesson(s)`;
   App.tab = "vocab"; App.mode = null; App.qIndex = 0;
 
-  // Show breadcrumbs and the normal Vocab menus (root)
   document.querySelector("#crumb-level").textContent  = App.level;
   document.querySelector("#crumb-lesson").textContent = App.lesson;
   document.querySelector("#crumb-mode").textContent   = "vocab";
 
-  // Go to the Vocab root UI (but hide the Video/Vocab/Grammar bar for Mix)
   document.querySelector("#mix-section")?.classList.add("hidden");
   document.querySelector("#level-shell")?.classList.remove("hidden");
   document.querySelector("#lesson-area")?.classList.remove("hidden");
   hideLessonsHeaderAndList();
-  hideLessonBar(); // <- Mix should not show the 3 tabs
+  hideLessonBar();
 
-  ["#tab-videos","#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
+  ["#tab-videos", "#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
   document.querySelector("#tab-vocab")?.classList.remove("hidden");
 
-  // Ensure the Vocab root buttons are visible
   showVocabRootMenu();
   showVocabRootCard();
+
   const vs = document.querySelector("#vocab-status");
-  if (vs){
+  if (vs) {
     vs.textContent = `Built ${deck.length} words from ${picks.length} lesson(s). Pick an option. `;
-    // small inline "Edit selection" action
     const edit = document.createElement("button");
     edit.style.marginLeft = "6px";
     edit.textContent = "Edit selection";
-    edit.addEventListener("click", ()=>{
-      App.mix.active = false; // go back to picker
+    edit.addEventListener("click", () => {
+      App.mix.active = false;
       document.querySelector("#tab-vocab")?.classList.add("hidden");
       document.querySelector("#mix-section")?.classList.remove("hidden");
       hideLessonBar();
@@ -3653,6 +3686,7 @@ window.mixBuildDeck = async ()=>{
 
   updateBackVisibility();
 };
+
   // ---------- Save / Flush ----------
   window.saveCurrentScore = async ()=>{
     try{ const ok = await flushSession(); toast(ok ? "Progress saved ✓" : "Nothing to save."); }
