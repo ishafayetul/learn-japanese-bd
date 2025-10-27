@@ -37,6 +37,10 @@
     marked: new Map(),    // id  -> data
     signWords: new Map(), // id  -> data
   };
+  const _wlCache = {
+    listsMeta: null,           // [{id,name,wordCount,updatedAt}, …]
+    listWords: new Map(),      // listId -> [{id,kanji,hira,en}, …]
+  };
 
   const Local = {
     get(k, fallback=null) { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } },
