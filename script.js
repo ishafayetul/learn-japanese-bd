@@ -294,6 +294,7 @@ const App = Object.assign(window.App, {
   buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
   cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() },
+  wordlist: { active:false, currentId:null, currentMeta:null, addMode:false, pendingAdds:[] },
   match: {
     active: false,
     variant: null,                 // "eh" or "keh"
@@ -1059,13 +1060,16 @@ window.openSection = async (name) => {
     progress:    "#progress-section",
     leaderboard: "#leaderboard-section",
     signword:    "#signword-section",
+    wordlist:    "#wordlist-section",
   };
+  
   const sel = map[name];
   if (sel) document.querySelector(sel)?.classList.remove("hidden");
 
   if (name === "progress")    await renderProgress();
   if (name === "leaderboard") await renderOverallLeaderboard();
   if (name === "signword")    await renderSignWordList();
+  if (name === "wordlist")   await renderWordListHome();
 
   updateBackVisibility?.();
 };
@@ -3363,6 +3367,315 @@ window.mixBuildDeck = async ()=>{
 
   updateBackVisibility();
 };
+
+// ===== Word List — UI + flows =====
+async function renderWordListHome(){
+  const root = D("#wordlist-section");
+  const home = D("#wl-home");
+  const detail = D("#wl-detail");
+  home?.classList.remove("hidden");
+  detail?.classList.add("hidden");
+
+  const listBox = D("#wl-lists");
+  listBox.innerHTML = `<div class="muted">Loading your lists…</div>`;
+
+  try{
+    const fb = await whenFBReady();
+    const rows = await fb.listWordLists();
+    if (!rows.length){
+      listBox.innerHTML = `<div class="muted">No lists yet. Create one above.</div>`;
+      return;
+    }
+    listBox.innerHTML = "";
+    for (const r of rows){
+      const card = document.createElement("div");
+      card.className = "wl-item";
+      card.innerHTML = `
+        <h4>${escapeHTML(r.name||"Untitled")}</h4>
+        <div class="muted">${r.id}</div>
+        <div style="margin-top:6px;"><button class="chip" data-id="${r.id}">Open</button></div>
+      `;
+      card.querySelector("button")?.addEventListener("click", () => wlOpen(r.id));
+      listBox.appendChild(card);
+    }
+  } catch(e){
+    listBox.innerHTML = `<div class="error">Failed to load lists.</div>`;
+  }
+}
+
+window.wlCreate = async function(){
+  const name = (D("#wl-new-name")?.value || "").trim();
+  if (!name){ toast("Type a list name"); return; }
+  try{
+    const fb = await whenFBReady();
+    const item = await fb.createWordList(name);
+    D("#wl-new-name").value = "";
+    await renderWordListHome();
+    toast("List created.");
+  }catch{ toast("Failed to create list"); }
+};
+
+async function wlOpen(id){
+  App.wordlist.currentId = id;
+  App.wordlist.addMode = false;
+  const fb = await whenFBReady();
+  const lists = await fb.listWordLists();
+  const meta = lists.find(x => x.id === id) || { id, name: "Untitled" };
+  App.wordlist.currentMeta = meta;
+
+  const home = D("#wl-home");
+  const detail = D("#wl-detail");
+  home?.classList.add("hidden");
+  detail?.classList.remove("hidden");
+
+  D("#wl-title").textContent = meta.name || "Untitled";
+
+  const words = await fb.listWordListWords(id);
+  D("#wl-count").textContent = `${words.length} words`;
+}
+
+window.wlRename = async function(){
+  const meta = App.wordlist.currentMeta; if (!meta) return;
+  const newName = prompt("Rename list:", meta.name||"Untitled");
+  if (!newName) return;
+  try{
+    const fb = await whenFBReady();
+    await fb.renameWordList(meta.id, newName);
+    meta.name = newName;
+    D("#wl-title").textContent = newName;
+    await renderWordListHome();
+    toast("Renamed.");
+  }catch{ toast("Rename failed"); }
+};
+
+window.wlDelete = async function(){
+  const meta = App.wordlist.currentMeta; if (!meta) return;
+  if (!confirm(`Delete list “${meta.name}”? This only deletes the list for you.`)) return;
+  try{
+    const fb = await whenFBReady();
+    await fb.deleteWordList(meta.id);
+    App.wordlist.currentId = null; App.wordlist.currentMeta = null;
+    await renderWordListHome();
+    D("#wl-detail")?.classList.add("hidden");
+    toast("List deleted.");
+  }catch{ toast("Delete failed"); }
+};
+
+window.wlOpenUnselect = async function(){
+  const meta = App.wordlist.currentMeta; if (!meta) return;
+  D("#wl-unselect")?.classList.remove("hidden");
+  const box = D("#wl-unselect-list"); box.innerHTML = "Loading…";
+  try{
+    const fb = await whenFBReady();
+    const rows = await fb.listWordListWords(meta.id);
+    box.innerHTML = "";
+    if (!rows.length){ box.innerHTML = `<div class="muted">No words in this list.</div>`; return; }
+    for (const w of rows){
+      const lab = document.createElement("label");
+      lab.innerHTML = `
+        <input type="checkbox" value="${w.key}">
+        <div style="flex:1">
+          <div><strong>${escapeHTML(w.kanji||"—")}</strong> <span class="muted">${escapeHTML(w.hira||"")}</span></div>
+          <div class="muted">${escapeHTML(w.en||"")}</div>
+        </div>
+      `;
+      box.appendChild(lab);
+    }
+  }catch{ box.innerHTML = `<div class="error">Failed to load words.</div>`; }
+};
+window.wlCloseUnselect = () => D("#wl-unselect")?.classList.add("hidden");
+
+window.wlRemoveChecked = async function(){
+  const meta = App.wordlist.currentMeta; if (!meta) return;
+  const keys = Array.from(D("#wl-unselect-list")?.querySelectorAll("input[type='checkbox']:checked")||[])
+    .map(ch => ch.value);
+  if (!keys.length){ toast("No words selected"); return; }
+  try{
+    const fb = await whenFBReady();
+    await fb.removeWordListWords(meta.id, keys);
+    await wlOpenUnselect();
+    const words = await fb.listWordListWords(meta.id);
+    D("#wl-count").textContent = `${words.length} words`;
+    toast("Removed.");
+  }catch{ toast("Remove failed"); }
+};
+
+window.wlStart = async function(mode){
+  const meta = App.wordlist.currentMeta; if (!meta) return;
+  // load list words → deck → open like Vocabulary
+  try{
+    const fb = await whenFBReady();
+    const rows = await fb.listWordListWords(meta.id);
+    const deck = rows.map(x => ({ kanji:x.kanji||"—", hira:x.hira||"", en:x.en||"" })).filter(w => w.hira && w.en);
+    if (!deck.length){ toast("This list is empty."); return; }
+
+    // Show the shared lesson UI (no Video/Grammar tabs)
+    hideContentPanes();
+    D("#level-shell")?.classList.remove("hidden");
+    D("#lesson-area")?.classList.remove("hidden");
+    hideLessonsHeaderAndList();
+    hideLessonBar();
+    ["#tab-videos","#tab-grammar"].forEach(s => D(s)?.classList.add("hidden"));
+    D("#tab-vocab")?.classList.remove("hidden");
+    showVocabRootMenu();
+    showVocabRootCard();
+
+    App.level = "List";
+    App.lesson = meta.name || meta.id;
+    App.tab = "vocab"; App.mode = null;
+    D("#crumb-level").textContent  = "List";
+    D("#crumb-lesson").textContent = App.lesson;
+    D("#crumb-mode").textContent   = "vocab";
+    D(".lesson-meta")?.classList.add("hidden");
+
+    // launch the selected mode
+    if (mode === "learn"){
+      App.deck = deck.slice();
+      App.deckFiltered = deck.slice();
+      App.qIndex = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
+      D("#learn").classList.remove("hidden");
+      renderLearnCard();
+    } else if (mode === "mcq"){
+      await startPractice("mcq", deck);
+    } else if (mode === "write"){
+      await startPractice("write", deck);
+    } else if (mode === "make"){
+      await startPractice("make", deck);
+    }
+  }catch{ toast("Failed to open list"); }
+};
+
+window.wlOpenAddWords = async function(){
+  const meta = App.wordlist.currentMeta; if (!meta) return;
+  App.wordlist.addMode = true;
+  App.wordlist.pendingAdds = [];
+  // Open Mix Picker (reuse UI)
+  await openMixPractice();
+  // Overwrite the “Build Deck” behavior for this session only
+  const btn = document.querySelector("#mix-section .primary");
+  if (btn){
+    btn.textContent = "Build Deck → Add to This List";
+  }
+};
+
+// Hook: after mixBuildDeck builds, if addMode → jump to Word Table with selection + bulk add
+const _mixBuildDeckOrig = window.mixBuildDeck;
+window.mixBuildDeck = async ()=>{
+  await _mixBuildDeckOrig?.();
+  if (!App.wordlist.addMode || !App.wordlist.currentId) return;
+
+  // we are now in Vocab view with App.deck built — jump to Word Table
+  try{
+    App.mode = "learn-table"; setCrumbs?.();
+    D("#learn-table")?.classList.remove("hidden");
+    augmentLearnTableForListAdd();
+  }catch{}
+};
+
+function augmentLearnTableForListAdd(){
+  // Add selection column + “Add Selected to List” + Bulk add UI to the toolbar
+  const host = D("#learn-table");
+  const bar  = host?.querySelector(".learn-table-bar");
+  if (!host || !bar) return;
+
+  // Inject controls only once
+  if (bar.querySelector(".wl-toolbar")) return;
+  const box = document.createElement("div");
+  box.className = "wl-toolbar";
+  box.style.display = "flex";
+  box.style.gap = "8px";
+  box.innerHTML = `
+    <button type="button" id="wl-add-selected">Add Selected to List</button>
+    <details>
+      <summary>Bulk add</summary>
+      <div style="margin-top:6px;">
+        <textarea id="wl-bulk" class="learn-note-input" rows="4"
+          placeholder="Paste CSV lines: kanji,hiragana,english OR hiragana,english"></textarea>
+        <div class="action-row" style="justify-content:flex-start;">
+          <button id="wl-bulk-parse">Preview</button>
+          <button id="wl-bulk-commit" class="save">Add All</button>
+        </div>
+        <div id="wl-bulk-preview" class="muted" style="margin-top:6px;"></div>
+      </div>
+    </details>
+  `;
+  bar.appendChild(box);
+
+  // Add checkbox column to the table rows on rebuild
+  const tb = D("#lt-table tbody");
+  const inject = ()=>{
+    const thead = host.querySelector("#lt-table thead tr");
+    if (thead && !thead.querySelector(".wl-select-head")){
+      const th = document.createElement("th");
+      th.className = "wl-select-head";
+      th.textContent = "Sel";
+      thead.insertBefore(th, thead.firstElementChild);
+    }
+    tb?.querySelectorAll("tr").forEach(tr=>{
+      if (tr.querySelector(".wl-select")) return;
+      const td = document.createElement("td");
+      td.className = "wl-select";
+      td.innerHTML = `<input type="checkbox" class="wl-row-ch">`;
+      tr.insertBefore(td, tr.firstElementChild);
+    });
+  };
+  // Initial
+  setTimeout(inject, 0);
+  // And whenever the table rebuilds (small hook)
+  const mo = new MutationObserver(()=>inject());
+  if (tb) mo.observe(tb, { childList:true, subtree:false });
+
+  // click handlers
+  bar.querySelector("#wl-add-selected")?.addEventListener("click", async ()=>{
+    const rows = Array.from(host.querySelectorAll("#lt-table tbody tr"));
+    const picked = [];
+    for (const tr of rows){
+      const ch = tr.querySelector(".wl-row-ch");
+      if (!ch?.checked) continue;
+      const tds = tr.querySelectorAll("td");
+      // because we inserted a left checkbox col, shift indexes by +1
+      const kanji = tds[1]?.textContent?.trim() || "—";
+      const hira  = tds[2]?.textContent?.trim() || "";
+      const en    = tds[3]?.textContent?.trim() || "";
+      if (hira && en) picked.push({ kanji, hira, en });
+    }
+    if (!picked.length){ toast("No rows selected"); return; }
+    await wlCommitAdd(picked);
+  });
+
+  // bulk preview + commit
+  bar.querySelector("#wl-bulk-parse")?.addEventListener("click", ()=>{
+    const txt = (D("#wl-bulk")?.value || "").trim();
+    const lines = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const rows = [];
+    for (const ln of lines){
+      const parts = ln.split(",").map(s=>s.trim());
+      if (parts.length === 3){
+        rows.push({ kanji:parts[0]||"—", hira:parts[1]||"", en:parts[2]||"" });
+      } else if (parts.length === 2){
+        rows.push({ kanji:"—", hira:parts[0]||"", en:parts[1]||"" });
+      }
+    }
+    App.wordlist.pendingAdds = rows.filter(w=>w.hira && w.en);
+    D("#wl-bulk-preview").textContent = `${App.wordlist.pendingAdds.length} rows parsed.`;
+  });
+
+  bar.querySelector("#wl-bulk-commit")?.addEventListener("click", async ()=>{
+    if (!App.wordlist.pendingAdds?.length){ toast("Nothing to add"); return; }
+    await wlCommitAdd(App.wordlist.pendingAdds);
+  });
+}
+
+async function wlCommitAdd(rows){
+  try{
+    const fb = await whenFBReady();
+    await fb.addWordListWords(App.wordlist.currentId, rows);
+    const all = await fb.listWordListWords(App.wordlist.currentId);
+    D("#wl-count").textContent = `${all.length} words`;
+    toast(`Added ${rows.length} word(s) to list.`);
+  }catch{ toast("Add failed"); }
+}
+
   // ---------- Save / Flush ----------
   window.saveCurrentScore = async ()=>{
     try{ const ok = await flushSession(); toast(ok ? "Progress saved ✓" : "Nothing to save."); }

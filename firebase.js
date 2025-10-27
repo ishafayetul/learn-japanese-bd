@@ -36,6 +36,8 @@
     notes: new Map(),     // key -> {note, updatedAt}
     marked: new Map(),    // id  -> data
     signWords: new Map(), // id  -> data
+    wordLists: new Map(),         // listId -> {id,name,createdAt}
+    wordListWords: new Map(), 
   };
 
   const Local = {
@@ -55,6 +57,10 @@
     userWriteBestCol:(uid) => `users/${uid}/writeBest`,
     dailyScoresCol:  (date) => `daily/${date}/scores`,      // shared daily leaderboard
     overallLBCol:    ()    => `leaderboard_overall`,        // shared overall leaderboard
+    userWordListsCol: (uid) => `users/${uid}/wordlists`,
+    userWordListDoc:  (uid, listId) => `users/${uid}/wordlists/${listId}`,
+    userWordListWordsCol: (uid, listId) => `users/${uid}/wordlists/${listId}/words`,
+
   };
 
   // Normalize attempts collection path (handles both function or string)
@@ -309,6 +315,102 @@
 
         _cache.marked.delete(key1);
         _cache.marked.delete(key2);
+        return true;
+      },
+      /* --------------- WORD LISTS (per-user) --------------- */
+      async listWordLists(){
+        if (!_user) throw new Error("Not signed in");
+        if (_cache.wordLists.size) return Array.from(_cache.wordLists.values());
+        const snap = await getDocs(collection(db, Paths.userWordListsCol(_user.uid)));
+        const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        rows.forEach(r => _cache.wordLists.set(r.id, r));
+        return rows;
+      },
+
+      async createWordList(name){
+        if (!_user) throw new Error("Not signed in");
+        const docRef = await addDoc(collection(db, Paths.userWordListsCol(_user.uid)), {
+          name: String(name||"Untitled"),
+          createdAt: serverTimestamp()
+        });
+        const item = { id: docRef.id, name: String(name||"Untitled"), createdAt: new Date() };
+        _cache.wordLists.set(item.id, item);
+        return item;
+      },
+
+      async renameWordList(listId, newName){
+        if (!_user) throw new Error("Not signed in");
+        const ref = doc(db, Paths.userWordListDoc(_user.uid, listId));
+        await updateDoc(ref, { name: String(newName||"Untitled") });
+        const cached = _cache.wordLists.get(listId);
+        if (cached){ cached.name = String(newName||"Untitled"); _cache.wordLists.set(listId, cached); }
+        return true;
+      },
+
+      async deleteWordList(listId){
+        if (!_user) throw new Error("Not signed in");
+        // delete all words (best-effort)
+        let words = [];
+        try{
+          const snap = await getDocs(collection(db, Paths.userWordListWordsCol(_user.uid, listId)));
+          words = snap.docs.map(d => d.id);
+        }catch{}
+        for (const wid of words){
+          try { await deleteDoc(doc(db, Paths.userWordListWordsCol(_user.uid, listId) + "/" + wid)); } catch {}
+        }
+        await deleteDoc(doc(db, Paths.userWordListDoc(_user.uid, listId)));
+        _cache.wordLists.delete(listId);
+        _cache.wordListWords.delete(listId);
+        return true;
+      },
+
+      async listWordListWords(listId){
+        if (!_user) throw new Error("Not signed in");
+        const m = _cache.wordListWords.get(listId);
+        if (m && m.size) return Array.from(m.values());
+        const snap = await getDocs(collection(db, Paths.userWordListWordsCol(_user.uid, listId)));
+        const rows = snap.docs.map(d => ({ key: d.id, ...d.data() }));
+        const store = new Map();
+        rows.forEach(r => store.set(r.key, r));
+        _cache.wordListWords.set(listId, store);
+        return rows;
+      },
+
+      async addWordListWords(listId, words){ // words: [{kanji,hira,en}]
+        if (!_user) throw new Error("Not signed in");
+        const colPath = Paths.userWordListWordsCol(_user.uid, listId);
+        const store = _cache.wordListWords.get(listId) || new Map();
+        const batch = writeBatch(db);
+        const toAdd = (words||[])
+          .map(w => ({
+            key: (w.hira||"") + "::" + (w.en||""), // stable id
+            kanji: w.kanji||"—", hira: w.hira||"", en: w.en||""
+          }))
+          .filter(w => w.hira && w.en);
+
+        for (const w of toAdd){
+          const safe = w.key.replace(/[^\w:.-]/g, "_");
+          const ref = doc(db, colPath + "/" + safe);
+          batch.set(ref, { kanji:w.kanji, hira:w.hira, en:w.en, addedAt: serverTimestamp() }, { merge: true });
+          store.set(safe, { key:safe, kanji:w.kanji, hira:w.hira, en:w.en });
+        }
+        await batch.commit();
+        _cache.wordListWords.set(listId, store);
+        return true;
+      },
+
+      async removeWordListWords(listId, keys){ // keys: [wordKey]
+        if (!_user) throw new Error("Not signed in");
+        const colPath = Paths.userWordListWordsCol(_user.uid, listId);
+        const store = _cache.wordListWords.get(listId) || new Map();
+        const batch = writeBatch(db);
+        for (const k of (keys||[])){
+          const ref = doc(db, colPath + "/" + k);
+          batch.delete(ref);
+          store.delete(k);
+        }
+        await batch.commit();
+        _cache.wordListWords.set(listId, store);
         return true;
       },
 

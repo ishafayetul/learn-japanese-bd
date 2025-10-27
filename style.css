@@ -1043,3 +1043,18 @@ body.nav-open .scrim{ display:block; }
   background: #2a0e0e;
   color: #ffd0d0;
 }
+
+/* --- Word List (small helpers) --- */
+.wl-list{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap:10px;
+}
+.wl-item{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+  background:#0e1524;
+}
+.wl-item h4{ margin:4px 0 2px; }
+.wl-item .muted{ font-size:.9em; }
