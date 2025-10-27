@@ -1478,18 +1478,17 @@ function inListVocabContext(){
   return ["Mistakes","Marked","Mix","Word List"].includes(App.level);
 }
 
-// near the top of ensureDeckLoaded()
-if (App.level === "Word List") {
-  if (elVocabStatus) {
-    elVocabStatus.textContent = (App.deck?.length)
-      ? `Loaded ${App.deck.length} words.`
-      : "This list is empty. Click ‘Add words’ to start.";
-  }
-  return; // <-- keep the already-loaded list deck
-}
 
   async function ensureDeckLoaded(){
       // If Mix deck is active, just use it.
+      if (App.level === "Word List") {
+        if (elVocabStatus) {
+          elVocabStatus.textContent = (App.deck?.length)
+            ? `Loaded ${App.deck.length} words.`
+            : "This list is empty. Click ‘Add words’ to start.";
+        }
+        return;
+      }
       if (App.mix?.active && App.mix.deck?.length){
         App.deck = App.mix.deck.slice();
         if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
