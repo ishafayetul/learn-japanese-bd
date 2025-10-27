@@ -202,6 +202,8 @@ let __kanaTimer = null;
     __kanaTimer = setInterval(() => spawnKanaSpark(host), 220); // add one floating kana every 220ms
   }
 
+  window.WLAddCtx = { active:false, listId:null, listName:null, staged:[] };
+
 
 function spawnKanaSpark(host){
   const chars = ["あ","い","う","え","お","日","本","語","学","習","読","書","話","早","速","力"];
@@ -2975,18 +2977,21 @@ elWLBuildFromMix.onclick = async ()=>{
 
   if (!picks.length){ toast("Pick at least one deck."); return; }
 
-  // Load + stage words
   const words = [];
   for (const p of picks){
     const batch = await loadDeckFor(p.level, p.lesson);
     batch.forEach(r => words.push({ kanji:r.kanji||"—", hira:r.hira||"", en:r.en||"" }));
   }
-  __WL_CTX.stagedDeck = words.filter(x=>x.hira && x.en);
+
+  // ✅ Use WLAddCtx instead of __WL_CTX
+  window.WLAddCtx = window.WLAddCtx || { listId:null, listName:null, staged:[] };
+  WLAddCtx.staged = words.filter(x=>x.hira && x.en);
 
   // Switch to confirmation table
   elWLMix.classList.add("hidden");
   renderWLWordTable();
 };
+
 
 
   elWLCancelMix?.addEventListener("click", ()=>{
