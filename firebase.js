@@ -322,6 +322,11 @@
       },
       /* --------------- WORD LISTS (per-user) --------------- */
       lists: {
+        invalidate(){
+          _wlCache.listsMeta = null;
+          _wlCache.listWords = new Map();
+        },
+
         _mergeLocal(arr, words){
           const seen = new Set(arr.map(x=>x.id));
           const out = arr.slice();
@@ -401,7 +406,11 @@
             added++;
           });
           if (!added) return 0;
-          batch.update(doc(db, Paths.listDoc(uid, listId)), { wordCount: increment(added), updatedAt: serverTimestamp() });
+          batch.set(
+            doc(db, Paths.listDoc(uid, listId)),
+            { wordCount: increment(added), updatedAt: serverTimestamp() },
+            { merge: true }
+          );
           await batch.commit();
           _wlCache.listsMeta = null;
           const arr = _wlCache.listWords.get(listId) || [];

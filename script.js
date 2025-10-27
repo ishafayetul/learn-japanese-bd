@@ -2874,7 +2874,7 @@ window.writeSubmit = () => {
     // bust cache and refresh
     try { localStorage.removeItem("lj_wl_lists"); }catch{}
     const fb = await whenFBReady();
-    fb.lists && (fb.lists._wlCache = null); // if exposed; else just call listLists() again
+    fb.lists.invalidate?.();// if exposed; else just call listLists() again
     await renderWordListLanding();
   });
 
@@ -2976,20 +2976,6 @@ elWLBuildFromMix.onclick = async ()=>{
     __WL_CTX = { listId:null, listName:null, stagedDeck:[] };
   });
 
-  elWLBuildFromMix?.addEventListener("click", async ()=>{
-    // Build deck from selected lessons (reuse your CSV loaders)
-    const selection = App.mix?.selection?.length ? App.mix.selection.slice() : []; // if you want to bridge to your Mix
-    if (!selection.length){ toast("Pick at least one deck."); return; }
-    const words = [];
-    for (const sel of selection){
-      // Expect sel like { level:"N5", lesson:"Lesson-03" }
-      const batch = await loadDeckFor(sel.level, sel.lesson); // <- use your vocab CSV loader
-      batch.forEach(r=> words.push({ kanji:r.kanji||"—", hira:r.hira||"", en:r.en||"" }));
-    }
-    __WL_CTX.stagedDeck = words.filter(x=>x.hira && x.en);
-    elWLMix.classList.add("hidden");
-    renderWLWordTable();
-  });
 
   function renderWLWordTable(){
     elWLWordTable.classList.remove("hidden");
