@@ -1508,6 +1508,21 @@ window.closeVideoLightbox = closeVideoLightbox;
   //   elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
   // }
 
+  // treat Word List like a list-sourced deck
+function inListVocabContext(){
+  return ["Mistakes","Marked","Mix","Word List"].includes(App.level);
+}
+
+// near the top of ensureDeckLoaded()
+if (App.level === "Word List") {
+  if (elVocabStatus) {
+    elVocabStatus.textContent = (App.deck?.length)
+      ? `Loaded ${App.deck.length} words.`
+      : "This list is empty. Click ‘Add words’ to start.";
+  }
+  return; // <-- keep the already-loaded list deck
+}
+
   async function ensureDeckLoaded(){
       // If Mix deck is active, just use it.
       if (App.mix?.active && App.mix.deck?.length){
