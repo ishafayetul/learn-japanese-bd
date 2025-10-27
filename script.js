@@ -2893,7 +2893,7 @@ window.writeSubmit = () => {
   toast?.(`Pick lessons for “${listName}”, then click Build Deck to bring them back.`);
 
   // Navigate to the existing Mix Practice section
-  openSection("mix-section");  // <-- use the same name you already use to open Mix Practice
+  await openMixPractice();  // <-- use the same name you already use to open Mix Practice
 }
 
 
