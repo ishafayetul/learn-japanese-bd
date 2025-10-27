@@ -3653,60 +3653,49 @@ window.renderWLPracticeCard = renderWLPracticeCard;
 
 // ===== Word List — Mode launcher =====
 // ==== Word List → Vocab shell + mode launcher (uses unified ensureDeckLoaded) ====
-async function startWLMode(mode, listMeta) {
-  // Ensure Word List context is set so ensureDeckLoaded() knows what to load
-  App.wordlist = App.wordlist || {};
-  if (listMeta) {
-    App.wordlist.id = listMeta.id;
-    App.wordlist.currentMeta = { id: listMeta.id, name: listMeta.name || listMeta.title || listMeta.id };
-  }
+function startWLMode(mode) {
+  if (!App.wordlist?.deck?.length) { toast("This list is empty."); return; }
+
+  // Mark context + copy deck
   App.wordlist.active = true;
-  App.level = "List";
-  App.tab   = "vocab";
-  App.mode  = null;
+  App.deck   = App.wordlist.deck.slice();
+  App.level  = "List";
+  const name = App.wordlist.currentMeta?.name || App.wordlist.currentMeta?.id || "Word List";
+  App.lesson = name;
+  App.tab    = "vocab";
+  App.mode   = null;
 
-  // 🔑 Load the deck via the single source of truth
-  await ensureDeckLoaded(); // this will populate App.deck from the selected list
-
-  if (!App.deck?.length) {
-    const actions = document.querySelector("#wl-practice-actions");
-    if (actions) actions.innerHTML = `<div class="muted">No words in this list.</div>`;
-    return;
-  }
-
-  // --- Show the Vocab shell (same as Vocabulary) ---
-  hideContentPanes?.();
+  // Bring up the shared Lesson UI (Vocabulary shell)
+  if (typeof hideContentPanes === "function") hideContentPanes();
+  document.querySelector("#wordlist-section")?.classList.add("hidden");
   document.querySelector("#level-shell")?.classList.remove("hidden");
   document.querySelector("#lesson-area")?.classList.remove("hidden");
-  hideLessonsHeaderAndList?.();
-  hideLessonBar?.(); // list-like page: no Video/Grammar tabs
-
+  if (typeof hideLessonsHeaderAndList === "function") hideLessonsHeaderAndList();
+  if (typeof hideLessonBar === "function") hideLessonBar();
   ["#tab-videos", "#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
   document.querySelector("#tab-vocab")?.classList.remove("hidden");
 
   // Crumbs + status
-  const name = App.wordlist.currentMeta?.name || App.wordlist.currentMeta?.id || "Word List";
-  document.querySelector("#crumb-level")?.textContent  = "List";
-  document.querySelector("#crumb-lesson")?.textContent = name;
-  document.querySelector("#crumb-mode")?.textContent   = "vocab";
+  const crLevel  = document.querySelector("#crumb-level");  if (crLevel)  crLevel.textContent  = "List";
+  const crLesson = document.querySelector("#crumb-lesson"); if (crLesson) crLesson.textContent = name;
+  const crMode   = document.querySelector("#crumb-mode");   if (crMode)   crMode.textContent   = "vocab";
   document.querySelector(".lesson-meta")?.classList.add("hidden");
-  const vs = document.querySelector("#vocab-status");
-  if (vs) vs.textContent = "Pick an option.";
+  const vs = document.querySelector("#vocab-status"); if (vs) vs.textContent = "Pick an option.";
 
-  // Root cards/menus
-  showVocabRootMenu?.();
-  showVocabRootCard?.();
+  // Show root menu/card, then open submenu
+  if (typeof showVocabRootMenu === "function") showVocabRootMenu();
+  if (typeof showVocabRootCard === "function") showVocabRootCard();
 
-  // Open the requested submenu / mode (exactly like Vocabulary)
   switch (mode) {
-    case "learn":  openVocabLearnMenu?.(); break;
-    case "mcq":    openVocabMCQMenu?.();   break;
-    case "write":  openVocabWriteMenu?.(); break;
-    case "make":   startMakeSentence?.();  break;
+    case "learn": if (typeof openVocabLearnMenu === "function") openVocabLearnMenu(); break;
+    case "mcq":   if (typeof openVocabMCQMenu === "function")   openVocabMCQMenu();   break;
+    case "write": if (typeof openVocabWriteMenu === "function") openVocabWriteMenu(); break;
+    case "make":  if (typeof startMakeSentence === "function")  startMakeSentence();  break;
   }
 
-  updateBackVisibility?.();
+  if (typeof updateBackVisibility === "function") updateBackVisibility();
 }
+
 window.startWLMode = startWLMode;
 
 
