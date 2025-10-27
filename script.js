@@ -1454,68 +1454,190 @@ window.closeVideoLightbox = closeVideoLightbox;
   //   elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
   // }
 
-  async function ensureDeckLoaded(){
-    // Word List context: keep the deck you already loaded from the list
-    if ((App.wordlist && App.wordlist.active) || App.level === "List") {
-      if ((!App.deck || !App.deck.length) && App.wordlist?.deck?.length) {
-        App.deck = App.wordlist.deck.slice();
-      }
-      if (elVocabStatus) {
-        elVocabStatus.textContent = App.deck.length
-          ? `Loaded ${App.deck.length} words.`
-          : "No words found.";
-      }
-      return; // ← DO NOT try to load CSVs for Word Lists
+  // async function ensureDeckLoaded(){
+  //   // Word List context: keep the deck you already loaded from the list
+  //   if ((App.wordlist && App.wordlist.active) || App.level === "List") {
+  //     if ((!App.deck || !App.deck.length) && App.wordlist?.deck?.length) {
+  //       App.deck = App.wordlist.deck.slice();
+  //     }
+  //     if (elVocabStatus) {
+  //       elVocabStatus.textContent = App.deck.length
+  //         ? `Loaded ${App.deck.length} words.`
+  //         : "No words found.";
+  //     }
+  //     return; // ← DO NOT try to load CSVs for Word Lists
+  //   }
+
+  //     // If Mix deck is active, just use it.
+  //     if (App.mix?.active && App.mix.deck?.length){
+  //       App.deck = App.mix.deck.slice();
+  //       if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
+  //       return;
+  //     }
+
+  //     // If user is on Mistakes/Marked, prefer in-memory or load from their sources.
+  //     if (App.level === "Mistakes"){
+  //       if (!App.deck?.length) App.deck = await fbListMistakesAsDeck();
+  //       if (elVocabStatus) elVocabStatus.textContent = App.deck.length
+  //         ? `Loaded ${App.deck.length} words.`
+  //         : "No words found.";
+  //       return;
+  //     }
+  //     if (App.level === "Marked"){
+  //       if (!App.deck?.length) App.deck = await getMarkedAsDeck(); // merged sources below
+  //       if (elVocabStatus) elVocabStatus.textContent = App.deck.length
+  //         ? `Loaded ${App.deck.length} words.`
+  //         : "No words found.";
+  //       return;
+  //     }
+
+  //     // Normal lesson path (CSV by manifest)
+  //     const key = `${App.level}/${App.lesson}`;
+  //     if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
+  //     elVocabStatus.textContent = "Loading vocabulary…";
+
+  //     const files = await listVocabCsvFiles(App.level, App.lesson); // absolute URLs
+  //     const deck = [];
+  //     for (const url of files){
+  //       try{
+  //         const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
+  //         const csv = parseCSV(txt);
+  //         for (const r of csv){
+  //           const kanji = (r[0]||"").trim();
+  //           const hira  = (r[1]||"").trim();
+  //           const en    = (r[2]||"").trim();
+  //           if (!hira || !en) continue;
+  //           deck.push({ kanji, hira, en });
+  //         }
+  //       } catch {}
+  //     }
+
+  //     App.deck = deck;
+  //     App.cache.vocab.set(key, deck);
+  //     elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
+  //   }
+
+  // One loader to rule them all.
+async function ensureDeckLoaded(opts = { force: false }) {
+  const statusEl = (typeof elVocabStatus !== "undefined" && elVocabStatus) ? elVocabStatus : null;
+  const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg; };
+
+  // Small utility to normalize + dedupe after any source
+  const normalize = (arr) => {
+    const seen = new Set();
+    const out = [];
+    for (const w of (arr || [])) {
+      const kanji = (w.kanji ?? w[0] ?? "").trim();
+      const hira  = (w.hira  ?? w[1] ?? "").trim();
+      const en    = (w.en    ?? w[2] ?? "").trim();
+      if (!hira || !en) continue;
+      const id = `${kanji}|${hira}|${en}`.toLowerCase();
+      if (!seen.has(id)) { seen.add(id); out.push({ kanji, hira, en }); }
     }
+    return out;
+  };
 
-      // If Mix deck is active, just use it.
-      if (App.mix?.active && App.mix.deck?.length){
-        App.deck = App.mix.deck.slice();
-        if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
-        return;
-      }
-
-      // If user is on Mistakes/Marked, prefer in-memory or load from their sources.
-      if (App.level === "Mistakes"){
-        if (!App.deck?.length) App.deck = await fbListMistakesAsDeck();
-        if (elVocabStatus) elVocabStatus.textContent = App.deck.length
-          ? `Loaded ${App.deck.length} words.`
-          : "No words found.";
-        return;
-      }
-      if (App.level === "Marked"){
-        if (!App.deck?.length) App.deck = await getMarkedAsDeck(); // merged sources below
-        if (elVocabStatus) elVocabStatus.textContent = App.deck.length
-          ? `Loaded ${App.deck.length} words.`
-          : "No words found.";
-        return;
-      }
-
-      // Normal lesson path (CSV by manifest)
-      const key = `${App.level}/${App.lesson}`;
-      if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
-      elVocabStatus.textContent = "Loading vocabulary…";
-
-      const files = await listVocabCsvFiles(App.level, App.lesson); // absolute URLs
-      const deck = [];
-      for (const url of files){
-        try{
-          const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
-          const csv = parseCSV(txt);
-          for (const r of csv){
-            const kanji = (r[0]||"").trim();
-            const hira  = (r[1]||"").trim();
-            const en    = (r[2]||"").trim();
-            if (!hira || !en) continue;
-            deck.push({ kanji, hira, en });
-          }
-        } catch {}
-      }
-
-      App.deck = deck;
-      App.cache.vocab.set(key, deck);
-      elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
+  // WORD LIST: Prefer the list deck; load it if active but not yet loaded.
+  if (App.wordlist?.active || App.level === "List") {
+    if ((!App.wordlist?.deck || !App.wordlist.deck.length || opts.force) && App.wordlist?.id) {
+      try {
+        setStatus("Loading list words…");
+        const fb = await whenFBReady();
+        App.wordlist.deck = await fb.wordListGetWords(App.wordlist.id);
+      } catch { App.wordlist.deck = []; }
     }
+    App.deck = normalize(App.wordlist?.deck || []);
+    setStatus(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
+    return App.deck;
+  }
+
+  // MIX: Use the prepared mix deck as-is.
+  if (App.mix?.active && App.mix.deck?.length && !opts.force) {
+    App.deck = normalize(App.mix.deck);
+    setStatus(`Loaded ${App.deck.length} words.`);
+    return App.deck;
+  }
+
+  // MISTAKES: Pull once, keep in-memory unless force
+  if (App.level === "Mistakes") {
+    if (!App.deck?.length || opts.force) {
+      try {
+        setStatus("Loading mistakes…");
+        App.deck = normalize(await fbListMistakesAsDeck());
+      } catch { App.deck = []; }
+    } else {
+      App.deck = normalize(App.deck);
+    }
+    setStatus(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
+    return App.deck;
+  }
+
+  // MARKED: Pull once, keep in-memory unless force
+  if (App.level === "Marked") {
+    if (!App.deck?.length || opts.force) {
+      try {
+        setStatus("Loading marked words…");
+        App.deck = normalize(await getMarkedAsDeck());
+      } catch { App.deck = []; }
+    } else {
+      App.deck = normalize(App.deck);
+    }
+    setStatus(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
+    return App.deck;
+  }
+
+  // NORMAL LESSON (CSV via manifest), with per-key caching and concurrency guard
+  const level = App.level ?? "";
+  const lesson = App.lesson ?? "";
+  const key = `${level}/${lesson}`;
+
+  // Ensure cache holder exists
+  if (!App.cache) App.cache = {};
+  if (!App.cache.vocab) App.cache.vocab = new Map();
+
+  // Deduplicate concurrent loads for the same key
+  if (!App._deckLoaders) App._deckLoaders = new Map();
+  if (!opts.force && App.cache.vocab.has(key)) {
+    App.deck = normalize(App.cache.vocab.get(key));
+    setStatus(`Loaded ${App.deck.length} words.`);
+    return App.deck;
+  }
+  if (!opts.force && App._deckLoaders.has(key)) {
+    setStatus("Loading vocabulary…");
+    const shared = await App._deckLoaders.get(key);
+    App.deck = normalize(shared);
+    setStatus(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
+    return App.deck;
+  }
+
+  setStatus("Loading vocabulary…");
+  const loader = (async () => {
+    const files = await listVocabCsvFiles(level, lesson); // absolute URLs
+    const tmp = [];
+    for (const url of files) {
+      try {
+        const txt = await (await fetch(encodePath(url), { cache: "no-cache" })).text();
+        const csv = parseCSV(txt);
+        for (const r of csv) tmp.push(r);
+      } catch {
+        // ignore individual file failures and continue
+      }
+    }
+    return normalize(tmp);
+  })();
+
+  App._deckLoaders.set(key, loader);
+  try {
+    const loaded = await loader;
+    App.deck = loaded;
+    App.cache.vocab.set(key, loaded);
+    setStatus(loaded.length ? `Loaded ${loaded.length} words.` : "No words found.");
+  } finally {
+    App._deckLoaders.delete(key);
+  }
+
+  return App.deck;
+}
 
   function showVocabRootMenu(){
   // keep the top 3 tabs visible while you're inside Vocab
@@ -3521,52 +3643,63 @@ window.renderWLPracticeCard = renderWLPracticeCard;
 
 
 // ===== Word List — Mode launcher =====
-function startWLMode(mode) {
-  if (!App.wordlist?.deck?.length) return;
-
-  // mark context + bring in the deck
+// ==== Word List → Vocab shell + mode launcher (uses unified ensureDeckLoaded) ====
+async function startWLMode(mode, listMeta) {
+  // Ensure Word List context is set so ensureDeckLoaded() knows what to load
+  App.wordlist = App.wordlist || {};
+  if (listMeta) {
+    App.wordlist.id = listMeta.id;
+    App.wordlist.currentMeta = { id: listMeta.id, name: listMeta.name || listMeta.title || listMeta.id };
+  }
   App.wordlist.active = true;
-  App.deck   = App.wordlist.deck.slice();
-  App.level  = "List";
-  const name = App.wordlist.currentMeta?.name || App.wordlist.currentMeta?.id || "Word List";
-  App.lesson = name;
-  App.tab    = "vocab";
-  App.mode   = null;
+  App.level = "List";
+  App.tab   = "vocab";
+  App.mode  = null;
 
-  // show only the Vocab pane (same shell the Vocabulary tab uses)
-  hideContentPanes();
+  // 🔑 Load the deck via the single source of truth
+  await ensureDeckLoaded(); // this will populate App.deck from the selected list
+
+  if (!App.deck?.length) {
+    const actions = document.querySelector("#wl-practice-actions");
+    if (actions) actions.innerHTML = `<div class="muted">No words in this list.</div>`;
+    return;
+  }
+
+  // --- Show the Vocab shell (same as Vocabulary) ---
+  hideContentPanes?.();
   document.querySelector("#level-shell")?.classList.remove("hidden");
   document.querySelector("#lesson-area")?.classList.remove("hidden");
-  hideLessonsHeaderAndList();
-  hideLessonBar(); // list-like page: no Video/Vocab/Grammar tabs
+  hideLessonsHeaderAndList?.();
+  hideLessonBar?.(); // list-like page: no Video/Grammar tabs
 
   ["#tab-videos", "#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
   document.querySelector("#tab-vocab")?.classList.remove("hidden");
 
-  // crumbs + status
-  document.querySelector("#crumb-level").textContent  = "List";
-  document.querySelector("#crumb-lesson").textContent = name;
-  document.querySelector("#crumb-mode").textContent   = "vocab";
+  // Crumbs + status
+  const name = App.wordlist.currentMeta?.name || App.wordlist.currentMeta?.id || "Word List";
+  document.querySelector("#crumb-level")?.textContent  = "List";
+  document.querySelector("#crumb-lesson")?.textContent = name;
+  document.querySelector("#crumb-mode")?.textContent   = "vocab";
   document.querySelector(".lesson-meta")?.classList.add("hidden");
   const vs = document.querySelector("#vocab-status");
   if (vs) vs.textContent = "Pick an option.";
 
-  // show the root and open the requested submenu/final
-  showVocabRootMenu();
-  showVocabRootCard();
+  // Root cards/menus
+  showVocabRootMenu?.();
+  showVocabRootCard?.();
 
+  // Open the requested submenu / mode (exactly like Vocabulary)
   switch (mode) {
-    case "learn":  openVocabLearnMenu();   break; // menu with “Kanji→Hira / Hira→English / Word Table”
-    case "mcq":    openVocabMCQMenu();     break; // menu with JP↔EN, Kanji↔Hira, Dual MCQ, Match, etc.
-    case "write":  openVocabWriteMenu();   break; // menu with EN→Hira / Kanji→Hira
-    case "make":   startMakeSentence();    break; // starts immediately (like Vocabulary)
+    case "learn":  openVocabLearnMenu?.(); break;
+    case "mcq":    openVocabMCQMenu?.();   break;
+    case "write":  openVocabWriteMenu?.(); break;
+    case "make":   startMakeSentence?.();  break;
   }
 
   updateBackVisibility?.();
 }
 window.startWLMode = startWLMode;
 
-window.startWLMode = startWLMode;
 
 async function renderWordListHome(){
   const root = D("#wordlist-section");
