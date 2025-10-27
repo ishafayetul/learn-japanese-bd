@@ -3466,22 +3466,22 @@ window.mixBuildDeck = async ()=>{
 // }
 
 // ===== Word List — UI + flows =====
+// ===== Word List — Practice Card =====
 async function renderWLPracticeCard(list) {
   const wrap = document.querySelector("#wl-practice");
   const actions = document.querySelector("#wl-practice-actions");
   if (!wrap || !actions) return;
 
-  // ✅ Use the correct API and normalize rows into the deck shape
   try {
     const fb = await whenFBReady();
     const rows = await fb.listWordListWords(list.id);
     App.wordlist.deck = (rows || [])
       .map(r => ({
         kanji: r.kanji || "—",
-        hira:  r.hira  || r.front || "",
-        en:    r.en    || r.back  || ""
+        hira: r.hira || r.front || "",
+        en: r.en || r.back || ""
       }))
-      .filter(w => w.hira && w.en); // keep only real words
+      .filter(w => w.hira && w.en);
   } catch {
     App.wordlist.deck = [];
   }
@@ -3493,40 +3493,56 @@ async function renderWLPracticeCard(list) {
   }
 
   actions.innerHTML = `
-    <button onclick="startWLMode('learn')">🧠 Learn</button>
-    <button onclick="startWLMode('mcq')">❓ MCQ</button>
-    <button onclick="startWLMode('write')">✍️ Write Words</button>
-    <button onclick="startWLMode('make')">📝 Make Sentence</button>
+    <button id="wl-learn">🧠 Learn</button>
+    <button id="wl-mcq">❓ MCQ</button>
+    <button id="wl-write">✍️ Write Words</button>
+    <button id="wl-make">📝 Make Sentence</button>
   `;
+
+  actions.querySelector("#wl-learn").addEventListener("click", () => startWLMode("learn"));
+  actions.querySelector("#wl-mcq").addEventListener("click", () => startWLMode("mcq"));
+  actions.querySelector("#wl-write").addEventListener("click", () => startWLMode("write"));
+  actions.querySelector("#wl-make").addEventListener("click", () => startWLMode("make"));
+
   wrap.classList.remove("hidden");
 }
+window.renderWLPracticeCard = renderWLPracticeCard;
 
-// Mode starters for Word List practice
+
+// ===== Word List — Mode launcher =====
 function startWLMode(mode) {
   if (!App.wordlist.deck?.length) return;
-  App.wordlist.active = true;
+
+  // Reuse same deck & state structure as Vocabulary
+  App.deck = [...App.wordlist.deck];
+  App.lesson = { id: "WordList", title: "Custom List" };
+
+  // Show the Vocabulary area
+  hideAllSections();
+  document.querySelector("#level-shell").classList.remove("hidden");
+  document.querySelector("#lesson-area").classList.remove("hidden");
+
+  // Switch tab to Vocab
+  openLessonTab("vocab");
+
+  // Start appropriate mode
   switch (mode) {
-    case 'learn':
-      App.deck = [...App.wordlist.deck];
+    case "learn":
       openVocabLearnMenu();
       break;
-    case 'mcq':
-      App.deck = [...App.wordlist.deck];
+    case "mcq":
       openVocabMCQMenu();
       break;
-    case 'write':
-      App.deck = [...App.wordlist.deck];
+    case "write":
       openVocabWriteMenu();
       break;
-    case 'make':
-      App.deck = [...App.wordlist.deck];
+    case "make":
       startMakeSentence();
       break;
   }
 }
-
-window.renderWLPracticeCard = renderWLPracticeCard;
 window.startWLMode = startWLMode;
+
 async function renderWordListHome(){
   const root = D("#wordlist-section");
   const home = D("#wl-home");
