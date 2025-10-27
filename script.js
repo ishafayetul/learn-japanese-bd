@@ -169,7 +169,6 @@ function setNavOpen(open){
   if (elNavToggle) elNavToggle.setAttribute("aria-expanded", on ? "true" : "false");
 }
 
-window.WLAddCtx = { active: false, listId: null, listName: null, staged: [] };
 
 elNavToggle?.addEventListener("click", () => {
   setNavOpen(!document.body.classList.contains("nav-open"));
@@ -2891,19 +2890,28 @@ window.writeSubmit = () => {
   // “Add words” flow
   let __WL_CTX = { listId:null, listName:null, stagedDeck:[] };
 
+  // Open "Add Words" using the exact Mix picker UI
   async function openWLAddWords(listId, listName){
-  // mark context so Mix will hand the deck back to Word List
-  WLAddCtx.active   = true;
-  WLAddCtx.listId   = listId;
-  WLAddCtx.listName = listName;
-  WLAddCtx.staged   = [];
+    WLAddCtx.active   = true;
+    WLAddCtx.listId   = listId;
+    WLAddCtx.listName = listName || "Untitled";
+    WLAddCtx.staged   = [];
 
-  // Optional: show a one-line hint in Mix (if you have a toast or banner API)
-  toast?.(`Pick lessons for “${listName}”, then click Build Deck to bring them back.`);
+    // Reuse your Mix Practice screen verbatim
+    await openMixPractice();
 
-  // Navigate to the existing Mix Practice section
-  await openMixPractice();  // <-- use the same name you already use to open Mix Practice
+    // Optional: small banner so the user knows they’re adding to a list
+    decorateMixForWordList();
+  }
+function decorateMixForWordList(){
+  if (!WLAddCtx.active) return;
+  const mixTitle = document.querySelector("#mix-title"); // adjust the selector to your Mix header
+  const mixStatus = document.querySelector("#mix-status");
+  if (mixTitle)  mixTitle.textContent = "Mix Practice — pick lessons";
+  if (mixStatus) mixStatus.textContent =
+    `Adding to: “${WLAddCtx.listName}”. Pick lessons, then click “Build Deck”.`;
 }
+
 
 
   async function drawWLMixPicker(){
