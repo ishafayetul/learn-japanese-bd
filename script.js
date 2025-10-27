@@ -254,7 +254,7 @@ function removeListActions(){
   document.querySelector("#list-actions")?.remove();
 }
 
-function injectListActions(source){
+function injectListActions(source, payload){
   removeListActions();
   const hostCard = document.querySelector("#tab-vocab .card"); // the big “Vocabulary” card
   if (!hostCard) return;
@@ -2785,6 +2785,70 @@ window.writeSubmit = () => {
     });
   }
 
+  // Sign Words — s.markedId is the same safe key used by Marked
+  for (const s of signed){
+    const key = s.markedId || toSafeKey(`${s.front}::${s.back}`);
+    const row = ensureRow(key);
+    row.signId = s.id;
+    if (!row.front) { row.front = s.front; row.back = s.back; }
+  }
+
+  // Local Marked (your localStorage copy)
+  for (const l of local){
+    const f = l.front || l.hira || "";
+    const b = l.back  || l.en   || "";
+    const key = toSafeKey(`${f}::${b}`);
+    const row = ensureRow(key);
+    row.hasLocal = true;
+    row.localId  = l.id || row.localId;
+    if (!row.front){ row.front = f; row.back = b; row.hira = l.hira || ""; row.en = l.en || ""; row.kanji = l.kanji ?? row.kanji; }
+  }
+
+  const rows = Array.from(byKey.values());
+  elMarkedStatus.textContent = `${rows.length} item(s).`;
+
+  for (const r of rows){
+    const badges = [
+      r.hasRemote ? "cloud" : null,
+      r.hasLocal  ? "local" : null,
+      r.signId    ? "signed" : null
+    ].filter(Boolean).map(x=>`<span class="badge">${x}</span>`).join(" ");
+
+    const div = document.createElement("div");
+    div.className = "marked-item";
+    div.innerHTML = `
+      <div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} —
+        <span class="muted">${escapeHTML(r.back || r.en || "")}</span> ${badges}
+      </div>
+      <button
+        data-key="${escapeHTML(r.markedId)}"
+        data-sign-id="${escapeHTML(r.signId || "")}"
+        data-has-remote="${r.hasRemote ? "1" : "0"}"
+        data-has-local="${r.hasLocal ? "1" : "0"}"
+        data-local-id="${escapeHTML(r.localId || "")}"
+      >Unmark</button>`;
+
+    div.querySelector("button")?.addEventListener("click", async (e) => {
+      const key       = e.currentTarget.dataset.key;
+      const signId    = e.currentTarget.dataset.signId || null;
+      const hasRemote = e.currentTarget.dataset.hasRemote === "1";
+      const hasLocal  = e.currentTarget.dataset.hasLocal  === "1";
+      const localId   = e.currentTarget.dataset.localId || null;
+      await cascadeRemoveByKey({ key, signId, hasRemote, hasLocal, localId });
+      toast("Removed ✓");
+      await renderMarkedList();
+    });
+
+    elMarkedContainer.appendChild(div);
+  }
+}
+
+
+
+  window.startMarkedLearn = async()=> setupListPractice("marked","learn");
+  window.startMarkedPractice = async(m)=> setupListPractice("marked", m);
+  window.startMarkedWrite = async()=> setupListPractice("marked","write");
+  
   async function renderWordListLanding(){
     const fb = await whenFBReady();
     // prefer cache first
@@ -2860,7 +2924,7 @@ window.writeSubmit = () => {
     const words = [];
     for (const sel of selection){
       // Expect sel like { level:"N5", lesson:"Lesson-03" }
-      const batch = await loadVocabRows(sel.level, sel.lesson); // <- use your vocab CSV loader
+      const batch = await loadDeckFor(sel.level, sel.lesson); // <- use your vocab CSV loader
       batch.forEach(r=> words.push({ kanji:r.kanji||"—", hira:r.hira||"", en:r.en||"" }));
     }
     __WL_CTX.stagedDeck = words.filter(x=>x.hira && x.en);
@@ -2939,71 +3003,6 @@ window.writeSubmit = () => {
     // Keep it simple: confirm() then fb.lists.removeWordFromList(listId, row.id)
     alert("Open a small manager to remove words one by one (implementation same as table above).");
   }
-
-  // Sign Words — s.markedId is the same safe key used by Marked
-  for (const s of signed){
-    const key = s.markedId || toSafeKey(`${s.front}::${s.back}`);
-    const row = ensureRow(key);
-    row.signId = s.id;
-    if (!row.front) { row.front = s.front; row.back = s.back; }
-  }
-
-  // Local Marked (your localStorage copy)
-  for (const l of local){
-    const f = l.front || l.hira || "";
-    const b = l.back  || l.en   || "";
-    const key = toSafeKey(`${f}::${b}`);
-    const row = ensureRow(key);
-    row.hasLocal = true;
-    row.localId  = l.id || row.localId;
-    if (!row.front){ row.front = f; row.back = b; row.hira = l.hira || ""; row.en = l.en || ""; row.kanji = l.kanji ?? row.kanji; }
-  }
-
-  const rows = Array.from(byKey.values());
-  elMarkedStatus.textContent = `${rows.length} item(s).`;
-
-  for (const r of rows){
-    const badges = [
-      r.hasRemote ? "cloud" : null,
-      r.hasLocal  ? "local" : null,
-      r.signId    ? "signed" : null
-    ].filter(Boolean).map(x=>`<span class="badge">${x}</span>`).join(" ");
-
-    const div = document.createElement("div");
-    div.className = "marked-item";
-    div.innerHTML = `
-      <div>${escapeHTML(r.front || r.hira || r.kanji || r.id)} —
-        <span class="muted">${escapeHTML(r.back || r.en || "")}</span> ${badges}
-      </div>
-      <button
-        data-key="${escapeHTML(r.markedId)}"
-        data-sign-id="${escapeHTML(r.signId || "")}"
-        data-has-remote="${r.hasRemote ? "1" : "0"}"
-        data-has-local="${r.hasLocal ? "1" : "0"}"
-        data-local-id="${escapeHTML(r.localId || "")}"
-      >Unmark</button>`;
-
-    div.querySelector("button")?.addEventListener("click", async (e) => {
-      const key       = e.currentTarget.dataset.key;
-      const signId    = e.currentTarget.dataset.signId || null;
-      const hasRemote = e.currentTarget.dataset.hasRemote === "1";
-      const hasLocal  = e.currentTarget.dataset.hasLocal  === "1";
-      const localId   = e.currentTarget.dataset.localId || null;
-      await cascadeRemoveByKey({ key, signId, hasRemote, hasLocal, localId });
-      toast("Removed ✓");
-      await renderMarkedList();
-    });
-
-    elMarkedContainer.appendChild(div);
-  }
-}
-
-
-
-  window.startMarkedLearn = async()=> setupListPractice("marked","learn");
-  window.startMarkedPractice = async(m)=> setupListPractice("marked", m);
-  window.startMarkedWrite = async()=> setupListPractice("marked","write");
-  
   async function fetchAllMarkedForPicker(){
       let remote = [], local = [], signed = [];
       try { const fb = await whenFBReady(); remote = await fb.listMarked(); } catch {}
