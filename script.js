@@ -1978,15 +1978,24 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       const li=document.createElement("li");
       const btn=document.createElement("button");
       btn.textContent = opt;
+
+      // mark which one is the correct answer for reveal-on-wrong
+      if (opt === correct) btn.dataset.correct = "1";
+
       btn.addEventListener("click", ()=> onPickOption(btn, opt===correct, w));
       li.appendChild(btn);
       elOptions.appendChild(li);
     }
+
   }
 
   function onPickOption(btn, ok, w){
-    A("#options button").forEach(b=>b.disabled=true);
-    if(ok){
+    const buttons = Array.from(document.querySelectorAll("#options button"));
+    buttons.forEach(b=>b.disabled=true);
+
+    let delayMs = 450; // default fast advance
+
+    if (ok){
       btn.classList.add("is-correct");
       App.stats.right++; incrementPoints(1);
       App.mastery.mastered.push(w);
@@ -1994,21 +2003,28 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     } else {
       btn.classList.add("is-wrong");
       App.stats.wrong++; recordMistake(w);
-      // reinsert the same word 3–N positions ahead
-      //const insertAt = Math.min(App.qIndex + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
-      //App.mastery.pending.splice(insertAt, 0, w);
+
+      // Also highlight the correct option in green
+      const correctBtn = buttons.find(b => b.dataset.correct === "1");
+      if (correctBtn) correctBtn.classList.add("is-correct");
+
+      // Requeue wrong item with spacing
       requeueWrongItem(w, App.mastery.pending, App.qIndex);
 
+      // Wait 5 seconds so the learner can see both markings
+      delayMs = 5000;
     }
+
     updateScorePanel();
+
     setTimeout(()=>{
       const len = App.mastery.pending.length;
       App.qIndex = len ? ((App.qIndex + 1) % len) : 0;
       updateDeckProgress();
       renderQuestion();
-    }, 450);
-
+    }, delayMs);
   }
+
 
   function buildOptions(correct, field, n=4){
     const pool =
