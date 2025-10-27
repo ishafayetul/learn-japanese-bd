@@ -3471,22 +3471,27 @@ async function renderWLPracticeCard(list) {
   const actions = document.querySelector("#wl-practice-actions");
   if (!wrap || !actions) return;
 
-  // Load deck for this list
+  // ✅ Use the correct API and normalize rows into the deck shape
   try {
     const fb = await whenFBReady();
-    App.wordlist.deck = await fb.wordListGetWords(list.id);
+    const rows = await fb.listWordListWords(list.id);
+    App.wordlist.deck = (rows || [])
+      .map(r => ({
+        kanji: r.kanji || "—",
+        hira:  r.hira  || r.front || "",
+        en:    r.en    || r.back  || ""
+      }))
+      .filter(w => w.hira && w.en); // keep only real words
   } catch {
     App.wordlist.deck = [];
   }
 
-  // If no words, show message
   if (!App.wordlist.deck.length) {
     actions.innerHTML = `<div class="muted">No words in this list.</div>`;
     wrap.classList.remove("hidden");
     return;
   }
 
-  // Show the 4 main practice buttons (same as Vocabulary)
   actions.innerHTML = `
     <button onclick="startWLMode('learn')">🧠 Learn</button>
     <button onclick="startWLMode('mcq')">❓ MCQ</button>
@@ -3495,10 +3500,11 @@ async function renderWLPracticeCard(list) {
   `;
   wrap.classList.remove("hidden");
 }
+
 // Mode starters for Word List practice
 function startWLMode(mode) {
   if (!App.wordlist.deck?.length) return;
-
+  App.wordlist.active = true;
   switch (mode) {
     case 'learn':
       App.deck = [...App.wordlist.deck];
