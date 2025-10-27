@@ -3526,7 +3526,7 @@ function startWLMode(mode) {
 }
 
 window.renderWLPracticeCard = renderWLPracticeCard;
-
+window.startWLMode = startWLMode;
 async function renderWordListHome(){
   const root = D("#wordlist-section");
   const home = D("#wl-home");
