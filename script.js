@@ -3003,7 +3003,16 @@ elWLBuildFromMix.onclick = async ()=>{
   window.renderWLWordTable = () => {
   const ctx = window.WLAddCtx || {};
   const listName = ctx.listName || "Untitled";
-  const rows = Array.isArray(ctx.staged) ? ctx.staged : [];
+
+  let rows = (Array.isArray(ctx.staged) && ctx.staged.length)
+    ? ctx.staged
+    : (Array.isArray(window.__WL_CTX?.stagedDeck) ? window.__WL_CTX.stagedDeck : []);
+
+  // normalize so future renders always find data in WLAddCtx.staged
+  if ((!Array.isArray(ctx.staged) || !ctx.staged.length) && rows.length) {
+    window.WLAddCtx = { ...(window.WLAddCtx || {}), staged: rows };
+  }
+
   const t = document.querySelector("#wl-tbody");
   const ttl = document.querySelector("#wl-wordtable-title");
   const cnt = document.querySelector("#wl-wordtable-count");
@@ -3643,100 +3652,126 @@ window.mixClear = ()=>{
 
 // Build the combined deck and enter the Vocab root menus (no Video/Grammar)
 window.mixBuildDeck = async () => {
-  // 1) Collect selected lessons
-  const picks = Array.from(document.querySelectorAll(".mix-lesson-check:checked"))
-    .map(ch => ({ level: ch.dataset.level, lesson: ch.dataset.lesson }));
-
   const st = document.querySelector("#mix-status");
-  if (!picks.length) { if (st) st.textContent = "Pick at least one lesson."; return; }
 
-  // 2) Load words from each lesson
-  let combined = [];
-  for (const p of picks) {
-    const d = await loadDeckFor(p.level, p.lesson);
-    combined = combined.concat(d);
+  try {
+    // 1) Collect selected lessons
+    const picks = Array.from(document.querySelectorAll(".mix-lesson-check:checked"))
+      .map(ch => ({ level: ch.dataset.level, lesson: ch.dataset.lesson }));
+
+    if (!picks.length) {
+      if (st) st.textContent = "Pick at least one lesson.";
+      toast?.("Pick at least one lesson.");
+      return;
+    }
+
+    // 2) Load words from each lesson (parallel)
+    const batches = await Promise.all(
+      picks.map(p => loadDeckFor(p.level, p.lesson).catch(() => []))
+    );
+
+    // Flatten + guard
+    const combined = batches.flat().filter(Boolean);
+
+    // 3) De-duplicate by canonical key
+    const seen = new Set();
+    const deck = [];
+    for (const w of combined) {
+      const k = keyForWord(w);
+      if (!seen.has(k)) {
+        seen.add(k);
+        deck.push(w);
+      }
+    }
+
+    // Empty guard
+    if (!deck.length) {
+      if (st) st.textContent = "No vocabulary found in those lessons (check manifest or CSV files).";
+      toast?.("No words found. Verify manifest.json and CSV filenames/columns.");
+      return;
+    }
+
+    // 4) Word List intercept — send deck to Word Table when WLAddCtx.active
+    if (window.WLAddCtx?.active) {
+      // Normalize to the table row shape
+      const stagedRows = deck
+        .map(r => ({ kanji: r.kanji || "—", hira: r.hira || "", en: r.en || "" }))
+        .filter(w => w.hira && w.en);
+
+      // Keep a single source of truth in WLAddCtx
+      window.WLAddCtx = {
+        ...(window.WLAddCtx || {}),
+        staged: stagedRows
+      };
+
+      // (Optional) keep __WL_CTX in sync for any legacy readers
+      window.__WL_CTX = {
+        listId:   WLAddCtx.listId ?? null,
+        listName: WLAddCtx.listName ?? null,
+        stagedDeck: stagedRows
+      };
+
+      // Return to Word List and show the prefilled Word Table
+      openSection("wordlist");
+      document.querySelector("#wordlist-section")?.classList.remove("hidden");
+      document.querySelector("#wl-flow")?.classList.remove("hidden");
+      document.querySelector("#wl-mix")?.classList.add("hidden");
+      document.querySelector("#wl-wordtable")?.classList.remove("hidden");
+
+      if (typeof renderWLWordTable === "function") renderWLWordTable();
+
+      WLAddCtx.active = false; // reset so next time normal Mix works
+      updateBackVisibility?.();
+      return; // stop normal Mix flow here
+    }
+
+    // 5) Normal Mix flow (unchanged)
+    App.mix = { active: true, selection: picks, deck };
+    App.level = "Mix";
+    App.lesson = `${picks.length} lesson(s)`;
+    App.tab = "vocab"; App.mode = null; App.qIndex = 0;
+
+    const setTxt = (sel, txt) => { const el = document.querySelector(sel); if (el) el.textContent = txt; };
+    setTxt("#crumb-level",  App.level);
+    setTxt("#crumb-lesson", App.lesson);
+    setTxt("#crumb-mode",   "vocab");
+
+    document.querySelector("#mix-section")?.classList.add("hidden");
+    document.querySelector("#level-shell")?.classList.remove("hidden");
+    document.querySelector("#lesson-area")?.classList.remove("hidden");
+    hideLessonsHeaderAndList?.();
+    hideLessonBar?.();
+
+    ["#tab-videos", "#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
+    document.querySelector("#tab-vocab")?.classList.remove("hidden");
+
+    showVocabRootMenu?.();
+    showVocabRootCard?.();
+
+    const vs = document.querySelector("#vocab-status");
+    if (vs) {
+      vs.textContent = `Built ${deck.length} words from ${picks.length} lesson(s). Pick an option. `;
+      const edit = document.createElement("button");
+      edit.style.marginLeft = "6px";
+      edit.textContent = "Edit selection";
+      edit.addEventListener("click", () => {
+        App.mix.active = false;
+        document.querySelector("#tab-vocab")?.classList.add("hidden");
+        document.querySelector("#mix-section")?.classList.remove("hidden");
+        hideLessonBar?.();
+        updateBackVisibility?.();
+      });
+      vs.appendChild(edit);
+    }
+
+    updateBackVisibility?.();
+  } catch (err) {
+    console.error("mixBuildDeck error:", err);
+    if (st) st.textContent = "Failed to build deck. See console for details.";
+    toast?.("Failed to build deck. Please check console and CSV/manifest.");
   }
-
-  // 3) De-duplicate
-  const seen = new Set();
-  const deck = [];
-  for (const w of combined) {
-    const k = keyForWord(w);
-    if (!seen.has(k)) { seen.add(k); deck.push(w); }
-  }
-  // right after you build 'deck' (post de-dup), add:
-  if (!deck.length) {
-    if (st) st.textContent = "No vocabulary found in those lessons (check manifest or CSV files).";
-    toast?.("No words found. Add vocab to manifest.json or place CSVs using standard names.");
-    return;
-  }
-
-  // 4) Word List intercept — if user came from "Add words" in Word List,
-  //    route the built deck back to the Word List "Word Table"
-  if (window.WLAddCtx?.active) {
-    WLAddCtx.staged = deck
-      .map(r => ({ kanji: r.kanji || "—", hira: r.hira || "", en: r.en || "" }))
-      .filter(w => w.hira && w.en);
-
-    // Return to Word List and open the Word Table prefilled with these rows
-    openSection("wordlist");
-    document.querySelector("#wordlist-section")?.classList.remove("hidden");
-
-    window.__WL_CTX = {
-      listId:   WLAddCtx.listId,
-      listName: WLAddCtx.listName,
-      stagedDeck: WLAddCtx.staged
-    };
-
-    document.querySelector("#wl-flow")?.classList.remove("hidden");
-    document.querySelector("#wl-mix")?.classList.add("hidden");
-    document.querySelector("#wl-wordtable")?.classList.remove("hidden");
-    if (typeof renderWLWordTable === "function") renderWLWordTable();
-
-    WLAddCtx.active = false; // reset for normal Mix next time
-    return; // stop normal Mix flow
-  }
-
-  // 5) Normal Mix flow (unchanged)
-  App.mix = { active: true, selection: picks, deck };
-  App.level = "Mix";
-  App.lesson = `${picks.length} lesson(s)`;
-  App.tab = "vocab"; App.mode = null; App.qIndex = 0;
-
-  document.querySelector("#crumb-level").textContent  = App.level;
-  document.querySelector("#crumb-lesson").textContent = App.lesson;
-  document.querySelector("#crumb-mode").textContent   = "vocab";
-
-  document.querySelector("#mix-section")?.classList.add("hidden");
-  document.querySelector("#level-shell")?.classList.remove("hidden");
-  document.querySelector("#lesson-area")?.classList.remove("hidden");
-  hideLessonsHeaderAndList();
-  hideLessonBar();
-
-  ["#tab-videos", "#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
-  document.querySelector("#tab-vocab")?.classList.remove("hidden");
-
-  showVocabRootMenu();
-  showVocabRootCard();
-
-  const vs = document.querySelector("#vocab-status");
-  if (vs) {
-    vs.textContent = `Built ${deck.length} words from ${picks.length} lesson(s). Pick an option. `;
-    const edit = document.createElement("button");
-    edit.style.marginLeft = "6px";
-    edit.textContent = "Edit selection";
-    edit.addEventListener("click", () => {
-      App.mix.active = false;
-      document.querySelector("#tab-vocab")?.classList.add("hidden");
-      document.querySelector("#mix-section")?.classList.remove("hidden");
-      hideLessonBar();
-      updateBackVisibility();
-    });
-    vs.appendChild(edit);
-  }
-
-  updateBackVisibility();
 };
+
 
   // ---------- Save / Flush ----------
   window.saveCurrentScore = async ()=>{
@@ -3836,7 +3871,6 @@ window.addEventListener("keydown", (e) => {
 
 })();
 
-// ===== Mini deploy toast: only when a *new* version is detected =====
 
 
 
