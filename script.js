@@ -1537,19 +1537,28 @@ async function ensureDeckLoaded(opts = { force: false }) {
     return out;
   };
 
-  // WORD LIST: Prefer the list deck; load it if active but not yet loaded.
+  // WORD LIST: Prefer the list deck; load it if active.
   if (App.wordlist?.active || App.level === "List") {
-    if ((!App.wordlist?.deck || !App.wordlist.deck.length || opts.force) && App.wordlist?.id) {
-      try {
-        setStatus("Loading list words…");
-        const fb = await whenFBReady();
-        App.wordlist.deck = await fb.wordListGetWords(App.wordlist.id);
-      } catch { App.wordlist.deck = []; }
+    try {
+      setStatus?.("Loading list words…");
+      const fb   = await whenFBReady();
+      const raw  = await fb.listWordListWords(App.wordlist.id); // ← correct API
+      const deck = (raw || []).map(r => ({
+        kanji: (r.kanji ?? r.front_kanji ?? "—").toString().trim(),
+        hira:  (r.hira  ?? r.front      ?? r.kana ?? "").toString().trim(),
+        en:    (r.en    ?? r.back       ?? r.meaning ?? "").toString().trim(),
+      })).filter(w => w.hira && w.en);
+
+      App.wordlist.deck = deck.slice();
+      App.deck = deck.slice();
+    } catch {
+      App.wordlist.deck = [];
+      App.deck = [];
     }
-    App.deck = normalize(App.wordlist?.deck || []);
-    setStatus(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
+    setStatus?.(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
     return App.deck;
   }
+
 
   // MIX: Use the prepared mix deck as-is.
   if (App.mix?.active && App.mix.deck?.length && !opts.force) {
