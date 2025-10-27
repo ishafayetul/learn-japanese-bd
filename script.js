@@ -1087,9 +1087,10 @@ async function openVocabDeckFromList(source) {
   } else {
     deck = await getMarkedAsDeck(); // already maps front/back into hira/en
   }
-
+  // define emptiness once; we use it below for the status text
+  const isEmpty = deck.length === 0;
   // Empty state → keep the old landing card so user sees a message
-  if (!deck.length) {
+  if (isEmpty) {
     hideContentPanes();
     if (source === "mistakes") {
       document.querySelector("#mistakes-section")?.classList.remove("hidden");
@@ -1125,7 +1126,7 @@ async function openVocabDeckFromList(source) {
 
   // 3) Load the deck and show the Vocab root menus (Learn / MCQ / Write / Make)
   App.deck = deck.slice();
-  document.querySelector("#vocab-status").textContent = isEmpty ? "This list is empty. Click ‘Add words’ to start." : "Pick an option.";
+  document.querySelector("#vocab-status").textContent = "Pick an option.";
   showVocabRootMenu();
   showVocabRootCard();
   injectListActions(source === "mistakes" ? "mistakes" : "marked");
