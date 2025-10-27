@@ -110,12 +110,11 @@
       <button id="nav-mix" onclick="openMixPractice()">Mix Practice</button>
       <!-- <button id="nav-speaking" class="chip speaking-chip" type="button">🗣️ Speaking Practice</button> -->
       <hr style="opacity:.2;border:none;border-top:1px solid #ffffff30;margin:8px 0 12px">
-      <button id="nav-wordlist" onclick="openSection('wordlist')">🗂️ Word List</button>
-      <button onclick="openSection('marked')">📌 Marked Words</button>
-      <button onclick="openSection('mistakes')">❗ Mistakes</button>
-      <button onclick="openSection('signword')">✍️ Sign Word</button>
       <button onclick="openSection('progress')">📈 Progress</button>
       <button onclick="openSection('leaderboard')">🏆 Overall Leaderboard</button>
+      <button onclick="openSection('mistakes')">❗ Mistakes</button>
+      <button onclick="openSection('marked')">📌 Marked Words</button>
+      <button onclick="openSection('signword')">✍️ Sign Word</button>
       <hr style="opacity:.2;border:none;border-top:1px solid #ffffff30;margin:12px 0">
       <button onclick="saveCurrentScore()">💾 Save Progress</button>
       <button id="signout-btn" class="danger">🚪 Sign out</button>
@@ -508,65 +507,6 @@
               <button type="button" onclick="mixClear()">Clear</button>
               <button type="button" class="primary" onclick="mixBuildDeck()">Build Deck</button>
               <span id="mix-status" class="muted" style="margin-left:6px;"></span>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========= Word List ========= -->
-        <section id="wordlist-section" class="hidden">
-          <h2>🗂️ Word List</h2>
-
-          <!-- Home (lists overview) -->
-          <div id="wl-home" class="card">
-            <div style="display:flex; gap:8px; align-items:center; justify-content:space-between;">
-              <div class="muted">Create lists and practice them like Vocabulary.</div>
-              <div>
-                <input id="wl-new-name" class="pg-input" placeholder="New list name…" />
-                <button type="button" onclick="wlCreate()">➕ Create List</button>
-              </div>
-            </div>
-
-            <div id="wl-lists" class="wl-list" style="margin-top:10px;">
-              <!-- filled by renderWordLists() -->
-            </div>
-          </div>
-
-          <!-- Detail (selected list) -->
-          <div id="wl-detail" class="hidden">
-            <div class="card">
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                <div>
-                  <h3 id="wl-title" style="margin:6px 0;">—</h3>
-                  <div id="wl-count" class="muted">0 words</div>
-                </div>
-                <div class="action-row">
-                  <button onclick="wlOpenAddWords()">➕ Add Words</button>
-                  <button onclick="wlOpenUnselect()">🧹 Unselect (remove) Words</button>
-                  <button onclick="wlRename()">✏️ Rename</button>
-                  <button class="danger" onclick="wlDelete()">🗑️ Delete List</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Practice this list (Word List) -->
-            <section id="wl-practice" class="card hidden">
-                <h3>Practice this list</h3>
-                <button onclick="startWLMode('learn')">🧠 Learn</button>
-                <button onclick="startWLMode('mcq')">❓ MCQ</button>
-                <button onclick="startWLMode('write')">✍️ Write Words</button>
-                <button onclick="startWLMode('make')">📝 Make Sentence</button>
-              
-            </section>
-
-            <!-- Unselect modal-ish area (simple inline list with checkboxes) -->
-            <div id="wl-unselect" class="card hidden">
-              <h3>Remove words from this list</h3>
-              <div id="wl-unselect-list" class="unmark-list"></div>
-              <div class="unmark-actions">
-                <div class="muted">Checked words will be removed (not deleted globally).</div>
-                <button class="danger" onclick="wlRemoveChecked()">Remove Selected</button>
-                <button onclick="wlCloseUnselect()">Close</button>
-              </div>
             </div>
           </div>
         </section>

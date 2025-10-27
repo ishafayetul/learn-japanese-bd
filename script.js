@@ -294,7 +294,6 @@ const App = Object.assign(window.App, {
   buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
   cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() },
-  wordlist: { active:false, currentId:null, currentMeta:null, addMode:false, pendingAdds:[], deck:[] },
   match: {
     active: false,
     variant: null,                 // "eh" or "keh"
@@ -313,8 +312,6 @@ const App = Object.assign(window.App, {
 });
 // keep a stable global reference
 window.App = App;
-
-
 
 function attemptSig(){
   return JSON.stringify({
@@ -425,11 +422,6 @@ function setupDeployToast(){
       if (uniq.length === 5) break;
     }
     return uniq;
-  }
-  function setWLContextCrumbs(name){
-    document.querySelector("#crumb-level").textContent  = "Word List";
-    document.querySelector("#crumb-lesson").textContent = name || "—";
-    document.querySelector("#crumb-mode").textContent   = "vocab";
   }
 
   async function buildPickerRowsMerged(){
@@ -781,41 +773,12 @@ async function cascadeUnmark({ src, id, markedId }){
     document.querySelector("#marked-section")?.classList.add("hidden");
     document.querySelector("#signword-section")?.classList.add("hidden");
     document.querySelector("#mix-section")?.classList.add("hidden");
-    document.querySelector("#wordlist-section")?.classList.add("hidden");
     clearVideosPane();
     clearVocabPane();
     clearGrammarPane();
   }
   window.hideContentPanes = hideContentPanes;          // ← add this
 
-// Show ONLY the Vocab tab area as a standalone page for list-like contexts
-function showListVocabShell(titleText){
-  // hide everything on the right
-  hideContentPanes();
-
-  // explicitly hide the Word List section if it is currently open
-  document.querySelector("#wordlist-section")?.classList.add("hidden");
-
-  // turn ON the lesson shell and the vocab tab pane only
-  document.querySelector("#level-shell")?.classList.remove("hidden");
-  document.querySelector("#lesson-area")?.classList.remove("hidden");
-
-  ["#tab-videos", "#tab-grammar"].forEach(sel =>
-    document.querySelector(sel)?.classList.add("hidden")
-  );
-  document.querySelector("#tab-vocab")?.classList.remove("hidden");
-
-  // list-like decks should not show the Video/Vocab/Grammar bar
-  hideLessonBar();
-  document.querySelector(".lesson-meta")?.classList.add("hidden");
-
-  if (titleText){
-    document.querySelector("#crumb-level").textContent  = "Mix";
-    document.querySelector("#crumb-lesson").textContent = titleText;
-    document.querySelector("#crumb-mode").textContent   = "vocab";
-  }
-  updateBackVisibility?.();
-}
 
   function hideVocabMenus(){
     hideVocabRootCard();
@@ -1086,7 +1049,6 @@ window.openSection = async (name) => {
   try { await flushSession?.(); } catch {}
   closeVideoLightbox?.();
   hideContentPanes?.();          // always clear the right pane first
-  if (name !== "wordlist") { App.wordlist.active = false; }
 
   // Mistakes / Marked behave like a lesson's Vocab tab using the shared helper
   if (name === "mistakes") { await openVocabDeckFromList("mistakes"); return; }
@@ -1097,16 +1059,13 @@ window.openSection = async (name) => {
     progress:    "#progress-section",
     leaderboard: "#leaderboard-section",
     signword:    "#signword-section",
-    wordlist:    "#wordlist-section",
   };
-  
   const sel = map[name];
   if (sel) document.querySelector(sel)?.classList.remove("hidden");
 
   if (name === "progress")    await renderProgress();
   if (name === "leaderboard") await renderOverallLeaderboard();
   if (name === "signword")    await renderSignWordList();
-  if (name === "wordlist")   await renderWordListHome();
 
   updateBackVisibility?.();
 };
@@ -1454,199 +1413,55 @@ window.closeVideoLightbox = closeVideoLightbox;
   //   elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
   // }
 
-  // async function ensureDeckLoaded(){
-  //   // Word List context: keep the deck you already loaded from the list
-  //   if ((App.wordlist && App.wordlist.active) || App.level === "List") {
-  //     if ((!App.deck || !App.deck.length) && App.wordlist?.deck?.length) {
-  //       App.deck = App.wordlist.deck.slice();
-  //     }
-  //     if (elVocabStatus) {
-  //       elVocabStatus.textContent = App.deck.length
-  //         ? `Loaded ${App.deck.length} words.`
-  //         : "No words found.";
-  //     }
-  //     return; // ← DO NOT try to load CSVs for Word Lists
-  //   }
-
-  //     // If Mix deck is active, just use it.
-  //     if (App.mix?.active && App.mix.deck?.length){
-  //       App.deck = App.mix.deck.slice();
-  //       if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
-  //       return;
-  //     }
-
-  //     // If user is on Mistakes/Marked, prefer in-memory or load from their sources.
-  //     if (App.level === "Mistakes"){
-  //       if (!App.deck?.length) App.deck = await fbListMistakesAsDeck();
-  //       if (elVocabStatus) elVocabStatus.textContent = App.deck.length
-  //         ? `Loaded ${App.deck.length} words.`
-  //         : "No words found.";
-  //       return;
-  //     }
-  //     if (App.level === "Marked"){
-  //       if (!App.deck?.length) App.deck = await getMarkedAsDeck(); // merged sources below
-  //       if (elVocabStatus) elVocabStatus.textContent = App.deck.length
-  //         ? `Loaded ${App.deck.length} words.`
-  //         : "No words found.";
-  //       return;
-  //     }
-
-  //     // Normal lesson path (CSV by manifest)
-  //     const key = `${App.level}/${App.lesson}`;
-  //     if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
-  //     elVocabStatus.textContent = "Loading vocabulary…";
-
-  //     const files = await listVocabCsvFiles(App.level, App.lesson); // absolute URLs
-  //     const deck = [];
-  //     for (const url of files){
-  //       try{
-  //         const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
-  //         const csv = parseCSV(txt);
-  //         for (const r of csv){
-  //           const kanji = (r[0]||"").trim();
-  //           const hira  = (r[1]||"").trim();
-  //           const en    = (r[2]||"").trim();
-  //           if (!hira || !en) continue;
-  //           deck.push({ kanji, hira, en });
-  //         }
-  //       } catch {}
-  //     }
-
-  //     App.deck = deck;
-  //     App.cache.vocab.set(key, deck);
-  //     elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
-  //   }
-
-  // One loader to rule them all.
-async function ensureDeckLoaded(opts = { force: false }) {
-  const statusEl = (typeof elVocabStatus !== "undefined" && elVocabStatus) ? elVocabStatus : null;
-  const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg; };
-
-  // Small utility to normalize + dedupe after any source
-  const normalize = (arr) => {
-    const seen = new Set();
-    const out = [];
-    for (const w of (arr || [])) {
-      const kanji = (w.kanji ?? w[0] ?? "").trim();
-      const hira  = (w.hira  ?? w[1] ?? "").trim();
-      const en    = (w.en    ?? w[2] ?? "").trim();
-      if (!hira || !en) continue;
-      const id = `${kanji}|${hira}|${en}`.toLowerCase();
-      if (!seen.has(id)) { seen.add(id); out.push({ kanji, hira, en }); }
-    }
-    return out;
-  };
-
-  // WORD LIST: Prefer the list deck; load it if active.
-  if (App.wordlist?.active || App.level === "List") {
-    try {
-      setStatus?.("Loading list words…");
-      const fb   = await whenFBReady();
-      const raw  = await fb.listWordListWords(App.wordlist.id); // ← correct API
-      const deck = (raw || []).map(r => ({
-        kanji: (r.kanji ?? r.front_kanji ?? "—").toString().trim(),
-        hira:  (r.hira  ?? r.front      ?? r.kana ?? "").toString().trim(),
-        en:    (r.en    ?? r.back       ?? r.meaning ?? "").toString().trim(),
-      })).filter(w => w.hira && w.en);
-
-      App.wordlist.deck = deck.slice();
-      App.deck = deck.slice();
-    } catch {
-      App.wordlist.deck = [];
-      App.deck = [];
-    }
-    setStatus?.(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
-    return App.deck;
-  }
-
-
-  // MIX: Use the prepared mix deck as-is.
-  if (App.mix?.active && App.mix.deck?.length && !opts.force) {
-    App.deck = normalize(App.mix.deck);
-    setStatus(`Loaded ${App.deck.length} words.`);
-    return App.deck;
-  }
-
-  // MISTAKES: Pull once, keep in-memory unless force
-  if (App.level === "Mistakes") {
-    if (!App.deck?.length || opts.force) {
-      try {
-        setStatus("Loading mistakes…");
-        App.deck = normalize(await fbListMistakesAsDeck());
-      } catch { App.deck = []; }
-    } else {
-      App.deck = normalize(App.deck);
-    }
-    setStatus(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
-    return App.deck;
-  }
-
-  // MARKED: Pull once, keep in-memory unless force
-  if (App.level === "Marked") {
-    if (!App.deck?.length || opts.force) {
-      try {
-        setStatus("Loading marked words…");
-        App.deck = normalize(await getMarkedAsDeck());
-      } catch { App.deck = []; }
-    } else {
-      App.deck = normalize(App.deck);
-    }
-    setStatus(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
-    return App.deck;
-  }
-
-  // NORMAL LESSON (CSV via manifest), with per-key caching and concurrency guard
-  const level = App.level ?? "";
-  const lesson = App.lesson ?? "";
-  const key = `${level}/${lesson}`;
-
-  // Ensure cache holder exists
-  if (!App.cache) App.cache = {};
-  if (!App.cache.vocab) App.cache.vocab = new Map();
-
-  // Deduplicate concurrent loads for the same key
-  if (!App._deckLoaders) App._deckLoaders = new Map();
-  if (!opts.force && App.cache.vocab.has(key)) {
-    App.deck = normalize(App.cache.vocab.get(key));
-    setStatus(`Loaded ${App.deck.length} words.`);
-    return App.deck;
-  }
-  if (!opts.force && App._deckLoaders.has(key)) {
-    setStatus("Loading vocabulary…");
-    const shared = await App._deckLoaders.get(key);
-    App.deck = normalize(shared);
-    setStatus(App.deck.length ? `Loaded ${App.deck.length} words.` : "No words found.");
-    return App.deck;
-  }
-
-  setStatus("Loading vocabulary…");
-  const loader = (async () => {
-    const files = await listVocabCsvFiles(level, lesson); // absolute URLs
-    const tmp = [];
-    for (const url of files) {
-      try {
-        const txt = await (await fetch(encodePath(url), { cache: "no-cache" })).text();
-        const csv = parseCSV(txt);
-        for (const r of csv) tmp.push(r);
-      } catch {
-        // ignore individual file failures and continue
+  async function ensureDeckLoaded(){
+      // If Mix deck is active, just use it.
+      if (App.mix?.active && App.mix.deck?.length){
+        App.deck = App.mix.deck.slice();
+        if (elVocabStatus) elVocabStatus.textContent = `Loaded ${App.deck.length} words.`;
+        return;
       }
+
+      // If user is on Mistakes/Marked, prefer in-memory or load from their sources.
+      if (App.level === "Mistakes"){
+        if (!App.deck?.length) App.deck = await fbListMistakesAsDeck();
+        if (elVocabStatus) elVocabStatus.textContent = App.deck.length
+          ? `Loaded ${App.deck.length} words.`
+          : "No words found.";
+        return;
+      }
+      if (App.level === "Marked"){
+        if (!App.deck?.length) App.deck = await getMarkedAsDeck(); // merged sources below
+        if (elVocabStatus) elVocabStatus.textContent = App.deck.length
+          ? `Loaded ${App.deck.length} words.`
+          : "No words found.";
+        return;
+      }
+
+      // Normal lesson path (CSV by manifest)
+      const key = `${App.level}/${App.lesson}`;
+      if (App.cache.vocab.has(key)) { App.deck = App.cache.vocab.get(key).slice(); return; }
+      elVocabStatus.textContent = "Loading vocabulary…";
+
+      const files = await listVocabCsvFiles(App.level, App.lesson); // absolute URLs
+      const deck = [];
+      for (const url of files){
+        try{
+          const txt = await (await fetch(encodePath(url), { cache:"no-cache" })).text();
+          const csv = parseCSV(txt);
+          for (const r of csv){
+            const kanji = (r[0]||"").trim();
+            const hira  = (r[1]||"").trim();
+            const en    = (r[2]||"").trim();
+            if (!hira || !en) continue;
+            deck.push({ kanji, hira, en });
+          }
+        } catch {}
+      }
+
+      App.deck = deck;
+      App.cache.vocab.set(key, deck);
+      elVocabStatus.textContent = deck.length ? `Loaded ${deck.length} words.` : "No words found.";
     }
-    return normalize(tmp);
-  })();
-
-  App._deckLoaders.set(key, loader);
-  try {
-    const loaded = await loader;
-    App.deck = loaded;
-    App.cache.vocab.set(key, loaded);
-    setStatus(loaded.length ? `Loaded ${loaded.length} words.` : "No words found.");
-  } finally {
-    App._deckLoaders.delete(key);
-  }
-
-  return App.deck;
-}
 
   function showVocabRootMenu(){
   // keep the top 3 tabs visible while you're inside Vocab
@@ -3076,11 +2891,6 @@ window.writeSubmit = () => {
 }
 
   async function setupListPractice(source, mode){
-      if (inListVocabContext()){
-        // Optional: pass the list name to show in crumbs if you store it in App.lesson
-        showListVocabShell(App?.lesson || "Word List");
-      }
-
       // If App.deck is already loaded (enterListMode), prefer that.
       let deck = (App.deck && App.deck.length) ? App.deck.slice() : [];
       if (!deck.length) {
@@ -3481,16 +3291,9 @@ async function renderMixPicker(){
   if (st) st.textContent = "Select lessons, then click Build Deck.";
 }
 
-  function inListVocabContext() {
-    return (
-      App.level === "Mistakes" ||
-      App.level === "Marked"   ||
-      App.level === "Mix"      ||
-      App.level === "List"     ||          // ✅ Word Lists by level name
-      (App.wordlist && App.wordlist.active) // ✅ or explicit flag
-    );
-  }
-
+function inListVocabContext(){
+  return App.level === "Mistakes" || App.level === "Marked" || App.level === "Mix";
+}
 
 // Global select/clear helpers (buttons below the picker)
 window.mixSelectAll = ()=>{
@@ -3560,471 +3363,6 @@ window.mixBuildDeck = async ()=>{
 
   updateBackVisibility();
 };
-
-// ===== Word List — UI + flows =====
-// Build the "Practice this list" card and wire up actions
-// async function renderWLPracticeCard(list){
-//   const wrap = document.querySelector("#wl-practice");
-//   const actions = document.querySelector("#wl-practice-actions");
-//   if (!wrap || !actions) return;
-//   actions.innerHTML = ""; // reset any prior content
-//   // load deck for this list (cache to App.wordlist.deck)
-//   try{
-//     const fb = await whenFBReady();
-//     App.wordlist.deck = await fb.wordListGetWords(list.id);
-//   }catch{
-//     App.wordlist.deck = [];
-//   }
-
-//   // if nothing, show muted state & hide actions
-//   if (!App.wordlist.deck.length){
-//     actions.innerHTML = `<div class="muted">No words in this list.</div>`;
-//     wrap.classList.remove("hidden");
-    
-//   }
-
-//   // mirror Vocabulary root card (Learn / MCQ / Write / Make)
-//   actions.innerHTML = `
-//     <button id="wl-learn" class="chip">Learn</button>
-//     <button id="wl-mcq" class="chip">MCQ</button>
-//     <button id="wl-write" class="chip">Write Words</button>
-//     <button id="wl-make" class="chip">Make Sentence</button>
-//   `;
-//   const go = (mode) => {
-//     App.wordlist.active = true;
-//     App.wordlist.currentId = list.id;
-//     // always hide the Word List pane before opening a practice view
-//     hideContentPanes();
-//     wlStart(mode); // this function already builds the shared Vocab UI for lists
-//   };
-//   document.querySelector("#wl-learn")?.addEventListener("click", () => go("learn"));
-//   document.querySelector("#wl-mcq")?.addEventListener("click",   () => go("mcq"));
-//   document.querySelector("#wl-write")?.addEventListener("click", () => go("write"));
-//   document.querySelector("#wl-make")?.addEventListener("click",  () => go("make"));
-//   // hook buttons → reuse existing Vocab flows, but swap in this deck
-  
-
-//   wrap.classList.remove("hidden");
-// }
-
-// ===== Word List — UI + flows =====
-// ===== Word List — Practice Card =====
-async function renderWLPracticeCard(list) {
-  const wrap = document.querySelector("#wl-practice");
-  const actions = document.querySelector("#wl-practice-actions");
-  if (!wrap || !actions) return;
-
-  try {
-    const fb = await whenFBReady();
-    const rows = await fb.listWordListWords(list.id);
-    App.wordlist.deck = (rows || [])
-      .map(r => ({
-        kanji: r.kanji || "—",
-        hira: r.hira || r.front || "",
-        en: r.en || r.back || ""
-      }))
-      .filter(w => w.hira && w.en);
-  } catch {
-    App.wordlist.deck = [];
-  }
-
-  if (!App.wordlist.deck.length) {
-    actions.innerHTML = `<div class="muted">No words in this list.</div>`;
-    wrap.classList.remove("hidden");
-    return;
-  }
-
-  actions.innerHTML = `
-    <button id="wl-learn">🧠 Learn</button>
-    <button id="wl-mcq">❓ MCQ</button>
-    <button id="wl-write">✍️ Write Words</button>
-    <button id="wl-make">📝 Make Sentence</button>
-  `;
-
-  actions.querySelector("#wl-learn").addEventListener("click", () => startWLMode("learn"));
-  actions.querySelector("#wl-mcq").addEventListener("click", () => startWLMode("mcq"));
-  actions.querySelector("#wl-write").addEventListener("click", () => startWLMode("write"));
-  actions.querySelector("#wl-make").addEventListener("click", () => startWLMode("make"));
-
-  wrap.classList.remove("hidden");
-}
-window.renderWLPracticeCard = renderWLPracticeCard;
-
-
-// ===== Word List — Mode launcher =====
-// ==== Word List → Vocab shell + mode launcher (uses unified ensureDeckLoaded) ====
-function startWLMode(mode) {
-  if (!App.wordlist?.deck?.length) { toast("This list is empty."); return; }
-
-  // Mark context + copy deck
-  App.wordlist.active = true;
-  App.deck   = App.wordlist.deck.slice();
-  App.level  = "List";
-  const name = App.wordlist.currentMeta?.name || App.wordlist.currentMeta?.id || "Word List";
-  App.lesson = name;
-  App.tab    = "vocab";
-  App.mode   = null;
-
-  // Bring up the shared Lesson UI (Vocabulary shell)
-  if (typeof hideContentPanes === "function") hideContentPanes();
-  document.querySelector("#wordlist-section")?.classList.add("hidden");
-  document.querySelector("#level-shell")?.classList.remove("hidden");
-  document.querySelector("#lesson-area")?.classList.remove("hidden");
-  if (typeof hideLessonsHeaderAndList === "function") hideLessonsHeaderAndList();
-  if (typeof hideLessonBar === "function") hideLessonBar();
-  ["#tab-videos", "#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
-  document.querySelector("#tab-vocab")?.classList.remove("hidden");
-
-  // Crumbs + status
-  const crLevel  = document.querySelector("#crumb-level");  if (crLevel)  crLevel.textContent  = "List";
-  const crLesson = document.querySelector("#crumb-lesson"); if (crLesson) crLesson.textContent = name;
-  const crMode   = document.querySelector("#crumb-mode");   if (crMode)   crMode.textContent   = "vocab";
-  document.querySelector(".lesson-meta")?.classList.add("hidden");
-  const vs = document.querySelector("#vocab-status"); if (vs) vs.textContent = "Pick an option.";
-
-  // Show root menu/card, then open submenu
-  if (typeof showVocabRootMenu === "function") showVocabRootMenu();
-  if (typeof showVocabRootCard === "function") showVocabRootCard();
-
-  switch (mode) {
-    case "learn": if (typeof openVocabLearnMenu === "function") openVocabLearnMenu(); break;
-    case "mcq":   if (typeof openVocabMCQMenu === "function")   openVocabMCQMenu();   break;
-    case "write": if (typeof openVocabWriteMenu === "function") openVocabWriteMenu(); break;
-    case "make":  if (typeof startMakeSentence === "function")  startMakeSentence();  break;
-  }
-
-  if (typeof updateBackVisibility === "function") updateBackVisibility();
-}
-
-window.startWLMode = startWLMode;
-
-
-async function renderWordListHome(){
-  const root = D("#wordlist-section");
-  const home = D("#wl-home");
-  const detail = D("#wl-detail");
-  home?.classList.remove("hidden");
-  detail?.classList.add("hidden");
-
-  const listBox = D("#wl-lists");
-  listBox.innerHTML = `<div class="muted">Loading your lists…</div>`;
-
-  try{
-    const fb = await whenFBReady();
-    const rows = await fb.listWordLists();
-    if (!rows.length){
-      listBox.innerHTML = `<div class="muted">No lists yet. Create one above.</div>`;
-      return;
-    }
-    listBox.innerHTML = "";
-    for (const r of rows){
-      const card = document.createElement("div");
-      card.className = "wl-item";
-      card.innerHTML = `
-        <h4>${escapeHTML(r.name||"Untitled")}</h4>
-        <div class="muted">${r.id}</div>
-        <div style="margin-top:6px;"><button class="chip" data-id="${r.id}">Open</button></div>
-      `;
-      card.querySelector("button")?.addEventListener("click", () => wlOpen(r.id));
-      listBox.appendChild(card);
-    }
-  } catch(e){
-    listBox.innerHTML = `<div class="error">Failed to load lists.</div>`;
-  }
-}
-
-window.wlCreate = async function(){
-  const name = (D("#wl-new-name")?.value || "").trim();
-  if (!name){ toast("Type a list name"); return; }
-  try{
-    const fb = await whenFBReady();
-    const item = await fb.createWordList(name);
-    D("#wl-new-name").value = "";
-    await renderWordListHome();
-    toast("List created.");
-  }catch{ toast("Failed to create list"); }
-};
-
-async function wlOpen(id){
-  App.wordlist.currentId = id;
-  App.wordlist.addMode = false;
-  const fb = await whenFBReady();
-  const lists = await fb.listWordLists();
-  const meta = lists.find(x => x.id === id) || { id, name: "Untitled" };
-  App.wordlist.currentMeta = meta;
-    // mark we’re in a Word List context (used by view switching)
-  App.wordlist = App.wordlist || {};
-  App.wordlist.active = true;                 // enables list-context UI
-  App.wordlist.currentId = id;                // (redundant but safe)
-  App.lesson = meta.name || "Word List";      // for crumbs
-  App.level  = "List";                        // keeps breadcrumbs tidy
-
-  const home = D("#wl-home");
-  const detail = D("#wl-detail");
-  home?.classList.add("hidden");
-  detail?.classList.remove("hidden");
-
-  D("#wl-title").textContent = meta.name || "Untitled";
-
-  const words = await fb.listWordListWords(id);
-  D("#wl-count").textContent = `${words.length} words`;
-   try { await renderWLPracticeCard(meta); } catch {}
-}
-
-window.wlRename = async function(){
-  const meta = App.wordlist.currentMeta; if (!meta) return;
-  const newName = prompt("Rename list:", meta.name||"Untitled");
-  if (!newName) return;
-  try{
-    const fb = await whenFBReady();
-    await fb.renameWordList(meta.id, newName);
-    meta.name = newName;
-    D("#wl-title").textContent = newName;
-    await renderWordListHome();
-    toast("Renamed.");
-  }catch{ toast("Rename failed"); }
-};
-
-window.wlDelete = async function(){
-  const meta = App.wordlist.currentMeta; if (!meta) return;
-  if (!confirm(`Delete list “${meta.name}”? This only deletes the list for you.`)) return;
-  try{
-    const fb = await whenFBReady();
-    await fb.deleteWordList(meta.id);
-    App.wordlist.currentId = null; App.wordlist.currentMeta = null;
-    await renderWordListHome();
-    D("#wl-detail")?.classList.add("hidden");
-    toast("List deleted.");
-  }catch{ toast("Delete failed"); }
-};
-
-window.wlOpenUnselect = async function(){
-  const meta = App.wordlist.currentMeta; if (!meta) return;
-  D("#wl-unselect")?.classList.remove("hidden");
-  const box = D("#wl-unselect-list"); box.innerHTML = "Loading…";
-  try{
-    const fb = await whenFBReady();
-    const rows = await fb.listWordListWords(meta.id);
-    box.innerHTML = "";
-    if (!rows.length){ box.innerHTML = `<div class="muted">No words in this list.</div>`; return; }
-    for (const w of rows){
-      const lab = document.createElement("label");
-      lab.innerHTML = `
-        <input type="checkbox" value="${w.key}">
-        <div style="flex:1">
-          <div><strong>${escapeHTML(w.kanji||"—")}</strong> <span class="muted">${escapeHTML(w.hira||"")}</span></div>
-          <div class="muted">${escapeHTML(w.en||"")}</div>
-        </div>
-      `;
-      box.appendChild(lab);
-    }
-  }catch{ box.innerHTML = `<div class="error">Failed to load words.</div>`; }
-};
-window.wlCloseUnselect = () => D("#wl-unselect")?.classList.add("hidden");
-
-window.wlRemoveChecked = async function(){
-  const meta = App.wordlist.currentMeta; if (!meta) return;
-  const keys = Array.from(D("#wl-unselect-list")?.querySelectorAll("input[type='checkbox']:checked")||[])
-    .map(ch => ch.value);
-  if (!keys.length){ toast("No words selected"); return; }
-  try{
-    const fb = await whenFBReady();
-    await fb.removeWordListWords(meta.id, keys);
-    await wlOpenUnselect();
-    const words = await fb.listWordListWords(meta.id);
-    D("#wl-count").textContent = `${words.length} words`;
-    toast("Removed.");
-  }catch{ toast("Remove failed"); }
-};
-
-window.wlStart = async function(mode){
-  const meta = App.wordlist.currentMeta; if (!meta) return;
-  // load list words → deck → open like Vocabulary
-  try{
-    const fb = await whenFBReady();
-    const rows = await fb.listWordListWords(meta.id);
-    const deck = rows.map(x => ({ kanji:x.kanji||"—", hira:x.hira||"", en:x.en||"" })).filter(w => w.hira && w.en);
-    if (!deck.length){ toast("This list is empty."); return; }
-
-    // Show the shared lesson UI (no Video/Grammar tabs)
-    hideContentPanes();
-    D("#wordlist-section")?.classList.add("hidden"); // make sure the WL screen is off
-    D("#level-shell")?.classList.remove("hidden");
-    D("#lesson-area")?.classList.remove("hidden");
-    hideLessonsHeaderAndList();
-    hideLessonBar();
-    ["#tab-videos","#tab-grammar"].forEach(s => D(s)?.classList.add("hidden"));
-    D("#tab-vocab")?.classList.remove("hidden");
-    showVocabRootMenu();
-    showVocabRootCard();
-
-    App.level = "List";
-    App.lesson = meta.name || meta.id;
-    App.tab = "vocab"; App.mode = null;
-    D("#crumb-level").textContent  = "List";
-    D("#crumb-lesson").textContent = App.lesson;
-    D("#crumb-mode").textContent   = "vocab";
-    D(".lesson-meta")?.classList.add("hidden");
-
-    // launch the selected mode
-    if (mode === "learn"){
-      App.deck = deck.slice();
-      App.deckFiltered = deck.slice();
-      App.qIndex = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
-      D("#learn").classList.remove("hidden");
-      renderLearnCard();
-    } else if (mode === "mcq"){
-      await startPractice("mcq", deck);
-    } else if (mode === "write"){
-      await startPractice("write", deck);
-    } else if (mode === "make"){
-      await startPractice("make", deck);
-    }
-  }catch{ toast("Failed to open list"); }
-};
-
-window.wlOpenAddWords = async function(){
-  const meta = App.wordlist.currentMeta; if (!meta) return;
-  App.wordlist.addMode = true;
-  App.wordlist.pendingAdds = [];
-  // Open Mix Picker (reuse UI)
-  await openMixPractice();
-  // Overwrite the “Build Deck” behavior for this session only
-  const btn = document.querySelector("#mix-section .primary");
-  if (btn){
-    btn.textContent = "Build Deck → Add to This List";
-  }
-};
-
-// Hook: after mixBuildDeck builds, if addMode → jump to Word Table with selection + bulk add
-const _mixBuildDeckOrig = window.mixBuildDeck;
-window.mixBuildDeck = async ()=>{
-  // 1) Build deck via the original function (sets App.mix)
-  await _mixBuildDeckOrig?.();
-
-  // 2) Only intercept when we're adding words into a Word List
-  if (!App.wordlist.addMode || !App.wordlist.currentId) return;
-
-  try{
-    // 3) Load the deck from App.mix into App.deck
-    await ensureDeckLoaded();          // <- uses App.mix.deck
-
-    // 4) Open the Word Table properly (this builds + renders rows)
-    await window.startLearnTable();    // <- calls buildLearnTable()
-
-    // 5) Enhance table for list-adding UX (checkboxes, bulk add, etc.)
-    augmentLearnTableForListAdd();
-  } catch(e){
-    console.error(e);
-    toast("Failed to open Word Table.");
-  }
-};
-
-
-function augmentLearnTableForListAdd(){
-  // Add selection column + “Add Selected to List” + Bulk add UI to the toolbar
-  const host = D("#learn-table");
-  const bar  = host?.querySelector(".learn-table-bar");
-  if (!host || !bar) return;
-
-  // Inject controls only once
-  if (bar.querySelector(".wl-toolbar")) return;
-  const box = document.createElement("div");
-  box.className = "wl-toolbar";
-  box.style.display = "flex";
-  box.style.gap = "8px";
-  box.innerHTML = `
-    <button type="button" id="wl-add-selected">Add Selected to List</button>
-    <details>
-      <summary>Bulk add</summary>
-      <div style="margin-top:6px;">
-        <textarea id="wl-bulk" class="learn-note-input" rows="4"
-          placeholder="Paste CSV lines: kanji,hiragana,english OR hiragana,english"></textarea>
-        <div class="action-row" style="justify-content:flex-start;">
-          <button id="wl-bulk-parse">Preview</button>
-          <button id="wl-bulk-commit" class="save">Add All</button>
-        </div>
-        <div id="wl-bulk-preview" class="muted" style="margin-top:6px;"></div>
-      </div>
-    </details>
-  `;
-  bar.appendChild(box);
-
-  // Add checkbox column to the table rows on rebuild
-  const tb = D("#lt-table tbody");
-  const inject = ()=>{
-    const thead = host.querySelector("#lt-table thead tr");
-    if (thead && !thead.querySelector(".wl-select-head")){
-      const th = document.createElement("th");
-      th.className = "wl-select-head";
-      th.textContent = "Sel";
-      thead.insertBefore(th, thead.firstElementChild);
-    }
-    tb?.querySelectorAll("tr").forEach(tr=>{
-      if (tr.querySelector(".wl-select")) return;
-      const td = document.createElement("td");
-      td.className = "wl-select";
-      td.innerHTML = `<input type="checkbox" class="wl-row-ch">`;
-      tr.insertBefore(td, tr.firstElementChild);
-    });
-  };
-  // Initial
-  setTimeout(inject, 0);
-  // And whenever the table rebuilds (small hook)
-  const mo = new MutationObserver(()=>inject());
-  if (tb) mo.observe(tb, { childList:true, subtree:false });
-
-  // click handlers
-  bar.querySelector("#wl-add-selected")?.addEventListener("click", async ()=>{
-    const rows = Array.from(host.querySelectorAll("#lt-table tbody tr"));
-    const picked = [];
-    for (const tr of rows){
-      const ch = tr.querySelector(".wl-row-ch");
-      if (!ch?.checked) continue;
-      const tds = tr.querySelectorAll("td");
-      // because we inserted a left checkbox col, shift indexes by +1
-      const kanji = tds[1]?.textContent?.trim() || "—";
-      const hira  = tds[2]?.textContent?.trim() || "";
-      const en    = tds[3]?.textContent?.trim() || "";
-      if (hira && en) picked.push({ kanji, hira, en });
-    }
-    if (!picked.length){ toast("No rows selected"); return; }
-    await wlCommitAdd(picked);
-  });
-
-  // bulk preview + commit
-  bar.querySelector("#wl-bulk-parse")?.addEventListener("click", ()=>{
-    const txt = (D("#wl-bulk")?.value || "").trim();
-    const lines = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-    const rows = [];
-    for (const ln of lines){
-      const parts = ln.split(",").map(s=>s.trim());
-      if (parts.length === 3){
-        rows.push({ kanji:parts[0]||"—", hira:parts[1]||"", en:parts[2]||"" });
-      } else if (parts.length === 2){
-        rows.push({ kanji:"—", hira:parts[0]||"", en:parts[1]||"" });
-      }
-    }
-    App.wordlist.pendingAdds = rows.filter(w=>w.hira && w.en);
-    D("#wl-bulk-preview").textContent = `${App.wordlist.pendingAdds.length} rows parsed.`;
-  });
-
-  bar.querySelector("#wl-bulk-commit")?.addEventListener("click", async ()=>{
-    if (!App.wordlist.pendingAdds?.length){ toast("Nothing to add"); return; }
-    await wlCommitAdd(App.wordlist.pendingAdds);
-  });
-}
-
-async function wlCommitAdd(rows){
-  try{
-    const fb = await whenFBReady();
-    await fb.addWordListWords(App.wordlist.currentId, rows);
-    const all = await fb.listWordListWords(App.wordlist.currentId);
-    D("#wl-count").textContent = `${all.length} words`;
-    toast(`Added ${rows.length} word(s) to list.`);
-  }catch{ toast("Add failed"); }
-}
-
   // ---------- Save / Flush ----------
   window.saveCurrentScore = async ()=>{
     try{ const ok = await flushSession(); toast(ok ? "Progress saved ✓" : "Nothing to save."); }
