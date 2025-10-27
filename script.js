@@ -3612,16 +3612,27 @@ window.wlOpenAddWords = async function(){
 // Hook: after mixBuildDeck builds, if addMode → jump to Word Table with selection + bulk add
 const _mixBuildDeckOrig = window.mixBuildDeck;
 window.mixBuildDeck = async ()=>{
+  // 1) Build deck via the original function (sets App.mix)
   await _mixBuildDeckOrig?.();
+
+  // 2) Only intercept when we're adding words into a Word List
   if (!App.wordlist.addMode || !App.wordlist.currentId) return;
 
-  // we are now in Vocab view with App.deck built — jump to Word Table
   try{
-    App.mode = "learn-table"; setCrumbs?.();
-    D("#learn-table")?.classList.remove("hidden");
+    // 3) Load the deck from App.mix into App.deck
+    await ensureDeckLoaded();          // <- uses App.mix.deck
+
+    // 4) Open the Word Table properly (this builds + renders rows)
+    await window.startLearnTable();    // <- calls buildLearnTable()
+
+    // 5) Enhance table for list-adding UX (checkboxes, bulk add, etc.)
     augmentLearnTableForListAdd();
-  }catch{}
+  } catch(e){
+    console.error(e);
+    toast("Failed to open Word Table.");
+  }
 };
+
 
 function augmentLearnTableForListAdd(){
   // Add selection column + “Add Selected to List” + Bulk add UI to the toolbar
