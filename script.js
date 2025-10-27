@@ -618,12 +618,20 @@ async function cascadeUnmark({ src, id, markedId }){
 
   // Try all candidates until one exists
   // Return ONE absolute CSV path or null, based solely on manifest.json
-  async function findVocabCsv(level, lesson){
+  // Replace your current findVocabCsv with this:
+async function findVocabCsv(level, lesson){
+  // Try manifest first
   const ent = getManifestEntry(level, lesson);
-  if (!ent || !ent.vocab) return null;
-  const rel = Array.isArray(ent.vocab) ? ent.vocab[0] : ent.vocab;
-  return `${LEVEL_BASE}/${level}/${lesson}/${rel}`;
-}
+    if (ent && ent.vocab) {
+      const rel = Array.isArray(ent.vocab) ? ent.vocab[0] : ent.vocab;
+      return `${LEVEL_BASE}/${level}/${lesson}/${rel}`;
+    }
+    // Fallback: guess common filenames
+    const candidates = buildVocabCandidates(level, lesson);
+    const hit = await firstOk(candidates);
+    return hit; // absolute or null
+  }
+
 
 
   async function loadDeckFor(level, lesson){
@@ -3619,6 +3627,12 @@ window.mixBuildDeck = async () => {
   for (const w of combined) {
     const k = keyForWord(w);
     if (!seen.has(k)) { seen.add(k); deck.push(w); }
+  }
+  // right after you build 'deck' (post de-dup), add:
+  if (!deck.length) {
+    if (st) st.textContent = "No vocabulary found in those lessons (check manifest or CSV files).";
+    toast?.("No words found. Add vocab to manifest.json or place CSVs using standard names.");
+    return;
   }
 
   // 4) Word List intercept — if user came from "Add words" in Word List,
