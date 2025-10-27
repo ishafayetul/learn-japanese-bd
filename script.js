@@ -1089,6 +1089,7 @@ window.openSection = async (name) => {
   try { await flushSession?.(); } catch {}
   closeVideoLightbox?.();
   hideContentPanes?.();          // always clear the right pane first
+  if (name !== "wordlist") { App.wordlist.active = false; }
 
   // Mistakes / Marked behave like a lesson's Vocab tab using the shared helper
   if (name === "mistakes") { await openVocabDeckFromList("mistakes"); return; }
@@ -3466,6 +3467,12 @@ async function wlOpen(id){
   const lists = await fb.listWordLists();
   const meta = lists.find(x => x.id === id) || { id, name: "Untitled" };
   App.wordlist.currentMeta = meta;
+    // mark we’re in a Word List context (used by view switching)
+  App.wordlist = App.wordlist || {};
+  App.wordlist.active = true;                 // enables list-context UI
+  App.wordlist.currentId = id;                // (redundant but safe)
+  App.lesson = meta.name || "Word List";      // for crumbs
+  App.level  = "List";                        // keeps breadcrumbs tidy
 
   const home = D("#wl-home");
   const detail = D("#wl-detail");
