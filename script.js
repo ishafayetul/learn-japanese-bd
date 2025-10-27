@@ -2893,18 +2893,33 @@ window.writeSubmit = () => {
   let __WL_CTX = { listId:null, listName:null, stagedDeck:[] };
 
   // Open "Add Words" using the exact Mix picker UI
+  // Open "Add Words" using the WL-scoped picker (not global Mix)
   async function openWLAddWords(listId, listName){
     WLAddCtx.active   = true;
     WLAddCtx.listId   = listId;
     WLAddCtx.listName = listName || "Untitled";
     WLAddCtx.staged   = [];
 
-    // Reuse your Mix Practice screen verbatim
-    await openMixPractice();
+    // show WL area + picker
+    hideContentPanes();
+    document.querySelector("#wordlist-section")?.classList.remove("hidden");
+    const elWLFlow = document.querySelector("#wl-flow");
+    const elWLMix  = document.querySelector("#wl-mix");
+    const elWLWordTable = document.querySelector("#wl-wordtable");
 
-    // Optional: small banner so the user knows they’re adding to a list
-    decorateMixForWordList();
+    elWLFlow?.classList.remove("hidden");
+    elWLMix?.classList.remove("hidden");
+    elWLWordTable?.classList.add("hidden");
+
+    // optional banner
+    const t = document.querySelector("#wl-list-title-mix");
+    if (t) t.textContent = `Add words to “${WLAddCtx.listName}”`;
+
+    // build the WL picker UI
+    await drawWLMixPicker();
+    updateBackVisibility?.();
   }
+
 function decorateMixForWordList(){
   if (!WLAddCtx.active) return;
   const mixTitle = document.querySelector("#mix-title"); // adjust the selector to your Mix header
@@ -2970,27 +2985,36 @@ function decorateMixForWordList(){
     });
   });
 }
-elWLBuildFromMix.onclick = async ()=>{
-  const picks = Array.from(
-    elWLMixPicker.querySelectorAll('.wl-lesson-check:checked')
-  ).map(cb => ({ level: cb.dataset.level, lesson: cb.dataset.lesson }));
+  elWLBuildFromMix.onclick = async ()=>{
+    const picks = Array.from(
+      document.querySelectorAll('#wl-mix-picker .wl-lesson-check:checked')
+    ).map(cb => ({ level: cb.dataset.level, lesson: cb.dataset.lesson }));
 
-  if (!picks.length){ toast("Pick at least one deck."); return; }
+    if (!picks.length){ toast("Pick at least one deck."); return; }
 
-  const words = [];
-  for (const p of picks){
-    const batch = await loadDeckFor(p.level, p.lesson);
-    batch.forEach(r => words.push({ kanji:r.kanji||"—", hira:r.hira||"", en:r.en||"" }));
-  }
+    const words = [];
+    for (const p of picks){
+      const batch = await loadDeckFor(p.level, p.lesson);
+      batch.forEach(r => words.push({ kanji:r.kanji||"—", hira:r.hira||"", en:r.en||"" }));
+    }
 
-  // ✅ Use WLAddCtx instead of __WL_CTX
-  window.WLAddCtx = window.WLAddCtx || { listId:null, listName:null, staged:[] };
-  WLAddCtx.staged = words.filter(x=>x.hira && x.en);
+    // stage into WLAddCtx (what the table reads)
+    window.WLAddCtx = window.WLAddCtx || { listId:null, listName:null, staged:[] };
+    WLAddCtx.staged = words.filter(x=>x.hira && x.en);
 
-  // Switch to confirmation table
-  elWLMix.classList.add("hidden");
-  renderWLWordTable();
-};
+    // 🔓 show the word table (this was missing)
+    document.querySelector("#wl-mix")?.classList.add("hidden");
+    document.querySelector("#wl-flow")?.classList.remove("hidden");
+    document.querySelector("#wl-wordtable")?.classList.remove("hidden");
+    document.querySelector("#wordlist-section")?.classList.remove("hidden");
+
+    // paint rows
+    renderWLWordTable?.();
+
+    // optional: scroll to the table
+    document.querySelector("#wl-wordtable")?.scrollIntoView({ behavior:"smooth", block:"start" });
+  };
+
 
 
 
@@ -3001,6 +3025,11 @@ elWLBuildFromMix.onclick = async ()=>{
 
 
   window.renderWLWordTable = () => {
+    // inside window.renderWLWordTable = () => { ... at the top:
+    document.querySelector("#wordlist-section")?.classList.remove("hidden");
+    document.querySelector("#wl-flow")?.classList.remove("hidden");
+    document.querySelector("#wl-wordtable")?.classList.remove("hidden");
+
   const ctx = window.WLAddCtx || {};
   const listName = ctx.listName || "Untitled";
 
