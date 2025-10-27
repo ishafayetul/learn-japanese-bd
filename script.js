@@ -314,16 +314,7 @@ const App = Object.assign(window.App, {
 // keep a stable global reference
 window.App = App;
 
-// Tell UI if we're practicing "list-like" decks (Mistakes / Marked / Word List)
-function inListVocabContext(){
-  try {
-    return (
-      App?.level === "Mistakes" ||
-      App?.level === "Marked"   ||
-      !!(App?.wordlist && App.wordlist.active)
-    );
-  } catch { return false; }
-}
+
 
 function attemptSig(){
   return JSON.stringify({
@@ -1464,6 +1455,19 @@ window.closeVideoLightbox = closeVideoLightbox;
   // }
 
   async function ensureDeckLoaded(){
+    // Word List context: keep the deck you already loaded from the list
+    if ((App.wordlist && App.wordlist.active) || App.level === "List") {
+      if ((!App.deck || !App.deck.length) && App.wordlist?.deck?.length) {
+        App.deck = App.wordlist.deck.slice();
+      }
+      if (elVocabStatus) {
+        elVocabStatus.textContent = App.deck.length
+          ? `Loaded ${App.deck.length} words.`
+          : "No words found.";
+      }
+      return; // ← DO NOT try to load CSVs for Word Lists
+    }
+
       // If Mix deck is active, just use it.
       if (App.mix?.active && App.mix.deck?.length){
         App.deck = App.mix.deck.slice();
@@ -3346,9 +3350,16 @@ async function renderMixPicker(){
   if (st) st.textContent = "Select lessons, then click Build Deck.";
 }
 
-function inListVocabContext(){
-  return App.level === "Mistakes" || App.level === "Marked" || App.level === "Mix";
-}
+  function inListVocabContext() {
+    return (
+      App.level === "Mistakes" ||
+      App.level === "Marked"   ||
+      App.level === "Mix"      ||
+      App.level === "List"     ||          // ✅ Word Lists by level name
+      (App.wordlist && App.wordlist.active) // ✅ or explicit flag
+    );
+  }
+
 
 // Global select/clear helpers (buttons below the picker)
 window.mixSelectAll = ()=>{
@@ -3511,36 +3522,50 @@ window.renderWLPracticeCard = renderWLPracticeCard;
 
 // ===== Word List — Mode launcher =====
 function startWLMode(mode) {
-  if (!App.wordlist.deck?.length) return;
+  if (!App.wordlist?.deck?.length) return;
 
-  // Reuse same deck & state structure as Vocabulary
-  App.deck = [...App.wordlist.deck];
-  App.lesson = { id: "WordList", title: "Custom List" };
+  // mark context + bring in the deck
+  App.wordlist.active = true;
+  App.deck   = App.wordlist.deck.slice();
+  App.level  = "List";
+  const name = App.wordlist.currentMeta?.name || App.wordlist.currentMeta?.id || "Word List";
+  App.lesson = name;
+  App.tab    = "vocab";
+  App.mode   = null;
 
-  // Show the Vocabulary area
-  hideAllSections();
-  document.querySelector("#level-shell").classList.remove("hidden");
-  document.querySelector("#lesson-area").classList.remove("hidden");
+  // show only the Vocab pane (same shell the Vocabulary tab uses)
+  hideContentPanes();
+  document.querySelector("#level-shell")?.classList.remove("hidden");
+  document.querySelector("#lesson-area")?.classList.remove("hidden");
+  hideLessonsHeaderAndList();
+  hideLessonBar(); // list-like page: no Video/Vocab/Grammar tabs
 
-  // Switch tab to Vocab
-  openLessonTab("vocab");
+  ["#tab-videos", "#tab-grammar"].forEach(s => document.querySelector(s)?.classList.add("hidden"));
+  document.querySelector("#tab-vocab")?.classList.remove("hidden");
 
-  // Start appropriate mode
+  // crumbs + status
+  document.querySelector("#crumb-level").textContent  = "List";
+  document.querySelector("#crumb-lesson").textContent = name;
+  document.querySelector("#crumb-mode").textContent   = "vocab";
+  document.querySelector(".lesson-meta")?.classList.add("hidden");
+  const vs = document.querySelector("#vocab-status");
+  if (vs) vs.textContent = "Pick an option.";
+
+  // show the root and open the requested submenu/final
+  showVocabRootMenu();
+  showVocabRootCard();
+
   switch (mode) {
-    case "learn":
-      openVocabLearnMenu();
-      break;
-    case "mcq":
-      openVocabMCQMenu();
-      break;
-    case "write":
-      openVocabWriteMenu();
-      break;
-    case "make":
-      startMakeSentence();
-      break;
+    case "learn":  openVocabLearnMenu();   break; // menu with “Kanji→Hira / Hira→English / Word Table”
+    case "mcq":    openVocabMCQMenu();     break; // menu with JP↔EN, Kanji↔Hira, Dual MCQ, Match, etc.
+    case "write":  openVocabWriteMenu();   break; // menu with EN→Hira / Kanji→Hira
+    case "make":   startMakeSentence();    break; // starts immediately (like Vocabulary)
   }
+
+  updateBackVisibility?.();
 }
+window.startWLMode = startWLMode;
+
 window.startWLMode = startWLMode;
 
 async function renderWordListHome(){
