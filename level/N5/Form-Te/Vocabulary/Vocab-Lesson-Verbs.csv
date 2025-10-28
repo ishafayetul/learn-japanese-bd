@@ -8,7 +8,7 @@
 いきます-1,いって,go
 きます-3,きて,come
 かえります-1,かえって,"go home, return"
-たべます-1,たべて,to eat
+たべます-2,たべて,to eat
 のみます-1,のんで,to drink
 すいます-1,すって,to smoke / to inhale
 たばこをすいます-1,たばこをすって,to smoke cigarettes
@@ -27,7 +27,7 @@
 はなみをします-3,はなみをして,to go flower viewing
 きります-1,きって,"cut, slice"
 おくります-1,おくって,পাঠানো / উপহার দেওয়া
-あげます-1,あげて,দেওয়া
+あげます-2,あげて,দেওয়া
 もらいます-1,もらって,গ্রহণ করা
 かします-3,かして,ধার দেওয়া
 かります-2,かりて,ধার নেওয়া
@@ -51,8 +51,8 @@
 また こんど おねがい します-3,また こんど おねがい して,"Please ask me again some other time (used when refusing an invitation indirectly, considering someone's feelings"
 います-2,いて,"exist, be (referring to animate things)"
 あります-1,あって,"exist, be (referring to inanimate things)"
-こどもがいます-1,こどもがいて,have a child
-にほんにいます-1,にほんにいて,"stay, be in Japan"
+こどもがいます-1,こどもがって,have a child
+にほんにいます-1,にほんにって,"stay, be in Japan"
 かかります-1,かかって,take (referring to time or money)
 かいしゃをやすみます-1,かいしゃをやすんで,take a day off work
 いってまいります-1,いってまいって,So long. (lit. I'm going and coming back.)
@@ -61,7 +61,7 @@
 およぎます-1,およいで,swim
 むかえます-2,むかえて,"go to meet, welcome"
 つかれます-1,つかれて,get tired
-だします-3,だして,send
+だします-1,だして,send
 てがみをだします-3,てがみをだして,send a letter
 はいります-1,はいって,enter
 きっさてんにはいります-1,きっさてんにはいって,enter a coffee shop
@@ -76,8 +76,8 @@
 スキーをします-3,スキーをして,ski
 かいぎをします-3,かいぎをして,hold a conference
 とうろくをします-3,とうろくをして,register
-つけます-1,つけて,turn on
-けします-3,けして,turn off
+つけます-2,つけて,turn on
+けします-1,けして,turn off
 しめます-2,しめて,"close, shut"
 いそぎます-1,いそいで,hurry
 まちます-1,まって,wait
@@ -88,11 +88,11 @@
 とります-1,とって,"take, pass"
 てつだいます-1,てつだって,help (with a task)
 よびます-1,よんで,call
-はなします-3,はなして,"speak, talk"
-みせます-1,みせて,show
+はなします-1,はなして,"speak, talk"
+みせます-2,みせて,show
 おしえます-2,おしえて,tell
 じゅうしょをおしえます-2,じゅうしょをおしえて,tell an address
-はじめます-1,はじめて,"start, begin"
+はじめます-2,はじめて,"start, begin"
 ふります-2,ふって,rain
 あめがふります-1,あめがふって,rain
 コピーします-3,コピーして,copy
@@ -100,53 +100,53 @@
 たちます-1,たって,stand up
 すわります-1,すわって,sit down
 つかいます-1,つかって,use
-おきます-2,おいて,put
+おきます-1,おいて,put
 つくります-1,つくって,"make, produce"
 うります-1,うって,sell
 しります-1,しって,get to know
 すみます-1,すんで,be going to live
 けんきゅうします-3,けんきゅうして,do research
-おおさかにすんでいます-1,おおさかにすんでいて,live in Osaka
-おもいだします-3,おもいだして,"remember, recollect"
+おおさかにすんでいます-1,おおさかにすんでって,live in Osaka
+おもいだします-1,おもいだして,"remember, recollect"
 いらっしゃいます-1,いらっしゃって,be (honorific equivalent of imasu)
 のります-1,のって,"ride, get on"
 でんしゃにのります-1,でんしゃにのって,"ride, get on a train"
 おります-2,おりて,get off
-でんしゃをおります-1,でんしゃをおりて,get off a train
+でんしゃをおります-1,でんしゃをおって,get off a train
 のりかえます-2,のりかえて,"change (trains, etc.)"
-シャワーをあびます-1,シャワーをあびて,take a shower
-いれます-1,いれて,"put in, insert"
-だします-3,だして,"take out, withdraw"
+シャワーをあびます-1,シャワーをあんで,take a shower
+いれます-2,いれて,"put in, insert"
+だします-1,だして,"take out, withdraw"
 だいがくにはいります-1,だいがくにはいって,enter a university
 でます-2,でて,graduate
 だいがくをでます-1,だいがくをでて,graduate from a university
 やめます-1,やめて,"quit or retire from, stop, give up"
 かいしゃをやめます-1,かいしゃをやめて,quit or retire from a company
-おします-3,おして,"press, push"
+おします-1,おして,"press, push"
 ジョギングをします-3,ジョギングをして,jog
 かくにんします-3,かくにんして,confirm
 おぼえます-2,おぼえて,memorize
-わすれます-1,わすれて,forget
-なくします-3,なくして,lose
-だします-3,だして,hand in
+わすれます-2,わすれて,forget
+なくします-1,なくして,lose
+だします-1,だして,hand in
 レポートをだします-3,レポートをだして,hand in a report
 はらいます-1,はらって,pay
 かえします-3,かえして,"give back, return"
 でかけます-1,でかけて,go out
 ぬぎます-1,ぬいで,"take off (clothes, shoes, etc.)"
-もっていきます-1,もっていって,take (something)
-もってきます-3,もってきて,bring (something)
-しんぱいします-3,しんぱいして,worry
-ざんぎょうします-3,ざんぎょうして,work overtime
-しゅっちょうします-3,しゅっちょうして,go on a business trip
+もっていきます-1,もっていいて,take (something)
+もってきます-3,もっていて,bring (something)
+しんぱいします-1,しんぱいして,worry
+ざんぎょうします-1,ざんぎょうして,work overtime
+しゅっちょうします-1,しゅっちょうして,go on a business trip
 くすりのみます-1,くすりのんで,take medicine
 おふろにはいります-1,おふろにはいって,take a bath
 できます-2,できて,"be able to, can"
 あらいます-1,あらって,wash
 ひきます-1,ひいて,"play (stringed instrument or piano, etc.)"
 うたいます-1,うたって,sing
-あつめます-1,あつめて,"collect, gather"
-すてます-1,すてて,throw away
+あつめます-2,あつめて,"collect, gather"
+すてます-2,すてて,throw away
 かえます-2,かえて,"exchange, change"
 うんてんします-3,うんてんして,drive
 よやくします-3,よやくして,"reserve, book"
@@ -166,6 +166,6 @@
 いります-1,いって,"need, require"
 ビザがいります-1,ビザがいって,"need, require a visa"
 しらべます-1,しらべて,"check, investigate"
-なおします-3,なおして,"repair, correct"
+なおします-1,なおして,"repair, correct"
 しゅうりします-3,しゅうりして,repair
 でんわします-3,でんわして,to phone

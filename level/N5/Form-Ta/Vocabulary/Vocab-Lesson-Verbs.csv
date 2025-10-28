@@ -1,4 +1,4 @@
-おきます-2,おきた,put
+おきます-1,おいた,put
 ねます-2,ねた,to sleep \ to go to bed
 はたらきます-1,はたらいた,to work
 やすみます-1,やすんだ,to rest \ to take a break \ to take time off
@@ -7,7 +7,7 @@
 いきます-1,いった,go
 きます-3,きた,come
 かえります-1,かえった,"go home, return"
-たべます-1,たべた,to eat
+たべます-2,たべた,to eat
 のみます-1,のんだ,to drink
 すいます-1,すった,to smoke / to inhale
 みます-2,みた,to see / to watch / to look at
@@ -20,9 +20,9 @@
 あいます-1,あった,to meet
 きります-1,きった,"cut, slice"
 おくります-1,おくった,পাঠানো / উপহার দেওয়া
-あげます-1,あげた,দেওয়া
+あげます-2,あげた,দেওয়া
 もらいます-1,もらった,গ্রহণ করা
-かします-3,かした,ধার দেওয়া
+かします-1,かした,ধার দেওয়া
 かります-2,かりた,ধার নেওয়া
 おしえます-2,おしえた,tell
 ならいます-1,ならった,শেখা
@@ -32,32 +32,32 @@
 わかります-1,わかった,understand
 あります-1,あった,"exist, be (referring to inanimate things)"
 います-2,いた,"exist, be (referring to animate things)"
-できます-3,でいた,can
+できます-2,できた,can
 いります-1,いった,"need, require"
-ふります-2,ふりた,rain
+ふります-1,ふった,rain
 かかります-1,かかった,take (referring to time or money)
 あそびます-1,あそんだ,"enjoy oneself, play"
 およぎます-1,およいだ,swim
 むかえます-2,むかえた,"go to meet, welcome"
-つかれます-1,つかれた,get tired
-だします-3,だした,hand in
+つかれます-2,つかれた,get tired
+だします-1,だした,hand in
 はいります-1,はいった,enter
 でます-2,でた,graduate
 けっこんします-3,けっこんした,"marry, get married"
 かいものします-3,かいものした,do shopping
 しょくじします-3,しょくじした,"have a meal, dine"
 さんぽします-3,さんぽした,take a walk
-つけます-1,つけた,turn on
-けします-3,けした,turn off
+つけます-2,つけた,turn on
+けします-1,けした,turn off
 しめます-2,しめた,"close, shut"
 いそぎます-1,いそいだ,hurry
 まちます-1,まった,wait
 とめます-1,とめた,"stop, park"
 もちます-1,もった,hold
 よびます-1,よんだ,call
-はなします-3,はなした,"speak, talk"
-みせます-1,みせた,show
-はじめます-1,はじめた,"start, begin"
+はなします-1,はなした,"speak, talk"
+みせます-2,みせた,show
+はじめます-2,はじめた,"start, begin"
 コピーします-3,コピーした,copy
 たちます-1,たった,stand up
 すわります-1,すわった,sit down
@@ -68,29 +68,29 @@
 すみます-1,すんだ,be going to live
 けんきゅうします-3,けんきゅうした,do research
 すんでいます-1,すんでった,live
-おもいだします-3,おもいだした,"remember, recollect"
+おもいだします-1,おもいだした,"remember, recollect"
 のります-1,のった,"ride, get on"
 おります-2,おりた,get off
 のりかえます-2,のりかえた,"change (trains, etc.)"
-いれます-1,いれた,"put in, insert"
-やめます-1,やめた,"quit or retire from, stop, give up"
-おします-3,おした,"press, push"
+いれます-2,いれた,"put in, insert"
+やめます-2,やめた,"quit or retire from, stop, give up"
+おします-1,おした,"press, push"
 おぼえます-2,おぼえた,memorize
-わすれます-1,わすれた,forget
-なくします-3,なくした,lose
+わすれます-2,わすれた,forget
+なくします-1,なくした,lose
 はらいます-1,はらった,pay
-かえします-3,かえした,"give back, return"
-でかけます-1,でかけた,go out
+かえします-1,かえした,"give back, return"
+でかけます-2,でかけた,go out
 ぬぎます-1,ぬいだ,"take off (clothes, shoes, etc.)"
-しんぱいします-3,しんぱいした,worry
-ざんぎょうします-3,ざんぎょうした,work overtime
-しゅっちょうします-3,しゅっちょうした,go on a business trip
+しんぱいします-1,しんぱいした,worry
+ざんぎょうします-1,ざんぎょうした,work overtime
+しゅっちょうします-1,しゅっちょうした,go on a business trip
 くすりのみます-1,くすりのんだ,take medicine
 できます-2,できた,"be able to, can"
 あらいます-1,あらった,wash
 ひきます-1,ひいた,"play (stringed instrument or piano, etc.)"
 うたいます-1,うたった,sing
-あつめます-1,あつめた,"collect, gather"
+あつめます-2,あつめた,"collect, gather"
 かえます-2,かえた,"exchange, change"
 よやくします-3,よやくした,"reserve, book"
 のぼります-1,のぼった,climb
@@ -99,7 +99,7 @@
 せんたくします-3,せんたくした,wash (clothes)
 れんしゅうします-3,れんしゅうした,practice
 なります-1,なった,become
-しらべます-1,しらべた,"check, investigate"
-なおします-3,なおした,"repair, correct"
-しゅうりします-3,しゅうりした,repair
+しらべます-2,しらべた,"check, investigate"
+なおします-1,なおした,"repair, correct"
+しゅうりします-1,しゅうりした,repair
 でんわします-3,でんわした,to phone
