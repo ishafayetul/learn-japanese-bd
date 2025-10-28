@@ -1610,7 +1610,7 @@ window.closeVideoLightbox = closeVideoLightbox;
   document.querySelector("#learn-box").innerHTML = `
     <div class="flashcard">
       <div class="muted" style="font-size:1.1em;">${escapeHTML(head)}</div>
-      <div style="margin:8px 0;font-size:2em;">${escapeHTML(big)}</div>
+      <div style="margin:8px 0;font-size:5em;">${escapeHTML(big)}</div>
       <div class="muted" style="margin-top:6px;">${escapeHTML(sub)}</div>
       <div style="margin-top:10px; display:flex; gap:8px; justify-content:center;">
         <button id="btn-audio" title="Play audio">🔊</button>
