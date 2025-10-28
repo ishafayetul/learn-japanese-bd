@@ -2,7 +2,9 @@
   "version": 1,
   "level": "N5",
   "allLessons": [
-    "Verbs-ない-Form","Verbs-て-Form","Kanji-01","Kanji-01-Words","Kanji-02","Kanji-02-Words","Kanji-03","Kanji-04",
+    "Form-なかった-","Form-た","Form-じしょ","Form-ない","Form-て",
+    "Kanji-01","Kanji-01-Words","Kanji-02","Kanji-02-Words",
+    "Kanji-03","Kanji-04",
     "Lesson-01","Lesson-02","Lesson-03","Lesson-04","Lesson-05",
     "Lesson-06","Lesson-07","Lesson-08","Lesson-09","Lesson-10",
     "Lesson-11","Lesson-12","Lesson-13","Lesson-14","Lesson-15",
@@ -11,15 +13,32 @@
     "Confusing Words","Lesson-Counters","Lesson-Time","Lesson-Phrases"
   ],
   "lessons": {
-    "Verbs-ない-Form": {
+    "Form-なかった-": {
       "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
-    },"Verbs-て-Form": {
+    },
+    "Form-た": {
       "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
-    },"Kanji-01": {
+    },
+    "Form-じしょ": {
+      "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson.pdf"]
+    },
+    "Form-ない": {
+      "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson.pdf"]
+    },
+    "Form-て": {
+      "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson.pdf"]
+    },
+    "Kanji-01": {
       "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
@@ -33,7 +52,8 @@
       "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
-    },"Kanji-02-Words": {
+    },
+    "Kanji-02-Words": {
       "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
