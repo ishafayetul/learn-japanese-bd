@@ -1,125 +1,93 @@
-きます,こない,come
-きます,こない,"put on (a shirt, etc.)"
-かえります,かえらない,"go home, return"
-たべます,たべない,to eat
-のみます,のまない,to drink
-すいます,すわない,to smoke / to inhale
-みます-II,みない,to see / to watch / to look at
-ききます,きかない,to listen / to ask; ask
-よみます,よまない,to read
-かきます,かかない,to write
-かいます,かわない,to buy
-とります,とらない,"to take / to take a photo; take, pass"
-します,しない,to do
-あいます,あわない,to meet
-きります,きらない,"cut, slice"
-おくります,おくらない,"to send / to give (as a gift); escort, go with"
-あげます,あげない,to give
-もらいます,もらわない,to receive
-かします,かさない,to lend
-かります-II,かりない,to borrow
-おしえます,おしえない,to teach; tell
-ならいます,ならわない,to learn
-かけます,かけない,to make a telephone call
-わかります,わからない,to understand
-あります,ない,"to have / to exist (things); be held, take place"
-います-II,いない,to exist (people/animals)
-できます-II,できない,can
-いります,いらない,need; require
-ふります,ふらない,to fall (rain/snow)
-かかります,かからない,to take (time/money)
-あそびます,あそばない,"enjoy oneself, play"
-およぎます,およがない,swim
-むかえます,むかえない,"go to meet, welcome"
-つかれます,つかれない,get tired
-だします,ださない,"send; take out, withdraw"
-はいります,はいらない,enter
-でます,でない,go out; graduate; come out
-けっこんします,けっこんしない,"marry, get married"
-かいものします,かいものしない,do shopping
-しょくじします,しょくじしない,"have a meal, dine"
-さんぽします,さんぽしない,take a walk
-つけます,つけない,turn on
-けします,けさない,turn off
-しめます,しめない,"close, shut"
-いそぎます,いそがない,hurry
-まちます,またない,wait
-とめます,とめない,"stop, park"
-まがります,まがらない,turn
-もちます,もたない,hold
-てつだいます,てつだわない,help (with a task)
-よびます,よばない,call
-はなします,はなさない,"speak, talk"
-みせます,みせない,show
-はじめます,はじめない,"start, begin"
-たちます,たたない,stand up
-すわります,すわらない,sit down
-つかいます,つかわない,use
-おきます-I (put),おかない,put
-おきます-II (get up),おきない,get up
-つくります,つくらない,"make, produce"
-うります,うらない,sell
-しります,しらない,get to know
-すみます,すまない,live
-けんきゅうします,けんきゅうしない,do research
-のります,のらない,"ride, get on"
-おります-II,おりない,get off
-のりかえます,のりかえない,"change (trains, etc.)"
-いれます,いれない,"put in, insert"
-やめます,やめない,"quit or retire from, stop, give up"
-おします,おさない,"press, push"
-おぼえます,おぼえない,memorize
-わすれます,わすれない,forget
-なくします,なくさない,lose
-はらいます,はらわない,pay
-かえします,かえさない,"give back, return"
-でかけます,でかけない,go out
-ぬぎます,ぬがない,"take off (clothes, shoes, etc.)"
-もっていきます,もっていかない,take (something)
-もってきます-III,もってこない,bring (something)
-しんぱいします,しんぱいしない,worry
-ざんぎょうします,ざんぎょうしない,work overtime
-しゅっちょうします,しゅっちょうしない,go on a business trip
-あらいます,あらわない,wash
-ひきます,ひかない,"play (stringed instrument or piano, etc.); pull"
-うたいます,うたわない,sing
-あつめます,あつめない,"collect, gather"
-すてます,すてない,throw away
-かえます,かえない,"exchange, change"
-うんてんします,うんてんしない,drive
-よやくします,よやくしない,"reserve, book"
-けんがくします,けんがくしない,visit some place for study
-のぼります,のぼらない,climb
-とまります,とまらない,stay
-そうじします,そうじしない,clean (a room)
-せんたくします,せんたくしない,wash (clothes)
-れんしゅうします,れんしゅうしない,practice
-しらべます,しらべない,"check, investigate"
-なおします,なおさない,"repair, correct"
-しゅうりします,しゅうりしない,repair
-でんわします,でんわしない,to phone
-いいます,いわない,say
-かちます,かたない,win
-まけます,まけない,"lose, be beaten"
-はきます,はかない,"put on (shoes, trousers, etc.)"
-かぶります,かぶらない,"put on (a hat, etc)"
-まわします,まわさない,turn
-さわります,さわらない,touch
-うごきます,うごかない,"move, work"
-あるきます,あるかない,walk
-わたります,わたらない,cross
-きをつけます,きをつけない,"pay attention, take care"
-ひっこしします,ひっこししない,move (house)
-くれます,くれない,give(me)
-つれていきます,つれていかない,take (someone)
-つれてきます-III,つれてこない,bring (someone)
-しょうかいします,しょうかいしない,introduce
-あんないします,あんないしない,"show around, show the way"
-せつめいします,せつめいしない,explain
-かんがえます,かんがえない,"think, consider"
-つきます,つかない,arrive
-りゅうがくします,りゅうがくしない,study abroad
-としをとります,としをとらない,grow old
-がんばります,がんばらない,do one's best
-あびます-II,あびない,to take a shower / to bathe
-たります-II,たりない,to be enough / to suffice
+おきます-1,おかない,put
+おきます-2,おきない,get up
+ねます-2,ねない,to sleep \ to go to bed
+はたらきます-1,はたらかない,to work
+べんきょうします-3,べんきょうしない,to study
+おわります-1,おわらない,to finish \ to end
+いきます-1,いかない,go
+きます-3,こない,come
+かえります-1,かえらない,"go home, return"
+たべます-1,たべない,to eat
+すいます-1,すわない,to smoke \ to inhale
+みます-2,みない,to see \ to watch \ to look at
+ききます-1,きかない,to listen \ to ask
+よみます-1,よまない,to read
+かきます-1,かかない,to write
+かいます-1,かわない,to buy
+します-3,さない,to do
+あいます-1,あわない,to meet
+きります-1,きらない,"cut, slice"
+おくります-1,おくらない,পাঠানো \ উপহার দেওয়া
+あげます-1,あげない,দেওয়া
+もらいます-1,もらわない,গ্রহণ করা
+かします-2,かさない,ধার দেওয়া
+かります-2,かりない,ধার নেওয়া
+おしえます-2,おしえない,tell
+ならいます-1,ならわない,শেখা
+そろそろしつれいします-3,そろそろしつれいさない,It's almost time to leave now
+わかります-1,わからない,understand
+あります-1,ない,"exist, be (referring to inanimate things)"
+います-2,いない,"exist, be (referring to animate things)"
+いります-1,いらない,"need, require"
+ふります-2,ふらない,rain
+かかります-1,かからない,take (referring to time or money)
+あそびます-1,あそばない,"enjoy oneself, play"
+およぎます-1,およがない,swim
+むかえます-2,むかえない,"go to meet, welcome"
+つかれます-1,つかれない,get tired
+だします-3,ださない,hand in
+はいります-1,はいらない,enter
+けっこんします-3,けっこんしない,"marry, get married"
+しょくじします-3,しょくじしない,"have a meal, dine"
+さんぽします-3,さんぽしない,take a walk
+つけます-1,つけない,turn on
+けします-3,けさない,turn off
+しめます-2,しめない,"close, shut"
+いそぎます-1,いそがない,hurry
+まちます-1,またない,wait
+もちます-1,もたない,hold
+てつだいます-1,てつだわない,help (with a task)
+よびます-1,よばない,call
+はなします-3,はなさない,"speak, talk"
+みせます-1,みせない,show
+はじめます-1,はじめない,"start, begin"
+コピーします-3,コピーしない,copy
+たちます-1,たたない,stand up
+すわります-1,すわらない,sit down
+つかいます-1,つかわない,use
+つくります-1,つくらない,"make, produce"
+うります-1,うらない,sell
+しります-1,しらない,get to know
+すみます-1,すまない,be going to live
+けんきゅうします-3,けんきゅうしない,do research
+しっています-1,しってわない,know
+おもいだします-3,おもいださない,"remember, recollect"
+いらっしゃいます-1,いらっしゃわない,be (honorific equivalent of imasu)
+おります-2,おりない,get off
+いれます-1,いれない,"put in, insert"
+おします-3,おさない,"press, push"
+おぼえます-2,おぼえない,memorize
+わすれます-1,わすれない,forget
+なくします-3,なくさない,lose
+はらいます-1,はらわない,pay
+かえします-3,かえさない,"give back, return"
+ぬぎます-1,ぬがない,"take off (clothes, shoes, etc.)"
+もっていきます-1,もっていかない,take (something)
+もってきます-3,もってかない,bring (something)
+しんぱいします-3,しんぱいさない,worry
+ざんぎょうします-3,ざんぎょうさない,work overtime
+しゅっちょうします-3,しゅっちょうさない,go on a business trip
+あらいます-1,あらわない,wash
+ひきます-1,ひかない,"play (stringed instrument or piano, etc.)"
+うたいます-1,うたわない,sing
+あつめます-1,あつめない,"collect, gather"
+すてます-1,すてない,throw away
+かえます-2,かえない,"exchange, change"
+うんてんします-3,うんてんしない,drive
+そうじします-3,そうじしない,clean (a room)
+せんたくします-3,せんたくしない,wash (clothes)
+れんしゅうします-3,れんしゅうしない,practice
+なります-1,ならない,become
+しらべます-1,しらべない,"check, investigate"
+なおします-3,なおさない,"repair, correct"
+しゅうりします-3,しゅうりさない,repair
