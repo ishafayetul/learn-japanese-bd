@@ -1602,7 +1602,7 @@ window.closeVideoLightbox = closeVideoLightbox;
   }
 
   const isK2H = App.learnVariant !== "h2e";
-  const head  = isK2H ? "Kanji → Hiragana (Learn)" : "Hiragana → English (Learn)";
+  const head  = isK2H ? "" : "";
   const big   = isK2H ? (w.kanji && w.kanji!=="—" ? w.kanji : w.hira) : w.hira;
   const sub   = isK2H ? w.hira : w.en;
 
