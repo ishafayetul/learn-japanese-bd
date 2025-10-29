@@ -573,6 +573,24 @@ async function cascadeUnmark({ src, id, markedId }){
   return `${LEVEL_BASE}/${level}/${lesson}/${rel}`;
 }
 
+// === Audio hotkey helpers ===
+function bindAudioHotkey(playFn){
+  unbindAudioHotkey();
+  App._audioHotkey = (e)=>{
+    // Space bar -> play; block default (avoids page scroll / input space)
+    if (e.code === "Space"){
+      e.preventDefault();
+      try{ playFn && playFn(); }catch{}
+    }
+  };
+  document.addEventListener("keydown", App._audioHotkey);
+}
+function unbindAudioHotkey(){
+  if (App._audioHotkey){
+    document.removeEventListener("keydown", App._audioHotkey);
+    App._audioHotkey = null;
+  }
+}
 
   async function loadDeckFor(level, lesson){
     const url = await findVocabCsv(level, lesson);
@@ -1950,6 +1968,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
   }
 
   function renderQuestion(){
+    unbindAudioHotkey();
     const w = App.mastery?.pending?.[App.qIndex];
     if (!w){
       if (App.mastery && App.mastery.pending.length === 0) {
@@ -1973,6 +1992,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       // Wire play
       const play = ()=> speakJa(w.hira);
       document.querySelector("#q-audio")?.addEventListener("click", play, { once:false });
+      bindAudioHotkey(play);
       // Auto-play when the question appears
       try{ play(); }catch{}
 
@@ -2587,6 +2607,7 @@ window.addEventListener("keydown", (e) => {
 
   }
   function renderWriteCard(){
+    unbindAudioHotkey();
     const i = App.write.order[App.write.idx] ?? -1;
     const w = App.deckFiltered[i];
     if (!w){ elWriteCard.textContent="All done."; elWriteInput.value=""; updateWriteProgress(); return; }
@@ -2601,6 +2622,7 @@ window.addEventListener("keydown", (e) => {
       `;
       const play = ()=> speakJa(w.hira);
       document.querySelector("#write-audio")?.addEventListener("click", play, { once:false });
+      bindAudioHotkey(play);
       try{ play(); }catch{}
     } else if (App.write.variant==="k2h"){
       elWriteCard.textContent = (w.kanji||"");
