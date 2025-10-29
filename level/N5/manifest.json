@@ -2,7 +2,7 @@
   "version": 1,
   "level": "N5",
   "allLessons": [
-    "Form-NaKatta","Form-Ta","Form-Jisho","Form-Nai","Form-Te",
+    "All Verbs","Form-NaKatta","Form-Ta","Form-Jisho","Form-Nai","Form-Te",
     "Kanji-01","Kanji-01-Words","Kanji-02","Kanji-02-Words",
     "Kanji-03","Kanji-04",
     "Lesson-01","Lesson-02","Lesson-03","Lesson-04","Lesson-05",
@@ -13,6 +13,11 @@
     "Confusing Words","Lesson-Counters","Lesson-Time","Lesson-Phrases"
   ],
   "lessons": {
+    "All Verbs": {
+      "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson.pdf"]
+    },
     "Form-NaKatta": {
       "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
       "videoCsv": "Video Lecture/video.csv",
