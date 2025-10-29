@@ -1870,17 +1870,51 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       App.deck = shuffle(App.deck || []);
       buildLearnTable();
     });
-    // EXPORT (CSV / PDF)
-    document.querySelector("#lt-export")?.addEventListener("click", async () => {
-      const choice = (prompt("Export format? Type: csv  or  pdf", "csv") || "").trim().toLowerCase();
-      if (choice === "csv") {
+    // EXPORT picker
+    (function(){
+      const menuWrap = document.getElementById("lt-export-menu");
+      const btn      = document.getElementById("lt-export");
+      const toCSV    = document.getElementById("lt-export-csv");
+      const toPDF    = document.getElementById("lt-export-pdf");
+
+      if (!menuWrap || !btn || !toCSV || !toPDF) return;
+
+      const openMenu = () => {
+        menuWrap.classList.add("open");
+        btn.setAttribute("aria-expanded","true");
+      };
+      const closeMenu = () => {
+        menuWrap.classList.remove("open");
+        btn.setAttribute("aria-expanded","false");
+      };
+
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (menuWrap.classList.contains("open")) closeMenu(); else openMenu();
+      });
+
+      toCSV.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeMenu();
         exportWordTableCSV();
-      } else if (choice === "pdf") {
+      });
+
+      toPDF.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeMenu();
         exportWordTablePDF();
-      } else {
-        toast("Export canceled.");
-      }
-    });
+      });
+
+      // close on outside click or Escape
+      document.addEventListener("click", (e) => {
+        if (!menuWrap.contains(e.target)) closeMenu();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeMenu();
+      });
+    })();
+
+
     // play all (current filtered order)
     document.querySelector("#lt-playall")?.addEventListener("click", async () => {
       const items = Array.from(document.querySelectorAll("#lt-table tbody td.hira"))

@@ -1043,3 +1043,58 @@ body.nav-open .scrim{ display:block; }
   background: #2a0e0e;
   color: #ffd0d0;
 }
+
+/* --- Export menu (Word Table) --- */
+.menu {
+  position: relative;
+  display: inline-block;
+  margin-left: .5rem;
+}
+.menu > button {
+  /* inherit button appearance but ensure it behaves like an inline control */
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.menu .menu-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  padding: 6px;
+  margin-top: 6px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.08);
+  display: none;
+  z-index: 50;
+}
+.menu.open .menu-list {
+  display: block;
+}
+.menu .menu-list > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+.menu .menu-list > button:hover,
+.menu .menu-list > button:focus {
+  background: rgba(0,0,0,.06);
+  outline: none;
+}
+@media (max-width: 640px) {
+  .menu .menu-list {
+    left: 0;
+    right: auto;
+  }
+}

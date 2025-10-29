@@ -296,6 +296,16 @@
                     <div class="lt-toolbar">
                       <button id="lt-shuffle" type="button">Shuffle</button>
                       <button id="lt-export"  type="button" title="Export Word Table">Export</button>
+                      <!-- Export + format picker -->
+                      <div class="menu" id="lt-export-menu">
+                        <button id="lt-export" type="button" aria-haspopup="true" aria-expanded="false" title="Export Word Table">
+                          Export ▾
+                        </button>
+                        <div class="menu-list" role="menu" aria-label="Choose export format">
+                          <button id="lt-export-csv"  type="button" role="menuitem">Export as CSV</button>
+                          <button id="lt-export-pdf"  type="button" role="menuitem">Export as PDF</button>
+                        </div>
+                      </div>
                       <!-- Column toggles -->
                       <div class="lt-cols" aria-label="Toggle columns">
                         <label class="chip"><input type="checkbox" data-col="kanji" checked> Kanji</label>
