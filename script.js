@@ -1962,7 +1962,42 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       return renderQuestion();
     }
 
-    const mode = App.mode; let prompt="", correct="", poolField="";
+    const mode = App.mode;
+    // ==== NEW: Audio MCQ (play hiragana; options show Kanji, Hiragana, English) ====
+    if (mode === "audio-mcq"){
+      // Question header with Play button + auto-play
+      elQuestionBox.innerHTML = `
+        <span>🔊 Listen and choose the correct word</span>
+        <button id="q-audio" class="chip" style="margin-left:8px;">▶︎ Play</button>
+      `;
+      // Wire play
+      const play = ()=> speakJa(w.hira);
+      document.querySelector("#q-audio")?.addEventListener("click", play, { once:false });
+      // Auto-play when the question appears
+      try{ play(); }catch{}
+
+      // Build 4 *word* options (objects)
+      const wordOpts = buildWordOptions(w, 4);
+
+      elOptions.innerHTML = "";
+      for (const ow of wordOpts){
+        const li  = document.createElement("li");
+        const btn = document.createElement("button");
+        // Show triplet "Kanji, Hiragana, English"
+        const kan = (ow.kanji && ow.kanji.trim() && ow.kanji!=="—") ? ow.kanji : "—";
+        btn.textContent = `${kan}、${ow.hira}、${ow.en}`;
+        // Mark correct for green reveal
+        if (keyForWord(ow) === keyForWord(w)) btn.dataset.correct = "1";
+        btn.addEventListener("click", ()=>{
+          onPickOption(btn, keyForWord(ow) === keyForWord(w), w);
+        });
+        li.appendChild(btn); elOptions.appendChild(li);
+      }
+      return; // done for audio-mcq
+    }
+
+    // ==== Existing MCQ variants ====
+    let prompt="", correct="", poolField="";
     if (mode === "k2h-e") return renderDualQuestion(w, "k2h-e");
     else if (mode === "e2h-k") return renderDualQuestion(w, "e2h-k");
     else if (mode==="jp-en"){ prompt=w.hira; correct=w.en; poolField="en"; }
@@ -1978,16 +2013,12 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       const li=document.createElement("li");
       const btn=document.createElement("button");
       btn.textContent = opt;
-
-      // mark which one is the correct answer for reveal-on-wrong
-      if (opt === correct) btn.dataset.correct = "1";
-
+      if (opt === correct) btn.dataset.correct = "1";   // keep green reveal
       btn.addEventListener("click", ()=> onPickOption(btn, opt===correct, w));
-      li.appendChild(btn);
-      elOptions.appendChild(li);
+      li.appendChild(btn); elOptions.appendChild(li);
     }
-
   }
+
 
   function onPickOption(btn, ok, w){
     const buttons = Array.from(document.querySelectorAll("#options button"));
@@ -2033,6 +2064,25 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     const vals = pool.map(w=>w[field]).filter(v => v && v !== correct);
     const picks = shuffle(vals).slice(0, n-1);
     picks.push(correct);
+    return shuffle(picks);
+  }
+  // NEW: pick N-1 random *words* plus the correct word (for triplet display)
+  function buildWordOptions(correctWord, n = 4){
+    // Build pool from current filtered or full deck
+    const pool =
+      (App.deckFiltered && App.deckFiltered.length) ? App.deckFiltered :
+      (App.mastery ? App.mastery.pending.concat(App.mastery.mastered) : (App.deck || []));
+    // De-dupe by key and remove the correct one
+    const keyOK = keyForWord(correctWord);
+    const uniq = [];
+    const seen = new Set();
+    for (const w of pool){
+      const k = keyForWord(w);
+      if (k === keyOK) continue;
+      if (!seen.has(k)){ seen.add(k); uniq.push(w); }
+    }
+    const picks = shuffle(uniq).slice(0, Math.max(0, n - 1));
+    picks.push(correctWord);
     return shuffle(picks);
   }
 
@@ -2474,6 +2524,33 @@ window.addEventListener("keydown", (e) => {
   });
 
   // ---------- Write Mode ----------
+  // NEW: Audio → Hiragana
+  window.startWriteAudio = async ()=>{
+    await ensureDeckLoaded(); try{ await flushSession(); }catch{}
+    App.mode = "write-audio";
+    App.write.variant = "audio";
+    setCrumbs();
+
+    // Use the full deck (de-duped), similar to en2h
+    const base = App.deck.slice();
+    const unique = [];
+    const seen = new Set();
+    for (const w of base) {
+      const k = keyForWord(w);
+      if (!seen.has(k)) { seen.add(k); unique.push(w); }
+    }
+    App.mastery = { pending: shuffle(unique), mastered: [] };
+    App.mastery.wrongs = new Map();
+    App.deckFiltered = shuffle(base);
+    App.write.order = App.deckFiltered.map((_,i)=>i);
+    App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
+
+    hideLessonsHeaderAndList(); hideLessonBar(); hideVocabRootCard();
+    hideVocabMenus(); elLearn.classList.add("hidden"); D("#practice")?.classList.add("hidden"); elMake.classList.add("hidden");
+    elWrite.classList.remove("hidden");
+    renderWriteCard(); updateBackVisibility();
+  };
+
   window.startWriteEN2H = async ()=> startWriteWords("en2h");
   window.startWriteK2H  = async ()=> startWriteWords("k2h");
 
@@ -2513,10 +2590,28 @@ window.addEventListener("keydown", (e) => {
     const i = App.write.order[App.write.idx] ?? -1;
     const w = App.deckFiltered[i];
     if (!w){ elWriteCard.textContent="All done."; elWriteInput.value=""; updateWriteProgress(); return; }
-    if (App.write.variant==="k2h") elWriteCard.textContent = (w.kanji||"");
-    else elWriteCard.textContent = w.en;
+
+    if (App.write.variant==="audio"){
+      // NEW: audio prompt + play button; auto-play
+      elWriteCard.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span>🔊 Listen and type the Hiragana</span>
+          <button id="write-audio" class="chip">▶︎ Play</button>
+        </div>
+      `;
+      const play = ()=> speakJa(w.hira);
+      document.querySelector("#write-audio")?.addEventListener("click", play, { once:false });
+      try{ play(); }catch{}
+    } else if (App.write.variant==="k2h"){
+      elWriteCard.textContent = (w.kanji||"");
+    } else {
+      // en2h (existing)
+      elWriteCard.textContent = w.en;
+    }
+
     elWriteInput.value=""; elWriteFeedback.textContent=""; elWriteInput.focus(); updateWriteProgress();
   }
+
   function updateWriteProgress(){
     const cur = Math.min(App.write.idx, App.write.order.length);
     elWriteBar.style.width = pct(cur, App.write.order.length);
@@ -2588,8 +2683,10 @@ window.writeSubmit = () => {
     const i = App.write.order[App.write.idx] ?? -1; const w = App.deckFiltered[i];
     if (!w) return;
     if (App.write.variant==="k2h") toast(`Hint: ${w.kanji} → ${w.hira}`);
+    else if (App.write.variant==="audio") toast(`Hint: (audio) → ${w.hira}`);
     else toast(`Hint: ${w.en} → ${w.hira}`);
   };
+
   window.writeNext = ()=>{ App.write.idx++; renderWriteCard(); };
 
   // ---------- Make Sentence ----------
