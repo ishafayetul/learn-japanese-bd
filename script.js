@@ -1870,7 +1870,17 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       App.deck = shuffle(App.deck || []);
       buildLearnTable();
     });
-
+    // EXPORT (CSV / PDF)
+    document.querySelector("#lt-export")?.addEventListener("click", async () => {
+      const choice = (prompt("Export format? Type: csv  or  pdf", "csv") || "").trim().toLowerCase();
+      if (choice === "csv") {
+        exportWordTableCSV();
+      } else if (choice === "pdf") {
+        exportWordTablePDF();
+      } else {
+        toast("Export canceled.");
+      }
+    });
     // play all (current filtered order)
     document.querySelector("#lt-playall")?.addEventListener("click", async () => {
       const items = Array.from(document.querySelectorAll("#lt-table tbody td.hira"))
@@ -1902,6 +1912,109 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     })();
 
 
+  }
+
+  function collectCurrentWordTableRows(){
+    // Reads the visible table rows (matches filter/sort/order applied by buildLearnTable)
+    const rows = [];
+    document.querySelectorAll("#lt-table tbody tr").forEach(tr => {
+      const kanji = (tr.querySelector("td.kanji")?.textContent || "").trim();
+      const hira  = (tr.querySelector("td.hira")?.textContent  || "").trim();
+      const en    = (tr.querySelector("td.en")?.textContent    || "").trim();
+      if (kanji || hira || en) rows.push({ kanji, hira, en });
+    });
+    return rows;
+  }
+
+  function exportWordTableCSV(){
+    const rows = collectCurrentWordTableRows();
+    if (!rows.length){ toast("Nothing to export."); return; }
+
+    // CSV with proper escaping
+    const esc = s => `"${String(s).replace(/"/g,'""')}"`;
+    const csv = rows.map(r => [esc(r.kanji), esc(r.hira), esc(r.en)].join(",")).join("\n");
+
+    const level  = App.level || "Level";
+    const lesson = App.lesson || "Lesson";
+    const name = `${level}-${lesson}-word-table.csv`.replace(/\s+/g,"_");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+    toast("CSV exported ✓");
+  }
+
+  function exportWordTablePDF(){
+    const rows = collectCurrentWordTableRows();
+    if (!rows.length){ toast("Nothing to export."); return; }
+
+    const level  = escapeHTML(App.level || "Level");
+    const lesson = escapeHTML(App.lesson || "Lesson");
+    const now    = new Date().toLocaleString();
+
+    // Creative but lightweight print-to-PDF page
+    const tableRows = rows.map(r => `
+      <tr>
+        <td class="kanji">${escapeHTML(r.kanji || "—")}</td>
+        <td class="hira">${escapeHTML(r.hira  || "")}</td>
+        <td class="en">${escapeHTML(r.en    || "")}</td>
+      </tr>
+    `).join("");
+
+    const html = `
+  <!doctype html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <title>${level} – ${lesson} – Word Table</title>
+    <style>
+      @page { size: A4; margin: 16mm; }
+      body{ font:14px/1.45 system-ui, Segoe UI, Roboto, Helvetica, Arial; color:#111; }
+      h1{ font-size: 20px; margin: 0 0 6px; }
+      .muted{ color:#555; margin-bottom: 12px; }
+      .tag{ display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius:999px; font-size:12px; margin-left:8px;}
+      table{ width:100%; border-collapse: collapse; }
+      th,td{ padding:8px 10px; border-bottom:1px solid #ddd; }
+      thead th{ text-align:left; background:#fafafa; border-top:1px solid #ddd; }
+      td.kanji{ font-weight:700; }
+      footer{ position:fixed; bottom:10mm; left:0; right:0; text-align:center; font-size:11px; color:#666; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>${level} — ${lesson} <span class="tag">Word Table</span></h1>
+      <div class="muted">Exported: ${escapeHTML(now)}</div>
+    </header>
+
+    <main>
+      <table>
+        <thead>
+          <tr><th>Kanji</th><th>Hiragana</th><th>English</th></tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+    </main>
+
+    <footer>Generated from Learn → Word Table</footer>
+
+    <script>
+      // auto-open print, so user can “Save as PDF”
+      window.onload = () => setTimeout(()=>window.print(), 250);
+    </script>
+  </body>
+  </html>
+    `;
+
+    const w = window.open("", "_blank", "noopener");
+    if (!w){ toast("Popup blocked. Allow popups to export PDF."); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+    toast("PDF ready — use Save as PDF in the print dialog.");
   }
 
   // --- MCQ Modes ---
