@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "level": "N4",
+  "allLessons": [
+    "Lesson-26","Lesson-27","Lesson-28","Lesson-29","Lesson-30",
+    "Lesson-31","Lesson-32","Lesson-33","Lesson-34","Lesson-35",
+    "Lesson-36","Lesson-37","Lesson-38","Lesson-39","Lesson-40",
+    "Lesson-41","Lesson-42","Lesson-43","Lesson-44","Lesson-45",
+    "Lesson-46","Lesson-47","Lesson-48","Lesson-49","Lesson-50"
+  ],
+  "lessons": {
+    "Lesson-26": {
+      "vocab": ["Vocabulary/Vocab-Lesson-26.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-26.pdf"]
+    },
+    "Lesson-27": {
+      "vocab": ["Vocabulary/Vocab-Lesson-27.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-27.pdf"]
+    },
+    "Lesson-28": {
+      "vocab": ["Vocabulary/Vocab-Lesson-28.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-28.pdf"]
+    },
+    "Lesson-29": {
+      "vocab": ["Vocabulary/Vocab-Lesson-29.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-29.pdf"]
+    },
+    "Lesson-30": {
+      "vocab": ["Vocabulary/Vocab-Lesson-30.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-30.pdf"]
+    },
+    "Lesson-31": {
+      "vocab": ["Vocabulary/Vocab-Lesson-31.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-31.pdf"]
+    },
+    "Lesson-32": {
+      "vocab": ["Vocabulary/Vocab-Lesson-32.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-32.pdf"]
+    },
+    "Lesson-33": {
+      "vocab": ["Vocabulary/Vocab-Lesson-33.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-33.pdf"]
+    },
+    "Lesson-34": {
+      "vocab": ["Vocabulary/Vocab-Lesson-34.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-34.pdf"]
+    },
+    "Lesson-35": {
+      "vocab": ["Vocabulary/Vocab-Lesson-35.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-35.pdf"]
+    },
+    "Lesson-36": {
+      "vocab": ["Vocabulary/Vocab-Lesson-36.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-36.pdf"]
+    },
+    "Lesson-37": {
+      "vocab": ["Vocabulary/Vocab-Lesson-37.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-37.pdf"]
+    },
+    "Lesson-38": {
+      "vocab": ["Vocabulary/Vocab-Lesson-38.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-38.pdf"]
+    },
+    "Lesson-39": {
+      "vocab": ["Vocabulary/Vocab-Lesson-39.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-39.pdf"]
+    },
+    "Lesson-40": {
+      "vocab": ["Vocabulary/Vocab-Lesson-40.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-40.pdf"]
+    },
+    "Lesson-41": {
+      "vocab": ["Vocabulary/Vocab-Lesson-41.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-41.pdf"]
+    },
+    "Lesson-42": {
+      "vocab": ["Vocabulary/Vocab-Lesson-42.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-42.pdf"]
+    },
+    "Lesson-43": {
+      "vocab": ["Vocabulary/Vocab-Lesson-43.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-43.pdf"]
+    },
+    "Lesson-44": {
+      "vocab": ["Vocabulary/Vocab-Lesson-44.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-44.pdf"]
+    },
+    "Lesson-45": {
+      "vocab": ["Vocabulary/Vocab-Lesson-45.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-45.pdf"]
+    },
+    "Lesson-46": {
+      "vocab": ["Vocabulary/Vocab-Lesson-46.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-46.pdf"]
+    },
+    "Lesson-47": {
+      "vocab": ["Vocabulary/Vocab-Lesson-47.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-47.pdf"]
+    },
+    "Lesson-48": {
+      "vocab": ["Vocabulary/Vocab-Lesson-48.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-48.pdf"]
+    },
+    "Lesson-49": {
+      "vocab": ["Vocabulary/Vocab-Lesson-49.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-49.pdf"]
+    },
+    "Lesson-50": {
+      "vocab": ["Vocabulary/Vocab-Lesson-50.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson-50.pdf"]
+    }
+  }
+}
