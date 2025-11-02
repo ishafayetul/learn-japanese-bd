@@ -67,6 +67,7 @@ async function whenFBReady(timeout = 15000) {
   const elExtraInfo = D("#extra-info");
   const elDeckBar = D("#deck-progress-bar");
   const elDeckText = D("#deck-progress-text");
+  const elDeckCount = D("#deck-word-count");
 
   // Learn
   const elLearn = D("#learn");
@@ -79,6 +80,7 @@ async function whenFBReady(timeout = 15000) {
   const elWriteFeedback = D("#write-feedback");
   const elWriteBar = D("#write-progress-bar");
   const elWriteText = D("#write-progress-text");
+  const elWriteCount = D("#write-word-count");
 
   // Make sentence
   const elMake = D("#make");
@@ -398,6 +400,10 @@ function setupDeployToast(){
   function keyForWord(w){ return `${w.kanji || "—"}|${w.hira}|${w.en}`.toLowerCase(); }
   function speakJa(t){ try{ const u=new SpeechSynthesisUtterance(t); u.lang="ja-JP"; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch{} }
   function pct(a,b){ if(!b) return "0%"; return Math.round((a/b)*100)+"%"; }
+  function formatWordCount(n){
+    const count = Number.isFinite(n) ? n : 0;
+    return count === 1 ? "1 word" : `${count} words`;
+  }
   function currentDeckId(){
     if (App.mix?.active && App.mix.selection?.length){
       const list = App.mix.selection.map(s => `${s.level}/${s.lesson}`).join(",");
@@ -2157,12 +2163,14 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
   };
 
   function updateDeckProgress(){
-    const total = App.mastery?.total ??
-      ((App.mastery?.pending?.length || 0) + (App.mastery?.mastered?.length || 0));
+    const total = (App.mastery?.total ??
+      ((App.mastery?.pending?.length || 0) + (App.mastery?.mastered?.length || 0))) || 0;
     const doneKeys = App.mastery?.masteredKeys;
-    const done  = doneKeys ? doneKeys.size : (App.mastery?.mastered?.length || 0);
-    elDeckBar.style.width = pct(done, total);
-    elDeckText.textContent = `${done} / ${total} (${pct(done, total)})`;
+    const doneCount = doneKeys ? doneKeys.size : (App.mastery?.mastered?.length || 0);
+    const done = Number.isFinite(doneCount) ? doneCount : 0;
+    if (elDeckBar) elDeckBar.style.width = pct(done, total);
+    if (elDeckText) elDeckText.textContent = `${done} / ${total} (${pct(done, total)})`;
+    if (elDeckCount) elDeckCount.textContent = formatWordCount(total);
   }
 
   function renderQuestion(){
@@ -2874,13 +2882,16 @@ window.addEventListener("keydown", (e) => {
   }
 
   function updateWriteProgress(){
-    const total = App.mastery?.total ??
-      ((App.mastery?.pending?.length || 0) + (App.mastery?.mastered?.length || 0));
+    const total = (App.mastery?.total ??
+      ((App.mastery?.pending?.length || 0) + (App.mastery?.mastered?.length || 0))) || 0;
     const doneKeys = App.mastery?.masteredKeys;
-    const done = doneKeys ? doneKeys.size :
-      (App.mastery?.mastered?.length || Math.max(0, total - (App.mastery?.pending?.length || 0)));
-    elWriteBar.style.width = pct(done, total);
-    elWriteText.textContent = `${done} / ${total} (${pct(done, total)})`;
+    const pendingLen = App.mastery?.pending?.length || 0;
+    const doneCandidate = doneKeys ? doneKeys.size :
+      (App.mastery?.mastered?.length || Math.max(0, total - pendingLen));
+    const done = Number.isFinite(doneCandidate) ? doneCandidate : 0;
+    if (elWriteBar) elWriteBar.style.width = pct(done, total);
+    if (elWriteText) elWriteText.textContent = `${done} / ${total} (${pct(done, total)})`;
+    if (elWriteCount) elWriteCount.textContent = formatWordCount(total);
   }
 
   // Write → Submit (no auto-advance on WRONG)

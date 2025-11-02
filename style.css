@@ -184,9 +184,30 @@ button.chip:hover{ background:#132340; }
   position:relative; background:#0e1524; border:1px solid var(--border);
   height:12px; border-radius:999px; overflow:hidden;
 }
-.deck-progress + .deck-progress-text{ margin-top:6px; text-align:right; font-size:12px; color:var(--muted); }
 .deck-progress-bar{
   height:100%; width:0%; background: linear-gradient(90deg, #2f7bff, #7bd389);
+}
+.deck-progress-meta{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-top:6px;
+  font-size:12px;
+  color:var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.deck-progress-meta .deck-progress-text{
+  margin:0;
+}
+.deck-progress-meta .deck-word-count{
+  margin:0 0 0 auto;
+}
+.deck-progress + .deck-progress-text{
+  margin-top:6px;
+  text-align:right;
+  font-size:12px;
+  color:var(--muted);
 }
 
 .practice-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
