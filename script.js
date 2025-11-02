@@ -288,7 +288,7 @@ const App = Object.assign(window.App, {
   learnVariant: null,
   deck: [], deckFiltered: [], qIndex: 0,
   stats: { right: 0, wrong: 0, skipped: 0 },
-  write: { order: [], idx: 0, variant: "en2h" },
+  write: { idx: 0, variant: "en2h" },
   make: { order: [], idx: 0 },
   pg:   { rows: [], idx: 0 },
   buffer: { points: 0, lastSavedSig: null },
@@ -2052,6 +2052,31 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
   }
 
   // --- MCQ Modes ---
+  function createMastery(unique){
+    const pending = shuffle(unique.slice());
+    return {
+      pending,
+      mastered: [],
+      masteredKeys: new Set(),
+      wrongs: new Map(),
+      total: unique.length
+    };
+  }
+
+  function wordStillPending(list, key){
+    return list.some(it => keyForWord(it) === key);
+  }
+
+  function registerMasteredWord(w){
+    if (!App.mastery) return;
+    const key = keyForWord(w);
+    const bag = App.mastery.masteredKeys;
+    if (bag && !bag.has(key)) {
+      bag.add(key);
+      App.mastery.mastered.push(w);
+    }
+  }
+
   function requeueWrongItem(w, list, fromIdx){
     const key = keyForWord(w);
     const map = App.mastery.wrongs;
@@ -2070,6 +2095,31 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     list.splice(insertAt, 0, w);
   }
 
+  function requeueExtraCopy(w, list, fromIdx){
+    const key = keyForWord(w);
+    const wrongCount = App.mastery?.wrongs?.get(key) || 0;
+    const minGap = Math.min(3 + wrongCount, 10);
+    const len = list.length;
+    const insertAt = Math.min(fromIdx + minGap + Math.floor(Math.random() * Math.max(1, len - minGap)), len);
+    list.splice(insertAt, 0, w);
+  }
+
+  function ensurePendingCopies(w, list, fromIdx, minCopies){
+    const key = keyForWord(w);
+    let existing = 0;
+    for (const item of list) {
+      if (keyForWord(item) === key) existing++;
+    }
+    let needed = Math.max(0, minCopies - existing);
+    if (!needed) return;
+
+    requeueWrongItem(w, list, fromIdx);
+    needed--;
+    for (let i = 0; i < needed; i++) {
+      requeueExtraCopy(w, list, fromIdx);
+    }
+  }
+
   window.startPractice = async (mode)=>{
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
     App.mode = mode; setCrumbs();
@@ -2081,8 +2131,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       const k = keyForWord(w);
       if (!seen.has(k)) { seen.add(k); unique.push(w); }
     }
-    App.mastery = { pending: shuffle(unique), mastered: [] };
-    App.mastery.wrongs = new Map(); // key -> count this session
+    App.mastery = createMastery(unique);
     App.deckFiltered = unique.slice();
     App.qIndex = 0;
     App.stats = { right: 0, wrong: 0, skipped: 0 };
@@ -2108,8 +2157,10 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
   };
 
   function updateDeckProgress(){
-    const total = (App.mastery?.pending?.length || 0) + (App.mastery?.mastered?.length || 0);
-    const done  = (App.mastery?.mastered?.length || 0);
+    const total = App.mastery?.total ??
+      ((App.mastery?.pending?.length || 0) + (App.mastery?.mastered?.length || 0));
+    const doneKeys = App.mastery?.masteredKeys;
+    const done  = doneKeys ? doneKeys.size : (App.mastery?.mastered?.length || 0);
     elDeckBar.style.width = pct(done, total);
     elDeckText.textContent = `${done} / ${total} (${pct(done, total)})`;
   }
@@ -2191,13 +2242,20 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     const buttons = Array.from(document.querySelectorAll("#options button"));
     buttons.forEach(b=>b.disabled=true);
 
+    const key = keyForWord(w);
     let delayMs = 450; // default fast advance
+    let removedCurrent = false;
 
     if (ok){
       btn.classList.add("is-correct");
       App.stats.right++; incrementPoints(1);
-      App.mastery.mastered.push(w);
+
       App.mastery.pending.splice(App.qIndex,1);
+      removedCurrent = true;
+
+      if (!wordStillPending(App.mastery.pending, key)) {
+        registerMasteredWord(w);
+      }
     } else {
       btn.classList.add("is-wrong");
       App.stats.wrong++; recordMistake(w);
@@ -2206,8 +2264,8 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       const correctBtn = buttons.find(b => b.dataset.correct === "1");
       if (correctBtn) correctBtn.classList.add("is-correct");
 
-      // Requeue wrong item with spacing
-      requeueWrongItem(w, App.mastery.pending, App.qIndex);
+      // Ensure wrong item will come back at least twice more
+      ensurePendingCopies(w, App.mastery.pending, App.qIndex, 3);
 
       // Wait 5 seconds so the learner can see both markings
       delayMs = 3000;
@@ -2217,7 +2275,13 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
 
     setTimeout(()=>{
       const len = App.mastery.pending.length;
-      App.qIndex = len ? ((App.qIndex + 1) % len) : 0;
+      if (!len) {
+        App.qIndex = 0;
+      } else if (removedCurrent) {
+        App.qIndex = App.qIndex % len;
+      } else {
+        App.qIndex = (App.qIndex + 1) % len;
+      }
       updateDeckProgress();
       renderQuestion();
     }, delayMs);
@@ -2258,17 +2322,18 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     if (!w) return;
     recordMistake(w);
     App.stats.skipped++; updateScorePanel();
-    // reinsert later randomly
-    //const insertAt = Math.min(App.qIndex + 3 + Math.floor(Math.random()*App.mastery.pending.length), App.mastery.pending.length);
-    //App.mastery.pending.splice(insertAt, 0, w);
-    requeueWrongItem(w, App.mastery.pending, App.qIndex);
-    App.qIndex = (App.qIndex + 1) % App.mastery.pending.length;
+    ensurePendingCopies(w, App.mastery.pending, App.qIndex, 3);
+    const len = App.mastery.pending.length;
+    if (len) App.qIndex = (App.qIndex + 1) % len;
     updateDeckProgress(); renderQuestion();
   };
 
 
   window.showRomaji = ()=> toast("Romaji: (not available)");
-  window.showMeaning = ()=>{ const w=App.deckFiltered[App.qIndex]; if(w) toast(`Meaning: ${w.en}`); };
+  window.showMeaning = ()=>{
+    const w = App.mastery?.pending?.[App.qIndex] || App.deckFiltered[App.qIndex];
+    if (w) toast(`Meaning: ${w.en}`);
+  };
 
   window.startWordMatching = async (variant /* "eh" | "keh" */) => {
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
@@ -2599,10 +2664,30 @@ window.addEventListener("keydown", (e) => {
     function finalize(){
       if (pickedLeft == null || pickedRight == null) return;
       const ok = (pickedLeft === correctLeft) && (pickedRight === correctRight);
-      if (ok){ App.stats.right++; incrementPoints(1); }
-      else   { App.stats.wrong++; recordMistake(w); }
+      const key = keyForWord(w);
+      let removedCurrent = false;
+
+      if (ok) {
+        App.stats.right++; incrementPoints(1);
+        App.mastery.pending.splice(App.qIndex, 1);
+        removedCurrent = true;
+        if (!wordStillPending(App.mastery.pending, key)) {
+          registerMasteredWord(w);
+        }
+      } else {
+        App.stats.wrong++; recordMistake(w);
+        ensurePendingCopies(w, App.mastery.pending, App.qIndex, 3);
+      }
       updateScorePanel();
-      setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 350);
+      const delay = ok ? 350 : 600;
+      setTimeout(()=>{
+        const len = App.mastery.pending.length;
+        if (!len) App.qIndex = 0;
+        else if (removedCurrent) App.qIndex = App.qIndex % len;
+        else App.qIndex = (App.qIndex + 1) % len;
+        updateDeckProgress();
+        renderQuestion();
+      }, delay);
     }
 
     // LEFT column buttons
@@ -2647,10 +2732,7 @@ window.addEventListener("keydown", (e) => {
     // …existing MCQ skip logic…
     if (!isVisible("#practice")) return;
     A("#options button, .dual-grid button").forEach(b => b.disabled = true);
-    const w = App.deckFiltered[App.qIndex];
-    if (w) recordMistake(w);
-    App.stats.skipped++; updateScorePanel();
-    setTimeout(()=>{ App.qIndex++; updateDeckProgress(); renderQuestion(); }, 120);
+    window.skipQuestion();
   };
 
 
@@ -2691,54 +2773,20 @@ window.addEventListener("keydown", (e) => {
   });
 
   // ---------- Write Mode ----------
-  // NEW: Audio → Hiragana
-  window.startWriteAudio = async ()=>{
-    await ensureDeckLoaded(); try{ await flushSession(); }catch{}
-    App.mode = "write-audio";
-    App.write.variant = "audio";
-    setCrumbs();
+  function getCurrentWriteWord(){
+    return App.mastery?.pending?.[App.write.idx] || null;
+  }
 
-    // Use the full deck (de-duped), similar to en2h
-    const base = App.deck.slice();
-    const unique = [];
-    const seen = new Set();
-    for (const w of base) {
-      const k = keyForWord(w);
-      if (!seen.has(k)) { seen.add(k); unique.push(w); }
-    }
-    App.mastery = { pending: shuffle(unique), mastered: [] };
-    App.mastery.wrongs = new Map();
-    App.deckFiltered = shuffle(base);
-    App.write.order = App.deckFiltered.map((_,i)=>i);
-    App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
+  function prepareWriteSession(unique, variant){
+    App.mastery = createMastery(unique);
+    App.deckFiltered = unique.slice();
+    App.write.idx = 0;
+    App.write.variant = variant;
+    App.stats = { right:0, wrong:0, skipped:0 };
+    updateScorePanel();
+  }
 
-    hideLessonsHeaderAndList(); hideLessonBar(); hideVocabRootCard();
-    hideVocabMenus(); elLearn.classList.add("hidden"); D("#practice")?.classList.add("hidden"); elMake.classList.add("hidden");
-    elWrite.classList.remove("hidden");
-    renderWriteCard(); updateBackVisibility();
-  };
-
-  window.startWriteEN2H = async ()=> startWriteWords("en2h");
-  window.startWriteK2H  = async ()=> startWriteWords("k2h");
-
-  async function startWriteWords(variant="en2h"){
-    await ensureDeckLoaded(); try{ await flushSession(); }catch{}
-    App.mode = (variant==="k2h") ? "write-k2h" : "write-en2h";
-    App.write.variant = (variant==="k2h") ? "k2h" : "en2h";
-    setCrumbs();
-    const base = (variant==="k2h") ? filterDeckForMode("write-k2h") : App.deck.slice();
-    const unique = [];
-    const seen = new Set();
-    for (const w of base) {
-      const k = keyForWord(w);
-      if (!seen.has(k)) { seen.add(k); unique.push(w); }
-    }
-    App.mastery = { pending: shuffle(unique), mastered: [] };
-    App.mastery.wrongs = new Map(); // key -> count this session
-    App.deckFiltered = shuffle(base);
-    App.write.order = App.deckFiltered.map((_,i)=>i);
-    App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
-
+  function showWriteView(){
     hideLessonsHeaderAndList();
     hideLessonBar();
     hideVocabRootCard();
@@ -2751,16 +2799,58 @@ window.addEventListener("keydown", (e) => {
     elWrite.classList.remove("hidden");
     renderWriteCard();
     updateBackVisibility();
-
   }
+
+  // NEW: Audio → Hiragana
+  window.startWriteAudio = async ()=>{
+    await ensureDeckLoaded(); try{ await flushSession(); }catch{}
+    App.mode = "write-audio";
+    setCrumbs();
+
+    const base = App.deck.slice();
+    const unique = [];
+    const seen = new Set();
+    for (const w of base) {
+      const k = keyForWord(w);
+      if (!seen.has(k)) { seen.add(k); unique.push(w); }
+    }
+
+    prepareWriteSession(unique, "audio");
+    showWriteView();
+  };
+
+  window.startWriteEN2H = async ()=> startWriteWords("en2h");
+  window.startWriteK2H  = async ()=> startWriteWords("k2h");
+
+  async function startWriteWords(variant="en2h"){
+    await ensureDeckLoaded(); try{ await flushSession(); }catch{}
+    App.mode = (variant==="k2h") ? "write-k2h" : "write-en2h";
+    setCrumbs();
+
+    const base = (variant==="k2h") ? filterDeckForMode("write-k2h") : App.deck.slice();
+    const unique = [];
+    const seen = new Set();
+    for (const w of base) {
+      const k = keyForWord(w);
+      if (!seen.has(k)) { seen.add(k); unique.push(w); }
+    }
+
+    prepareWriteSession(unique, variant==="k2h" ? "k2h" : "en2h");
+    showWriteView();
+  }
+
   function renderWriteCard(){
     unbindAudioHotkey();
-    const i = App.write.order[App.write.idx] ?? -1;
-    const w = App.deckFiltered[i];
-    if (!w){ elWriteCard.textContent="All done."; elWriteInput.value=""; updateWriteProgress(); return; }
+    const w = getCurrentWriteWord();
+    if (!w){
+      elWriteCard.textContent = "All done.";
+      elWriteInput.value = "";
+      elWriteFeedback.textContent = "";
+      updateWriteProgress();
+      return;
+    }
 
     if (App.write.variant==="audio"){
-      // NEW: audio prompt + play button; auto-play
       elWriteCard.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;">
           <span>🔊 Listen and type the Hiragana</span>
@@ -2774,89 +2864,99 @@ window.addEventListener("keydown", (e) => {
     } else if (App.write.variant==="k2h"){
       elWriteCard.textContent = (w.kanji||"");
     } else {
-      // en2h (existing)
       elWriteCard.textContent = w.en;
     }
 
-    elWriteInput.value=""; elWriteFeedback.textContent=""; elWriteInput.focus(); updateWriteProgress();
+    elWriteInput.value="";
+    elWriteFeedback.textContent="";
+    elWriteInput.focus();
+    updateWriteProgress();
   }
 
   function updateWriteProgress(){
-    const cur = Math.min(App.write.idx, App.write.order.length);
-    elWriteBar.style.width = pct(cur, App.write.order.length);
-    elWriteText.textContent = `${cur} / ${App.write.order.length} (${pct(cur, App.write.order.length)})`;
+    const total = App.mastery?.total ??
+      ((App.mastery?.pending?.length || 0) + (App.mastery?.mastered?.length || 0));
+    const doneKeys = App.mastery?.masteredKeys;
+    const done = doneKeys ? doneKeys.size :
+      (App.mastery?.mastered?.length || Math.max(0, total - (App.mastery?.pending?.length || 0)));
+    elWriteBar.style.width = pct(done, total);
+    elWriteText.textContent = `${done} / ${total} (${pct(done, total)})`;
   }
 
-// Write → Submit (no auto-advance on WRONG)
-window.writeSubmit = () => {
-  const i = App.write.order[App.write.idx] ?? -1;
-  const w = App.deckFiltered[i];
-  if (!w) return;
+  // Write → Submit (no auto-advance on WRONG)
+  window.writeSubmit = () => {
+    const w = getCurrentWriteWord();
+    if (!w) return;
 
-  const ans = (elWriteInput.value || "").trim();
-  if (!ans) return;
+    const ans = (elWriteInput.value || "").trim();
+    if (!ans) return;
 
-  const norm = s => (s || "")
-    .replace(/\s+/g, "")
-    .replace(/[〜～~]/g, "")
-    .toLowerCase();
+    const norm = s => (s || "")
+      .replace(/\s+/g, "")
+      .replace(/[〜～~]/g, "")
+      .toLowerCase();
 
-  const isCorrect = norm(ans) === norm(w.hira);
+    const isCorrect = norm(ans) === norm(w.hira);
+    const key = keyForWord(w);
 
-  if (isCorrect) {
-    // ✅ correct → record + advance
-    elWriteFeedback.innerHTML = `<span class="ok-inline">✓ Correct</span>`;
-    App.stats.right++; incrementPoints(1);
+    if (isCorrect) {
+      elWriteFeedback.innerHTML = `<span class="ok-inline">✓ Correct</span>`;
+      App.stats.right++; incrementPoints(1);
+      App.mastery.pending.splice(App.write.idx, 1);
+      updateScorePanel();
 
-    App.mastery.mastered.push(w);
-    // remove one pending item at this index
-    App.mastery.pending.splice(App.write.idx, 1);
-    updateScorePanel();
+      if (!wordStillPending(App.mastery.pending, key)) {
+        registerMasteredWord(w);
+      }
 
-    // if nothing pending → show completion
-    if (App.mastery.pending.length === 0) {
-      App.write.idx = App.write.order.length;  // forces "All done."
+      if (!App.mastery.pending.length) {
+        App.write.idx = 0;
+        renderWriteCard();
+        return;
+      }
+
+      App.write.idx = App.write.idx % App.mastery.pending.length;
       renderWriteCard();
-      return;
+    } else {
+      elWriteFeedback.innerHTML = `<span class="error-inline">❌ Wrong: ${w.hira}</span>`;
+      App.stats.wrong++; recordMistake(w);
+      ensurePendingCopies(w, App.mastery.pending, App.write.idx, 3);
+      updateScorePanel();
+      elWriteInput.focus();
+      if (elWriteInput.select) elWriteInput.select();
     }
-
-    // otherwise advance
-    App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
-    renderWriteCard();
-  } else {
-    // ❌ wrong → stay on same card, log mistake, requeue later
-    elWriteFeedback.innerHTML = `<span class="error-inline">❌ Wrong: ${w.hira}</span>`;
-    App.stats.wrong++; recordMistake(w);
-    requeueWrongItem(w, App.mastery.pending, App.write.idx);
-    updateScorePanel();
-
-    // keep focus so you can fix and re-submit
-    elWriteInput.focus();
-    if (elWriteInput.select) elWriteInput.select();
-    // (no renderWriteCard + no idx change → no auto-advance)
-  }
-};
-
-
-
+  };
 
   window.writeSkip = ()=>{
-    const i = App.write.order[App.write.idx] ?? -1;
-    const w = App.deckFiltered[i];
-    if (w) recordMistake(w);                     // ← log skipped word
+    const w = getCurrentWriteWord();
+    if (!w) return;
+    recordMistake(w);
     App.stats.skipped++; updateScorePanel();
-    App.write.idx++; renderWriteCard();
+    ensurePendingCopies(w, App.mastery.pending, App.write.idx, 3);
+    if (App.mastery.pending.length) {
+      App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
+    } else {
+      App.write.idx = 0;
+    }
+    renderWriteCard();
   };
 
   window.writeShowDetails = ()=>{
-    const i = App.write.order[App.write.idx] ?? -1; const w = App.deckFiltered[i];
+    const w = getCurrentWriteWord();
     if (!w) return;
     if (App.write.variant==="k2h") toast(`Hint: ${w.kanji} → ${w.hira}`);
     else if (App.write.variant==="audio") toast(`Hint: (audio) → ${w.hira}`);
     else toast(`Hint: ${w.en} → ${w.hira}`);
   };
 
-  window.writeNext = ()=>{ App.write.idx++; renderWriteCard(); };
+  window.writeNext = ()=>{
+    if (!App.mastery?.pending?.length) {
+      renderWriteCard();
+      return;
+    }
+    App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
+    renderWriteCard();
+  };
 
   // ---------- Make Sentence ----------
   window.startMakeSentence = async ()=>{
@@ -3180,11 +3280,15 @@ window.writeSubmit = () => {
         elLearn.classList.remove("hidden");
         renderLearnCard();
       } else if (mode==="write"){
-        App.deckFiltered = shuffle(deck);
-        App.write.order = App.deckFiltered.map((_,i)=>i);
-        App.write.idx = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
-        elWrite.classList.remove("hidden");
-        renderWriteCard();
+        const unique = [];
+        const seen = new Set();
+        for (const w of deck){
+          const k = keyForWord(w);
+          if (!seen.has(k)) { seen.add(k); unique.push(w); }
+        }
+        const variant = App.write.variant || "en2h";
+        prepareWriteSession(unique, variant);
+        showWriteView();
       } else if (mode==="make"){
         App.make.order = shuffle(deck).map((_,i)=>i).slice(0, Math.min(deck.length, 30));
         App.make.idx   = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
@@ -3209,7 +3313,7 @@ window.writeSubmit = () => {
     const w =
       w0 ||
       App.deckFiltered[App.qIndex] ||
-      (App.write?.order ? App.deck[App.write.order[App.write.idx]] : null) ||
+      getCurrentWriteWord() ||
       null;
 
     if (!w) return;
@@ -3224,21 +3328,6 @@ window.writeSubmit = () => {
       toast("Marked locally ✓ (sign in to sync)");
     }
   };
-
-  // window.markCurrentWord = async () => {
-  //   const w = App.deckFiltered[App.qIndex] || App.deck[App.write.order[App.write.idx]] || null;
-  //   if (!w) return;
-  //   const id = (w.kanji && w.kanji!=="—" ? w.kanji : w.hira) + "::" + w.en;
-  //   try {
-  //     const fb = await whenFBReady();
-  //     await fb.markWord(id, { kanji: w.kanji, hira: w.hira, en: w.en, front: w.hira, back: w.en });
-  //     toast("Marked ✓");
-  //   } catch {
-  //       // Signed out or Firebase failed → store locally so Marked Words still works
-  //       addLocalMarked(w);
-  //       toast("Marked locally ✓ (sign in to sync)");
-  //     }
-  // };
 
   // ---------- Grammar ----------
   function wireGrammarTab(){
@@ -3643,7 +3732,7 @@ window.mixBuildDeck = async ()=>{
   if (App.buffer.lastSavedSig === sig) return false;
 
   const deckTotal = App.mode.startsWith("write")
-    ? (App.write.order?.length || App.deckFiltered.length || App.deck.length || 0)
+    ? (App.mastery?.total || App.deckFiltered.length || App.deck.length || 0)
     : (App.deckFiltered.length || App.deck.length || 0);
 
   const attempt = {
@@ -3728,7 +3817,3 @@ window.addEventListener("keydown", (e) => {
 })();
 
 // ===== Mini deploy toast: only when a *new* version is detected =====
-
-
-
-
