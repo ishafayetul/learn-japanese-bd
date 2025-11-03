@@ -292,6 +292,7 @@ const App = Object.assign(window.App, {
   stats: { right: 0, wrong: 0, skipped: 0 },
   write: { idx: 0, variant: "en2h" },
   make: { order: [], idx: 0, results: new Map() },
+  lt: { previewKey: null },
   pg:   { rows: [], idx: 0 },
   buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
@@ -1776,7 +1777,14 @@ window.startLearnTable = async () => {
   document.querySelector("#write")?.classList.add("hidden");
   document.querySelector("#make")?.classList.add("hidden");
 
-  document.querySelector("#learn-table")?.classList.remove("hidden");
+  const learnTableSection = document.querySelector("#learn-table");
+  const isKanjiDeck = learnTableIsKanjiDeck();
+  if (learnTableSection) learnTableSection.classList.toggle("kanji-preview-enabled", isKanjiDeck);
+  App.lt.previewKey = null;
+  hideKanjiPreview();
+  if (isKanjiDeck) ensureKanjiPreviewPanel();
+
+  learnTableSection?.classList.remove("hidden");
   buildLearnTable();
   wireLearnTableOnce();
   updateBackVisibility();
@@ -1793,10 +1801,62 @@ function wireLearnTableBtn(){
 wireLearnTableBtn();
 document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
 
+  function learnTableIsKanjiDeck(){
+    const label = `${App.lesson || ""} ${App.level || ""}`.toLowerCase();
+    return label.includes("kanji");
+  }
+
+  function ensureKanjiPreviewPanel(){
+    const host = document.querySelector("#learn-table .card");
+    if (!host) return null;
+    let panel = host.querySelector(".kanji-word-preview");
+    if (!panel){
+      panel = document.createElement("div");
+      panel.className = "kanji-word-preview hidden";
+      panel.setAttribute("aria-live", "polite");
+      panel.innerHTML = `
+        <div class="kwp-kanji"></div>
+        <div class="kwp-hira"></div>
+        <div class="kwp-en"></div>
+      `;
+      host.appendChild(panel);
+    }
+    return panel;
+  }
+
+  function updateKanjiPreview(word){
+    const panel = ensureKanjiPreviewPanel();
+    if (!panel) return;
+    const kanjiEl = panel.querySelector(".kwp-kanji");
+    const hiraEl = panel.querySelector(".kwp-hira");
+    const enEl = panel.querySelector(".kwp-en");
+    const displayKanji = (word.kanji && word.kanji !== "—") ? word.kanji : (word.hira || "—");
+    if (kanjiEl) kanjiEl.textContent = displayKanji;
+    if (hiraEl) hiraEl.textContent = word.hira || "";
+    if (enEl) enEl.textContent = word.en || "";
+    panel.classList.remove("hidden");
+  }
+
+  function hideKanjiPreview(){
+    const panel = document.querySelector("#learn-table .kanji-word-preview");
+    if (panel) panel.classList.add("hidden");
+  }
+
+  function syncKanjiRowSelection(activeRow){
+    document.querySelectorAll("#lt-table tbody tr.lt-kanji-row").forEach(tr => {
+      tr.classList.toggle("kwp-selected", tr === activeRow);
+    });
+  }
+
   function buildLearnTable(){
     const tb = document.querySelector("#lt-table tbody");
     const q  = (document.querySelector("#lt-filter")?.value || "").trim().toLowerCase();
     if (!tb) return;
+
+    const isKanjiDeck = learnTableIsKanjiDeck();
+    const tableSection = document.querySelector("#learn-table");
+    if (tableSection) tableSection.classList.toggle("kanji-preview-enabled", isKanjiDeck);
+    if (isKanjiDeck) ensureKanjiPreviewPanel(); else { hideKanjiPreview(); syncKanjiRowSelection(null); if (App.lt) App.lt.previewKey = null; }
 
     const rows = (App.deck || []).filter(w => {
       if (!q) return true;
@@ -1804,8 +1864,12 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     });
 
     tb.innerHTML = "";
+    let selectedWord = null;
+    let selectedRow = null;
+
     for (const w of rows){
       const tr = document.createElement("tr");
+      const key = keyForWord(w);
       tr.innerHTML = `
         <td class="kanji">${escapeHTML(w.kanji || "—")}</td>
         <td class="hira">${escapeHTML(w.hira || "")}</td>
@@ -1815,9 +1879,36 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
           <button class="lt-mark-btn"  title="Mark this word">📌</button>
         </td>
       `;
-      tr.querySelector(".lt-audio-btn")?.addEventListener("click", () => speakJa(w.hira));
-      tr.querySelector(".lt-mark-btn")?.addEventListener("click", () => markCurrentWord(w));
+      const audioBtn = tr.querySelector(".lt-audio-btn");
+      audioBtn?.addEventListener("click", (ev) => { ev.stopPropagation(); speakJa(w.hira); });
+      const markBtn = tr.querySelector(".lt-mark-btn");
+      markBtn?.addEventListener("click", (ev) => { ev.stopPropagation(); markCurrentWord(w); });
+
+      if (isKanjiDeck){
+        tr.classList.add("lt-kanji-row");
+        tr.dataset.ltKey = key;
+        tr.addEventListener("click", () => {
+          App.lt.previewKey = key;
+          updateKanjiPreview(w);
+          syncKanjiRowSelection(tr);
+        });
+        if (App.lt.previewKey && App.lt.previewKey === key){
+          selectedWord = w;
+          selectedRow = tr;
+        }
+      }
+
       tb.appendChild(tr);
+    }
+
+    if (isKanjiDeck){
+      if (selectedWord && selectedRow){
+        updateKanjiPreview(selectedWord);
+        syncKanjiRowSelection(selectedRow);
+      } else {
+        syncKanjiRowSelection(null);
+        hideKanjiPreview();
+      }
     }
   }
 

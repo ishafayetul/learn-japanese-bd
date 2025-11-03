@@ -971,6 +971,46 @@ body.nav-open .scrim{ display:block; }
 #learn-table.hide-col-en     td.en,     #learn-table.hide-col-en     th[data-k="en"]{    display:none; }
 #learn-table.hide-col-audio  td.acts,   #learn-table.hide-col-audio  th.lt-audio-col{     display:none; }
 
+#lt-table tbody tr.lt-kanji-row{
+  cursor: pointer;
+  transition: background .15s ease;
+}
+#lt-table tbody tr.lt-kanji-row:not(.kwp-selected):hover{
+  background: rgba(120, 162, 255, 0.08);
+}
+#lt-table tbody tr.lt-kanji-row.kwp-selected{
+  background: rgba(120, 162, 255, 0.2);
+}
+#lt-table tbody tr.lt-kanji-row.kwp-selected:nth-child(odd){
+  background: rgba(120, 162, 255, 0.24);
+}
+
+#learn-table.kanji-preview-enabled .kanji-word-preview{
+  margin-top: 16px;
+  padding: 20px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(30,48,82,0.85), rgba(12,20,36,0.92));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+#learn-table.kanji-preview-enabled .kanji-word-preview .kwp-kanji{
+  font-size: clamp(3rem, 10vw, 5.4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+#learn-table.kanji-preview-enabled .kanji-word-preview .kwp-hira{
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+}
+#learn-table.kanji-preview-enabled .kanji-word-preview .kwp-en{
+  font-size: clamp(1.1rem, 3vw, 1.4rem);
+  color: var(--muted);
+}
+
 /* Mobile tweaks: tighter spacing + allow wrapping so it fits */
 @media (max-width: 900px){
   .learn-table-bar{ flex-direction: column; align-items: stretch; gap:6px; }
