@@ -232,6 +232,12 @@ button.chip:hover{ background:#132340; }
 .pg-feedback{ margin-top:8px; min-height:20px; }
 .ok-inline{ color:#a7ffbe; font-weight:700; }
 .error-inline{ color:#ffb2b2; font-weight:700; }
+.make-issues{
+  margin:8px 0 0;
+  padding-left:18px;
+  color:var(--muted);
+}
+.make-issues li{ margin-bottom:4px; }
 
 /* Progress tables */
 .table-wrap{ overflow:auto; border:1px solid var(--border); border-radius:12px; }

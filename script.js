@@ -291,7 +291,7 @@ const App = Object.assign(window.App, {
   deck: [], deckFiltered: [], qIndex: 0,
   stats: { right: 0, wrong: 0, skipped: 0 },
   write: { idx: 0, variant: "en2h" },
-  make: { order: [], idx: 0 },
+  make: { order: [], idx: 0, results: new Map() },
   pg:   { rows: [], idx: 0 },
   buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
@@ -2974,7 +2974,8 @@ window.addEventListener("keydown", (e) => {
     await ensureDeckLoaded(); try{ await flushSession(); }catch{}
     App.mode = "make"; setCrumbs();
     App.make.order = shuffle(App.deck).map((_,i)=>i).slice(0, Math.min(App.deck.length, 30));
-    App.make.idx = 0; App.stats = { right:0, wrong:0, skipped:0 };
+    App.make.idx = 0; App.make.results = new Map();
+    App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
 
     hideLessonsHeaderAndList();
     hideLessonBar();
@@ -2991,33 +2992,228 @@ window.addEventListener("keydown", (e) => {
 
   };
   function renderMakeCard(){
-    const i = App.make.order[App.make.idx] ?? -1;
-    const w = App.deck[i]; if(!w){ elMakeCard.textContent="All done."; return; }
+    const btnSubmit = D("#make-submit");
+    const btnSkip = D("#make-skip");
+    const btnNext = D("#make-next");
+    const idx = App.make.order[App.make.idx] ?? -1;
+    const w = App.deck[idx];
+
+    updateMakeProgress();
+
+    if (!w){
+      elMakeCard.textContent = "All done.";
+      if (elMakeInput){
+        elMakeInput.value = "";
+        elMakeInput.setAttribute("disabled","disabled");
+      }
+      btnSubmit?.setAttribute("disabled","disabled");
+      btnSkip?.setAttribute("disabled","disabled");
+      btnNext?.setAttribute("disabled","disabled");
+      if (elMakeFeedback){
+        elMakeFeedback.textContent = "";
+        elMakeFeedback.classList.add("muted");
+      }
+      return;
+    }
+
     const picks=[w];
-    if (Math.random()<0.4 && App.deck.length>1) picks.push(App.deck[(i+3)%App.deck.length]);
-    if (Math.random()<0.2 && App.deck.length>2) picks.push(App.deck[(i+7)%App.deck.length]);
+    if (Math.random()<0.4 && App.deck.length>1) picks.push(App.deck[(idx+3)%App.deck.length]);
+    if (Math.random()<0.2 && App.deck.length>2) picks.push(App.deck[(idx+7)%App.deck.length]);
     elMakeCard.innerHTML = picks.map(x=>`<b>${escapeHTML(x.hira)}</b>`).join("　·　");
-    elMakeInput.value=""; elMakeFeedback.textContent=""; updateMakeProgress();
+
+    if (elMakeInput){
+      elMakeInput.removeAttribute("disabled");
+      elMakeInput.value="";
+      elMakeInput.focus();
+    }
+    btnSubmit?.removeAttribute("disabled");
+    btnSkip?.removeAttribute("disabled");
+    btnNext?.removeAttribute("disabled");
+    if (elMakeFeedback){
+      elMakeFeedback.textContent="";
+      elMakeFeedback.classList.add("muted");
+    }
   }
   function updateMakeProgress(){
     const cur=Math.min(App.make.idx, App.make.order.length);
     elMakeBar.style.width=pct(cur, App.make.order.length);
     elMakeText.textContent=`${cur} / ${App.make.order.length} (${pct(cur, App.make.order.length)})`;
   }
-  window.makeSubmit = ()=>{
-    const text=(elMakeInput.value||"").trim(); if(!text) return;
-    App.stats.right++; incrementPoints(1); elMakeFeedback.textContent="✓ Saved.";
+  function renderMakeFeedback(state){
+    if (!elMakeFeedback) return;
+    const toHtml = (s) => escapeHTML(s || "").replace(/\n/g, "<br>");
+
+    if (!state || state.status === "pending"){
+      elMakeFeedback.textContent = "";
+      elMakeFeedback.classList.add("muted");
+      return;
+    }
+
+    if (state.status === "checking"){
+      elMakeFeedback.classList.add("muted");
+      elMakeFeedback.innerHTML = `<span class="muted">⏳ Checking...</span>`;
+      return;
+    }
+
+    elMakeFeedback.classList.remove("muted");
+
+    if (state.status === "error"){
+      elMakeFeedback.innerHTML = `<span class="error-inline">⚠️ ${toHtml(state.error || "Unable to check sentence.")}</span>`;
+      return;
+    }
+
+    if (state.status === "correct"){
+      elMakeFeedback.innerHTML = `<span class="ok-inline">✓ ${toHtml(state.verdict || "Looks good!")}</span>`;
+      return;
+    }
+
+    if (state.status === "wrong"){
+      let html = `<span class="error-inline">❌ ${toHtml(state.verdict || "Needs revision.")}</span>`;
+      if (state.better){
+        html += `<div class="muted">Try: ${toHtml(state.better)}</div>`;
+      }
+      if (Array.isArray(state.issues) && state.issues.length){
+        html += `<ul class="make-issues">`;
+        for (const issue of state.issues.slice(0, 6)){
+          html += `<li>${toHtml(issue)}</li>`;
+        }
+        html += `</ul>`;
+      }
+      elMakeFeedback.innerHTML = html;
+      return;
+    }
+
+    elMakeFeedback.innerHTML = `<span class="muted">${toHtml(state.verdict || "")}</span>`;
+  }
+  window.makeSubmit = async ()=>{
+    if (!elMakeInput) return;
+    const idx = App.make.order[App.make.idx] ?? -1;
+    const w = App.deck[idx];
+    if (!w) return;
+    const text = (elMakeInput.value || "").trim();
+    if (!text){
+      toast("Type a sentence first.");
+      return;
+    }
+
+    const btnSubmit = D("#make-submit");
+    const prev = App.make.results.get(idx) || { status: "pending", mistakeLogged: false };
+    if (prev.status === "checking") return;
+
+    const levelLabel = App.level ? `JLPT ${App.level}` : "JLPT N5";
+    const wordParts = [];
+    if (w.kanji && w.kanji !== "—" && w.kanji !== "?") wordParts.push(w.kanji);
+    if (w.hira) wordParts.push(w.hira);
+    const wordLabel = wordParts.join(" / ") || w.en || "word";
+    const question = [
+      `Target word: ${wordLabel}`,
+      w.en ? `Meaning: ${w.en}` : null,
+      "Task: Evaluate whether the learner's sentence correctly uses the target word with JLPT N5 grammar."
+    ].filter(Boolean).join("\n");
+
+    const state = { ...prev, status: "checking", lastAnswer: text };
+    App.make.results.set(idx, state);
+    if (btnSubmit) btnSubmit.disabled = true;
+    elMakeInput.disabled = true;
+    renderMakeFeedback(state);
+
+    let data;
+    try {
+      const res = await fetch("/api/grammar-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          userAnswer: text,
+          correctAnswer: wordLabel,
+          level: levelLabel
+        })
+      });
+      if (!res.ok){
+        const detail = await res.text().catch(()=> "");
+        throw new Error(detail || `Request failed (${res.status})`);
+      }
+      data = await res.json();
+    } catch (err) {
+      const errorState = { ...state, status: "error", error: err?.message || String(err || "Error") };
+      App.make.results.set(idx, errorState);
+      renderMakeFeedback(errorState);
+      if (btnSubmit) btnSubmit.disabled = false;
+      elMakeInput.disabled = false;
+      elMakeInput.focus();
+      return;
+    }
+
+    const prevStatus = prev.status || "pending";
+    const isCorrect = !!data?.is_correct;
+    const nextState = {
+      ...state,
+      status: isCorrect ? "correct" : "wrong",
+      verdict: data?.verdict || (isCorrect ? "Sentence looks good." : "Please revise the sentence."),
+      better: data?.better || "",
+      issues: Array.isArray(data?.issues) ? data.issues.slice(0, 6) : [],
+      score: Number.isFinite(data?.score) ? data.score : null,
+      error: null,
+      lastAnswer: text
+    };
+
+    if (isCorrect){
+      if (prevStatus === "wrong"){
+        App.stats.wrong = Math.max(0, App.stats.wrong - 1);
+      }
+      if (prevStatus !== "correct"){
+        App.stats.right++;
+        incrementPoints(1);
+      } else {
+        updateScorePanel();
+      }
+    } else {
+      if (prevStatus !== "wrong" && prevStatus !== "correct"){
+        App.stats.wrong++;
+        if (!nextState.mistakeLogged){
+          recordMistake(w);
+          nextState.mistakeLogged = true;
+        }
+        updateScorePanel();
+      } else if (prevStatus === "wrong"){
+        // keep stats untouched
+      } else if (prevStatus === "correct"){
+        updateScorePanel();
+      }
+      if (prevStatus === "correct" && !nextState.mistakeLogged){
+        nextState.mistakeLogged = true;
+      }
+    }
+
+    App.make.results.set(idx, nextState);
+    renderMakeFeedback(nextState);
+    if (btnSubmit) btnSubmit.disabled = false;
+    elMakeInput.disabled = false;
+    elMakeInput.focus();
   };
   window.makeSkip = ()=>{
-    const i = App.make.order[App.make.idx] ?? -1;
-    const w = App.deck[i];
+    const idx = App.make.order[App.make.idx] ?? -1;
+    const state = idx >= 0 ? App.make.results.get(idx) : null;
+    if (state?.status === "checking"){
+      toast("Please wait for the review to finish.");
+      return;
+    }
+    const w = App.deck[idx];
     if (w) recordMistake(w);                     // ← log skipped word
     App.stats.skipped++; updateScorePanel();
     App.make.idx++; renderMakeCard();
   };
 
   window.makeShowHints = ()=> toast("Hint: Use particles like は / を / に / で to connect.");
-  window.makeNext = ()=>{ App.make.idx++; renderMakeCard(); };
+  window.makeNext = ()=>{
+    const idx = App.make.order[App.make.idx] ?? -1;
+    const state = idx >= 0 ? App.make.results.get(idx) : null;
+    if (state?.status === "checking"){
+      toast("Please wait for the review to finish.");
+      return;
+    }
+    App.make.idx++; renderMakeCard();
+  };
 
   // ---------- Mistakes ----------
   const MKEY="lj_mistakes_v1";
@@ -3302,7 +3498,9 @@ window.addEventListener("keydown", (e) => {
         showWriteView();
       } else if (mode==="make"){
         App.make.order = shuffle(deck).map((_,i)=>i).slice(0, Math.min(deck.length, 30));
-        App.make.idx   = 0; App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
+        App.make.idx   = 0;
+        App.make.results = new Map();
+        App.stats = { right:0, wrong:0, skipped:0 }; updateScorePanel();
         elMake.classList.remove("hidden");
         renderMakeCard();
       } else {
