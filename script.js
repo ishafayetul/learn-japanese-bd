@@ -293,7 +293,7 @@ const App = Object.assign(window.App, {
   stats: { right: 0, wrong: 0, skipped: 0 },
   write: { idx: 0, variant: "en2h" },
   make: { order: [], idx: 0, results: new Map() },
-  lt: { previewKey: null },
+  lt: { previewKey: null, previewIndex: -1, rows: [] },
   pg:   { rows: [], idx: 0 },
   buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
@@ -1809,6 +1809,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     if (!kanjiPreviewLightbox) {
       window.__kanjiPreviewOpen = false;
       App.lt.previewKey = null;
+      App.lt.previewIndex = -1;
       return;
     }
     if (kanjiPreviewEscHandler){
@@ -1819,6 +1820,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     kanjiPreviewLightbox = null;
     window.__kanjiPreviewOpen = false;
     App.lt.previewKey = null;
+    App.lt.previewIndex = -1;
     syncKanjiRowSelection(null);
     updateBackVisibility();
   }
@@ -1876,8 +1878,37 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
 
   function openKanjiPreview(word, row){
     App.lt.previewKey = keyForWord(word);
+    if (row && row.dataset.ltIndex !== undefined){
+      App.lt.previewIndex = Number(row.dataset.ltIndex);
+    } else {
+      App.lt.previewIndex = App.lt.rows.findIndex(w => keyForWord(w) === App.lt.previewKey);
+    }
     renderKanjiPreviewModal(word);
     syncKanjiRowSelection(row || null);
+  }
+
+  function moveKanjiPreview(step){
+    if (!window.__kanjiPreviewOpen) return;
+    const rows = App.lt.rows || [];
+    if (!rows.length) return;
+
+    let idx = Number.isInteger(App.lt.previewIndex) ? App.lt.previewIndex : -1;
+    if (idx < 0 && App.lt.previewKey){
+      idx = rows.findIndex(w => keyForWord(w) === App.lt.previewKey);
+    }
+    if (idx < 0) return;
+
+    const nextIdx = idx + step;
+    if (nextIdx < 0 || nextIdx >= rows.length) return;
+
+    const nextWord = rows[nextIdx];
+    if (!nextWord) return;
+
+    const rowEl = document.querySelector(`#lt-table tbody tr.lt-kanji-row[data-lt-index="${nextIdx}"]`);
+    openKanjiPreview(nextWord, rowEl || null);
+    if (rowEl) {
+      try { rowEl.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" }); } catch {}
+    }
   }
 
   function syncKanjiRowSelection(activeRow){
@@ -1898,12 +1929,13 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       if (!q) return true;
       return [w.kanji || "", w.hira || "", w.en || ""].join(" ").toLowerCase().includes(q);
     });
+    App.lt.rows = isKanjiDeck ? rows.slice() : [];
 
     tb.innerHTML = "";
     let selectedWord = null;
     let selectedRow = null;
 
-    for (const w of rows){
+    rows.forEach((w, idx) => {
       const tr = document.createElement("tr");
       const key = keyForWord(w);
       tr.innerHTML = `
@@ -1923,6 +1955,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       if (isKanjiDeck){
         tr.classList.add("lt-kanji-row");
         tr.dataset.ltKey = key;
+        tr.dataset.ltIndex = String(idx);
         tr.addEventListener("click", () => {
           openKanjiPreview(w, tr);
         });
@@ -1933,12 +1966,11 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       }
 
       tb.appendChild(tr);
-    }
+    });
 
     if (isKanjiDeck){
       if (selectedWord && selectedRow){
-        renderKanjiPreviewModal(selectedWord);
-        syncKanjiRowSelection(selectedRow);
+        openKanjiPreview(selectedWord, selectedRow);
       } else {
         syncKanjiRowSelection(null);
         if (App.lt.previewKey) closeKanjiPreview();
@@ -2752,6 +2784,22 @@ window.addEventListener("keydown", (e) => {
   const btn = list[idx];
   if (btn && !btn.disabled) {
     btn.click(); // delegates to onMatchPick(...)
+  }
+});
+
+window.addEventListener("keydown", (e) => {
+  if (!window.__kanjiPreviewOpen) return;
+  if (e.altKey || e.metaKey || e.ctrlKey) return;
+
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+
+  if (e.key === "ArrowRight"){
+    e.preventDefault();
+    moveKanjiPreview(1);
+  } else if (e.key === "ArrowLeft"){
+    e.preventDefault();
+    moveKanjiPreview(-1);
   }
 });
 
