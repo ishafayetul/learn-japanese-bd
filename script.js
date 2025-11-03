@@ -13,6 +13,7 @@
 // Wait until firebase.js finished and window.FB is ready
 // --- bootstrap so navigateLevel() never touches undefined ---
 window.App = window.App || {};
+window.__kanjiPreviewOpen = false;
 // Relative base for all lesson assets
 const LEVEL_BASE = window.APP_LEVEL_BASE || "level";
 
@@ -835,7 +836,7 @@ function unbindAudioHotkey(){
                         "#mix-section"
                       ]
                           .every(sel => document.querySelector(sel)?.classList.contains("hidden"));
-  if (elBack) elBack.classList.toggle("hidden", onLessonList && !window.__videoLightboxOpen);
+  if (elBack) elBack.classList.toggle("hidden", onLessonList && !window.__videoLightboxOpen && !window.__kanjiPreviewOpen);
 }
 window.updateBackVisibility = updateBackVisibility;
   function clearVideosPane(){ 
@@ -856,6 +857,7 @@ window.updateBackVisibility = updateBackVisibility;
   if (write) write.classList.add("hidden");
   if (make) make.classList.add("hidden");
   if (learnTbl) learnTbl.classList.add("hidden");
+  closeKanjiPreview();
   const elVocabStatus = document.querySelector("#vocab-status"); 
   const subA = document.querySelector("#vocab-learn-menu"); 
   const subB = document.querySelector("#vocab-mcq-menu"); 
@@ -1777,14 +1779,8 @@ window.startLearnTable = async () => {
   document.querySelector("#write")?.classList.add("hidden");
   document.querySelector("#make")?.classList.add("hidden");
 
-  const learnTableSection = document.querySelector("#learn-table");
-  const isKanjiDeck = learnTableIsKanjiDeck();
-  if (learnTableSection) learnTableSection.classList.toggle("kanji-preview-enabled", isKanjiDeck);
-  App.lt.previewKey = null;
-  hideKanjiPreview();
-  if (isKanjiDeck) ensureKanjiPreviewPanel();
-
-  learnTableSection?.classList.remove("hidden");
+  closeKanjiPreview();
+  document.querySelector("#learn-table")?.classList.remove("hidden");
   buildLearnTable();
   wireLearnTableOnce();
   updateBackVisibility();
@@ -1806,40 +1802,82 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     return label.includes("kanji");
   }
 
-  function ensureKanjiPreviewPanel(){
-    const host = document.querySelector("#learn-table .card");
-    if (!host) return null;
-    let panel = host.querySelector(".kanji-word-preview");
-    if (!panel){
-      panel = document.createElement("div");
-      panel.className = "kanji-word-preview hidden";
-      panel.setAttribute("aria-live", "polite");
-      panel.innerHTML = `
-        <div class="kwp-kanji"></div>
-        <div class="kwp-hira"></div>
-        <div class="kwp-en"></div>
-      `;
-      host.appendChild(panel);
+  let kanjiPreviewLightbox = null;
+  let kanjiPreviewEscHandler = null;
+
+  function closeKanjiPreview(){
+    if (!kanjiPreviewLightbox) {
+      window.__kanjiPreviewOpen = false;
+      App.lt.previewKey = null;
+      return;
     }
-    return panel;
+    if (kanjiPreviewEscHandler){
+      window.removeEventListener("keydown", kanjiPreviewEscHandler);
+      kanjiPreviewEscHandler = null;
+    }
+    kanjiPreviewLightbox.remove();
+    kanjiPreviewLightbox = null;
+    window.__kanjiPreviewOpen = false;
+    App.lt.previewKey = null;
+    syncKanjiRowSelection(null);
+    updateBackVisibility();
   }
 
-  function updateKanjiPreview(word){
-    const panel = ensureKanjiPreviewPanel();
-    if (!panel) return;
-    const kanjiEl = panel.querySelector(".kwp-kanji");
-    const hiraEl = panel.querySelector(".kwp-hira");
-    const enEl = panel.querySelector(".kwp-en");
+  function renderKanjiPreviewModal(word){
+    if (!word) return;
+    if (!kanjiPreviewLightbox){
+      kanjiPreviewLightbox = document.createElement("div");
+      kanjiPreviewLightbox.className = "lightbox kanji-word-lightbox";
+      document.body.appendChild(kanjiPreviewLightbox);
+      kanjiPreviewEscHandler = (e) => { if (e.key === "Escape") closeKanjiPreview(); };
+      window.addEventListener("keydown", kanjiPreviewEscHandler);
+    }
+
     const displayKanji = (word.kanji && word.kanji !== "—") ? word.kanji : (word.hira || "—");
-    if (kanjiEl) kanjiEl.textContent = displayKanji;
-    if (hiraEl) hiraEl.textContent = word.hira || "";
-    if (enEl) enEl.textContent = word.en || "";
-    panel.classList.remove("hidden");
+    kanjiPreviewLightbox.innerHTML = `
+      <div class="lightbox-backdrop"></div>
+      <div class="lightbox-inner card kanji-preview-card">
+        <div class="lightbox-head">
+          <button class="lightbox-close" aria-label="Close">← Back</button>
+        </div>
+        <div class="kanji-preview-body">
+          <div class="kwp-kanji">${escapeHTML(displayKanji)}</div>
+          <div class="kwp-hira">${escapeHTML(word.hira || "")}</div>
+          <div class="kwp-en">${escapeHTML(word.en || "")}</div>
+          <div class="kwp-actions">
+            <button class="chip kwp-audio">🔊 Play</button>
+            <button class="chip kwp-mark">📌 Mark</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const closeBtn = kanjiPreviewLightbox.querySelector(".lightbox-close");
+    const backdrop = kanjiPreviewLightbox.querySelector(".lightbox-backdrop");
+    const audioBtn = kanjiPreviewLightbox.querySelector(".kwp-audio");
+    const markBtn = kanjiPreviewLightbox.querySelector(".kwp-mark");
+
+    const onClose = () => closeKanjiPreview();
+    closeBtn?.addEventListener("click", onClose);
+    backdrop?.addEventListener("click", onClose, { passive:true });
+
+    audioBtn?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      speakJa(word.hira);
+    });
+    markBtn?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      markCurrentWord(word);
+    });
+
+    window.__kanjiPreviewOpen = true;
+    updateBackVisibility();
   }
 
-  function hideKanjiPreview(){
-    const panel = document.querySelector("#learn-table .kanji-word-preview");
-    if (panel) panel.classList.add("hidden");
+  function openKanjiPreview(word, row){
+    App.lt.previewKey = keyForWord(word);
+    renderKanjiPreviewModal(word);
+    syncKanjiRowSelection(row || null);
   }
 
   function syncKanjiRowSelection(activeRow){
@@ -1854,9 +1892,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     if (!tb) return;
 
     const isKanjiDeck = learnTableIsKanjiDeck();
-    const tableSection = document.querySelector("#learn-table");
-    if (tableSection) tableSection.classList.toggle("kanji-preview-enabled", isKanjiDeck);
-    if (isKanjiDeck) ensureKanjiPreviewPanel(); else { hideKanjiPreview(); syncKanjiRowSelection(null); if (App.lt) App.lt.previewKey = null; }
+    if (!isKanjiDeck) closeKanjiPreview();
 
     const rows = (App.deck || []).filter(w => {
       if (!q) return true;
@@ -1888,9 +1924,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
         tr.classList.add("lt-kanji-row");
         tr.dataset.ltKey = key;
         tr.addEventListener("click", () => {
-          App.lt.previewKey = key;
-          updateKanjiPreview(w);
-          syncKanjiRowSelection(tr);
+          openKanjiPreview(w, tr);
         });
         if (App.lt.previewKey && App.lt.previewKey === key){
           selectedWord = w;
@@ -1903,11 +1937,11 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
 
     if (isKanjiDeck){
       if (selectedWord && selectedRow){
-        updateKanjiPreview(selectedWord);
+        renderKanjiPreviewModal(selectedWord);
         syncKanjiRowSelection(selectedRow);
       } else {
         syncKanjiRowSelection(null);
-        hideKanjiPreview();
+        if (App.lt.previewKey) closeKanjiPreview();
       }
     }
   }
