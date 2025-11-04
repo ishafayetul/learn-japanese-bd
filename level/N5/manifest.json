@@ -2,17 +2,23 @@
   "version": 1,
   "level": "N5",
   "allLessons": [
-    "All Adjectives","All Verbs","Form-NaKatta","Form-Ta","Form-Jisho","Form-Nai","Form-Te",
-    "Kanji-01","Kanji-01-Words","Kanji-02","Kanji-02-Words",
-    "Kanji-03","Kanji-04",
+    "All Adjectives","All Verbs",
     "Lesson-01","Lesson-02","Lesson-03","Lesson-04","Lesson-05",
     "Lesson-06","Lesson-07","Lesson-08","Lesson-09","Lesson-10",
     "Lesson-11","Lesson-12","Lesson-13","Lesson-14","Lesson-15",
     "Lesson-16","Lesson-17","Lesson-18","Lesson-19","Lesson-20",
     "Lesson-21","Lesson-22","Lesson-23","Lesson-24","Lesson-25",
+    "Form-NaKatta","Form-Ta","Form-Jisho","Form-Nai","Form-Te",
+    "Kanji-01","Kanji-01-Words","Kanji-02","Kanji-02-Words",
+    "Kanji-03","Kanji-03-Words","Kanji-04",
     "Confusing Words","Lesson-Counters","Lesson-Time","Lesson-Phrases"
   ],
   "lessons": {
+    "Kanji-03-Words": {
+      "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson.pdf"]
+    },
     "All Adjectives": {
       "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
       "videoCsv": "Video Lecture/video.csv",
