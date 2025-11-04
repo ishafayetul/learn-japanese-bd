@@ -15,7 +15,7 @@
   ],
   "lessons": {
     "Kanji-03-Words": {
-      "vocab": ["Vocabulary/Vocab-Lesson-Verbs.csv"],
+      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
       "grammar": ["Grammar/Grammar-Lesson.pdf"]
     },
