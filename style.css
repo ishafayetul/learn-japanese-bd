@@ -1123,6 +1123,189 @@ body.nav-open .scrim{ display:block; }
   color: #ffd0d0;
 }
 
+/* --- Word List --- */
+.wl-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.wl-head h2{
+  margin:0;
+}
+.wl-head p{
+  margin:4px 0 0;
+}
+.wl-list{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
+  gap:12px;
+  margin-top:12px;
+}
+.wl-card{
+  border:1px solid rgba(63,94,143,.5);
+  border-radius:12px;
+  padding:14px;
+  background: linear-gradient(180deg, rgba(20,32,52,.88), rgba(15,24,40,.94));
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.wl-card:hover{
+  transform: translateY(-2px);
+  border-color: rgba(139,92,246,.6);
+  box-shadow: 0 8px 24px rgba(9,14,25,.35);
+}
+.wl-card.active{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(139,92,246,.4), 0 10px 26px rgba(16,14,27,.45);
+}
+.wl-card-main h3{
+  margin:0;
+  font-size:17px;
+  letter-spacing:.01em;
+}
+.wl-card-main p{
+  margin:0;
+  font-size:13px;
+  color: var(--muted);
+}
+.wl-card-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.wl-card-actions button{
+  flex:1 1 auto;
+}
+
+button.primary{
+  background: linear-gradient(135deg, #2f6df5, #8b5cf6);
+  border-color: rgba(88,120,230,.7);
+  color:#fff;
+  box-shadow: 0 8px 18px rgba(31,82,210,.28);
+}
+button.primary:hover{
+  background: linear-gradient(135deg, #3c7eff, #9b6cff);
+  border-color: rgba(120,150,255,.85);
+}
+button.primary:disabled,
+button.danger:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  transform:none;
+}
+
+.wl-settings-card,
+.wl-add-card,
+.wl-manage-card{
+  width:min(760px, 94vw);
+  max-height:80vh;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+.wl-settings-body{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+}
+.wl-settings-body button{
+  justify-content:flex-start;
+}
+
+.wl-add-body,
+.wl-manage-body{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.wl-add-controls{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+}
+.wl-add-controls span{
+  margin-left:auto;
+  font-size:13px;
+  color:var(--muted);
+}
+
+.wl-add-toolbar,
+.wl-manage-toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+}
+.wl-add-toolbar .pg-input,
+.wl-manage-toolbar .pg-input{
+  flex:1;
+  min-width:200px;
+}
+.wl-add-count,
+#wl-manage-status{
+  font-size:13px;
+  color:var(--muted);
+}
+
+.wl-table-wrap{
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:auto;
+  max-height:50vh;
+}
+
+.wl-table{
+  width:100%;
+  border-collapse:collapse;
+}
+.wl-table th,
+.wl-table td{
+  padding:8px 12px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  font-size:14px;
+}
+.wl-table th.sel,
+.wl-table td.sel{
+  width:42px;
+  text-align:center;
+}
+.wl-table tbody tr:nth-child(odd){
+  background:rgba(17,26,38,.4);
+}
+.wl-table tbody tr:hover{
+  background:rgba(25,40,66,.6);
+}
+
+.wl-add-actions,
+.wl-manage-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  justify-content:flex-end;
+}
+.wl-add-actions .wl-add-spacer,
+.wl-manage-toolbar .wl-manage-spacer{
+  flex:1;
+}
+
+@media (max-width:640px){
+  .wl-head{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .wl-card-actions button{
+    width:100%;
+  }
+}
+
 /* --- Export menu (Word Table) --- */
 .menu {
   position: relative;

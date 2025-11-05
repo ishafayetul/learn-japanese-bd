@@ -113,6 +113,39 @@ async function whenFBReady(timeout = 15000) {
   const elMistakesSection = D("#mistakes-section");
   const elMarkedSection = D("#marked-section");
   const elSignWordSection = D("#signword-section");
+  const elWordListSection = D("#wordlist-section");
+  const elWordListList = D("#wordlist-list");
+  const elWordListStatus = D("#wordlist-status");
+  const elWordListEmpty = D("#wordlist-empty");
+  const elWordListCreateBtn = D("#wordlist-create-btn");
+  const elWordListSettingsBtn = D("#wordlist-settings-btn");
+  const elWordListSettingsModal = D("#wordlist-settings-modal");
+  const elWordListAddModal = D("#wordlist-add-modal");
+  const elWordListManageModal = D("#wordlist-manage-modal");
+  const elWordListSettingsTitle = D("#wordlist-settings-title");
+  const elWordListSettingsHint = D("#wl-settings-hint");
+  const elWLSettingsAdd = D("#wl-settings-add");
+  const elWLSettingsManage = D("#wl-settings-manage");
+  const elWLSettingsRename = D("#wl-settings-rename");
+  const elWLSettingsClear = D("#wl-settings-clear");
+  const elWLSettingsDelete = D("#wl-settings-delete");
+  const elWLAddLevels = D("#wl-add-levels");
+  const elWLAddStatus = D("#wl-add-status");
+  const elWLAddStepPicker = D("#wl-add-step-picker");
+  const elWLAddStepTable = D("#wl-add-step-table");
+  const elWLAddFilter = D("#wl-add-filter");
+  const elWLAddCount = D("#wl-add-count");
+  const elWLAddTableBody = D("#wl-add-table tbody");
+  const elWLAddSelectVisible = D("#wl-add-select-visible");
+  const elWLAddBack = D("#wl-add-back");
+  const elWLAddAddSelected = D("#wl-add-add-selected");
+  const elWLAddAddAll = D("#wl-add-add-all");
+  const elWLAddHint = D("#wl-add-hint");
+  const elWLManageFilter = D("#wl-manage-filter");
+  const elWLManageStatus = D("#wl-manage-status");
+  const elWLManageTableBody = D("#wl-manage-table tbody");
+  const elWLManageSelectVisible = D("#wl-manage-select-visible");
+  const elWLManageRemoveSelected = D("#wl-manage-remove-selected");
 
   // Progress tables
   const elProgressLast = D("#progress-last");
@@ -297,6 +330,14 @@ const App = Object.assign(window.App, {
   pg:   { rows: [], idx: 0 },
   buffer: { points: 0, lastSavedSig: null },
   mix: { active:false, selection:[], deck: [] },
+  wordLists: {
+    loaded: false,
+    lists: new Map(),
+    order: [],
+    activeId: null,
+    add: { picks: [], deck: [], selected: new Set(), filter: "" },
+    manage: { selected: new Set(), filter: "" }
+  },
   cache: { lessons: new Map(), vocab: new Map(), vocabCsvFiles: new Map() },
   match: {
     active: false,
@@ -405,6 +446,87 @@ function setupDeployToast(){
   function formatWordCount(n){
     const count = Number.isFinite(n) ? n : 0;
     return count === 1 ? "1 word" : `${count} words`;
+  }
+  const sanitizeString = (v) => typeof v === "string" ? v.trim() : (v == null ? "" : String(v).trim());
+  function normalizeListWord(word){
+    const kanji = sanitizeString(word?.kanji);
+    return {
+      kanji: kanji || "—",
+      hira: sanitizeString(word?.hira),
+      en: sanitizeString(word?.en),
+    };
+  }
+  function relativeTimeLabel(ts){
+    if (!Number.isFinite(ts)) return "just now";
+    const delta = Date.now() - ts;
+    const abs = Math.abs(delta);
+    const minute = 60_000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    if (abs < minute) return "just now";
+    if (abs < hour) {
+      const mins = Math.round(abs / minute);
+      return `${mins} min${mins === 1 ? "" : "s"} ago`;
+    }
+    if (abs < day) {
+      const hrs = Math.round(abs / hour);
+      return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+    }
+    return new Date(ts).toLocaleString();
+  }
+  function showModal(el){
+    if (!el) return;
+    el.classList.remove("hidden");
+    el.setAttribute("aria-hidden","false");
+  }
+  function hideModal(el){
+    if (!el) return;
+    el.classList.add("hidden");
+    el.setAttribute("aria-hidden","true");
+  }
+  function ensureWordListState(){
+    if (!App.wordLists) {
+      App.wordLists = {
+        loaded: false,
+        lists: new Map(),
+        order: [],
+        activeId: null,
+        add: { picks: [], deck: [], selected: new Set(), filter: "" },
+        manage: { selected: new Set(), filter: "" }
+      };
+    }
+    return App.wordLists;
+  }
+  function storeWordList(list){
+    if (!list || !list.id) return;
+    const wlState = ensureWordListState();
+    const entry = {
+      id: list.id,
+      name: sanitizeString(list.name) || "Untitled List",
+      words: Array.isArray(list.words) ? list.words.map(normalizeListWord) : [],
+      wordCount: Number.isFinite(list.wordCount) ? list.wordCount : (Array.isArray(list.words) ? list.words.length : 0),
+      createdAt: Number.isFinite(list.createdAt) ? list.createdAt : (list.createdAt ? Number(list.createdAt) : Date.now()),
+      updatedAt: Number.isFinite(list.updatedAt) ? list.updatedAt : (list.updatedAt ? Number(list.updatedAt) : Date.now())
+    };
+    entry.wordCount = entry.wordCount || entry.words.length;
+    wlState.lists.set(entry.id, entry);
+    syncWordListOrder();
+    return entry;
+  }
+  function removeWordList(id){
+    const wlState = ensureWordListState();
+    wlState.lists.delete(id);
+    if (wlState.activeId === id) wlState.activeId = null;
+    syncWordListOrder();
+  }
+  function syncWordListOrder(){
+    const wlState = ensureWordListState();
+    wlState.order = Array.from(wlState.lists.values())
+      .sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      .map(item => item.id);
+  }
+  function getWordList(id){
+    return ensureWordListState().lists.get(id) || null;
   }
   function currentDeckId(){
     if (App.mix?.active && App.mix.selection?.length){
@@ -799,8 +921,10 @@ function unbindAudioHotkey(){
     document.querySelector("#marked-section")?.classList.add("hidden");
     document.querySelector("#signword-section")?.classList.add("hidden");
     document.querySelector("#mix-section")?.classList.add("hidden");
+    document.querySelector("#wordlist-section")?.classList.add("hidden");
     clearVideosPane();
     clearVocabPane();
+    showWordListSettingsButton(false);
     clearGrammarPane();
   }
   window.hideContentPanes = hideContentPanes;          // ← add this
@@ -1096,6 +1220,711 @@ window.openSection = async (name) => {
 
   updateBackVisibility?.();
 };
+
+  // ---------- Word Lists (custom decks) ----------
+  function setWordListStatus(text){
+    if (elWordListStatus) elWordListStatus.textContent = text || "";
+  }
+
+  function renderWordListOverview(){
+    const wlState = ensureWordListState();
+    if (!elWordListList) return;
+    const lists = wlState.order
+      .map(id => wlState.lists.get(id))
+      .filter(Boolean);
+
+    elWordListList.innerHTML = "";
+    if (!lists.length){
+      elWordListEmpty?.classList.remove("hidden");
+    } else {
+      elWordListEmpty?.classList.add("hidden");
+      for (const list of lists){
+        const card = document.createElement("div");
+        card.className = "wl-card";
+        card.dataset.id = list.id;
+        if (wlState.activeId === list.id) card.classList.add("active");
+        card.innerHTML = `
+          <div class="wl-card-main">
+            <h3>${escapeHTML(list.name)}</h3>
+            <p class="muted">${escapeHTML(formatWordCount(list.wordCount))} · Updated ${escapeHTML(relativeTimeLabel(list.updatedAt))}</p>
+          </div>
+          <div class="wl-card-actions">
+            <button type="button" data-action="open">Open</button>
+            <button type="button" data-action="settings" class="chip">Settings</button>
+          </div>
+        `;
+        card.addEventListener("click", (ev) => {
+          const btn = ev.target.closest("button");
+          if (btn?.dataset.action === "settings"){
+            ev.preventDefault();
+            ev.stopPropagation();
+            openWordListSettings(list.id);
+            return;
+          }
+          openWordListDeck(list.id);
+        });
+        elWordListList.appendChild(card);
+      }
+    }
+  }
+
+  async function refreshWordLists({ force = false } = {}){
+    const wlState = ensureWordListState();
+    setWordListStatus("Loading your lists…");
+    try{
+      const fb = await whenFBReady();
+      if (!fb?.wordLists?.list) throw new Error("Word list API unavailable");
+      const rows = await fb.wordLists.list({ force });
+      wlState.lists.clear();
+      rows.forEach(storeWordList);
+      wlState.loaded = true;
+      renderWordListOverview();
+      const count = rows.length;
+      setWordListStatus(count ? `Synced ${count} list${count === 1 ? "" : "s"}.` : "You don't have any lists yet.");
+      return rows;
+    } catch (err){
+      console.warn("[Word Lists] Failed to load lists", err);
+      if (!wlState.loaded){
+        wlState.lists.clear();
+        wlState.loaded = true;
+      }
+      renderWordListOverview();
+      setWordListStatus("Unable to load lists. Try again later.");
+      return [];
+    }
+  }
+
+  async function handleCreateWordList(){
+    const wlState = ensureWordListState();
+    const defaultName = wlState.order.length ? "" : "My first list";
+    const name = sanitizeString(prompt("Name your new list:", defaultName) || "");
+    if (!name) return;
+    if (elWordListCreateBtn){
+      elWordListCreateBtn.disabled = true;
+    }
+    try{
+      const fb = await whenFBReady();
+      if (!fb?.wordLists?.create) throw new Error("Word list API unavailable");
+      const created = await fb.wordLists.create({ name });
+      const entry = storeWordList(created);
+      wlState.loaded = true;
+      renderWordListOverview();
+      toast("List created ✓");
+      if (entry) await openWordListDeck(entry.id);
+    } catch (err){
+      console.error(err);
+      toast("Failed to create list.");
+    } finally {
+      if (elWordListCreateBtn){
+        elWordListCreateBtn.disabled = false;
+      }
+    }
+  }
+
+  function showWordListSettingsButton(show, listId){
+    if (!elWordListSettingsBtn) return;
+    if (show){
+      elWordListSettingsBtn.classList.remove("hidden");
+      if (listId) elWordListSettingsBtn.dataset.listId = listId;
+    } else {
+      elWordListSettingsBtn.classList.add("hidden");
+      delete elWordListSettingsBtn?.dataset.listId;
+    }
+  }
+
+  function updateWordListDeckStatus(list){
+    if (!elVocabStatus) return;
+    if (!list || !(list.words || list.wordCount)){
+      elVocabStatus.textContent = "Pick an option.";
+      return;
+    }
+    const count = formatWordCount(list.wordCount || (list.words || []).length);
+    if ((list.words || []).length){
+      elVocabStatus.textContent = `${count} in this list. Choose a mode or open Settings for more options.`;
+    } else {
+      elVocabStatus.textContent = "This list is empty. Open Settings → Add words to start building it.";
+    }
+  }
+
+  async function openWordListDeck(listId){
+    const wlState = ensureWordListState();
+    let target = getWordList(listId);
+    if (!target){
+      await refreshWordLists({ force: true });
+      target = getWordList(listId);
+    }
+    if (!target){
+      toast("List not found.");
+      return;
+    }
+    try { await flushSession?.(); } catch {}
+    closeVideoLightbox?.();
+    hideContentPanes();
+
+    document.querySelector("#level-shell")?.classList.remove("hidden");
+    document.querySelector("#lesson-area")?.classList.remove("hidden");
+    hideLessonsHeaderAndList();
+    hideLessonBar();
+    removeListActions();
+    ["#tab-videos","#tab-grammar"].forEach(sel => document.querySelector(sel)?.classList.add("hidden"));
+    document.querySelector("#tab-vocab")?.classList.remove("hidden");
+    hideVocabMenus();
+    showVocabRootCard();
+    showVocabRootMenu();
+
+    App.level = "Word List";
+    App.lesson = target.name;
+    App.tab = "vocab";
+    App.mode = null;
+    App.mix.active = false;
+    App.wordLists.activeId = target.id;
+    wlState.activeId = target.id;
+    App.deck = (target.words || []).slice();
+    App.deckFiltered = App.deck.slice();
+    App.qIndex = 0;
+    App.stats = { right: 0, wrong: 0, skipped: 0 };
+    updateScorePanel();
+
+    elCrumbLevel.textContent = "Word List";
+    elCrumbLesson.textContent = target.name || "—";
+    elCrumbMode.textContent = "vocab";
+    document.querySelector(".lesson-meta")?.classList.add("hidden");
+    document.querySelector("#lesson-title") && (document.querySelector("#lesson-title").textContent = target.name || "Word List");
+
+    updateWordListDeckStatus(target);
+    showWordListSettingsButton(true, target.id);
+    renderWordListOverview();
+    updateBackVisibility?.();
+  }
+
+  function openWordListSettings(listId){
+    const target = getWordList(listId || App.wordLists?.activeId);
+    if (!target){
+      toast("Select a list first.");
+      return;
+    }
+    App.wordLists.activeId = target.id;
+    if (elWordListSettingsTitle){
+      elWordListSettingsTitle.textContent = `${target.name} — Settings`;
+    }
+    if (elWordListSettingsHint){
+      elWordListSettingsHint.textContent = `${formatWordCount(target.wordCount || (target.words || []).length)} in this list.`;
+    }
+    showModal(elWordListSettingsModal);
+  }
+
+  function closeWordListSettings(){
+    hideModal(elWordListSettingsModal);
+  }
+
+  async function renameWordList(){
+    const id = App.wordLists?.activeId;
+    if (!id){ toast("No list selected."); return; }
+    const current = getWordList(id);
+    const name = sanitizeString(prompt("Rename list:", current?.name || "") || "");
+    if (!name) return;
+    try{
+      const fb = await whenFBReady();
+      const updated = await fb.wordLists.rename(id, name);
+      const entry = storeWordList(Object.assign({}, current, updated));
+      renderWordListOverview();
+      if (entry && App.wordLists.activeId === entry.id){
+        App.lesson = entry.name;
+        elCrumbLesson.textContent = entry.name;
+      }
+      toast("List renamed.");
+      closeWordListSettings();
+    } catch (err){
+      console.error(err);
+      toast("Failed to rename list.");
+    }
+  }
+
+  async function clearWordList(){
+    const id = App.wordLists?.activeId;
+    if (!id){ toast("No list selected."); return; }
+    if (!confirm("Remove all words from this list?")) return;
+    try{
+      const fb = await whenFBReady();
+      const cleared = await fb.wordLists.clear(id);
+      const entry = storeWordList(Object.assign({}, getWordList(id), cleared));
+      if (entry && App.wordLists.activeId === entry.id){
+        App.deck = [];
+        App.deckFiltered = [];
+        App.stats = { right:0, wrong:0, skipped:0 };
+        updateScorePanel();
+        updateWordListDeckStatus(entry);
+      }
+      renderWordListOverview();
+      toast("List cleared.");
+      closeWordListSettings();
+    } catch (err){
+      console.error(err);
+      toast("Failed to clear list.");
+    }
+  }
+
+  async function deleteWordList(){
+    const id = App.wordLists?.activeId;
+    const target = getWordList(id);
+    if (!target){ toast("No list selected."); return; }
+    if (!confirm(`Delete "${target.name}"? This cannot be undone.`)) return;
+    try{
+      const fb = await whenFBReady();
+      await fb.wordLists.delete(id);
+      removeWordList(id);
+      renderWordListOverview();
+      toast("List deleted.");
+      closeWordListSettings();
+      // If we were viewing this list, return to overview
+      if (App.level === "Word List" && App.lesson === target.name){
+        hideContentPanes();
+        elWordListSection?.classList.remove("hidden");
+        App.wordLists.activeId = null;
+        App.level = "Word Lists";
+        App.lesson = "Overview";
+        App.mode = "—";
+        elCrumbLevel.textContent = "Word Lists";
+        elCrumbLesson.textContent = "Overview";
+        elCrumbMode.textContent = "—";
+        showWordListSettingsButton(false);
+        updateBackVisibility();
+      }
+    } catch (err){
+      console.error(err);
+      toast("Failed to delete list.");
+    }
+  }
+
+  function resetWordListAddState(){
+    const wlState = ensureWordListState();
+    wlState.add = {
+      picks: [],
+      deck: [],
+      selected: new Set(),
+      filter: ""
+    };
+    if (elWLAddFilter) elWLAddFilter.value = "";
+    if (elWLAddSelectVisible) elWLAddSelectVisible.checked = false;
+    if (elWLAddCount) elWLAddCount.textContent = "";
+    if (elWLAddHint) elWLAddHint.textContent = "";
+  }
+
+  function renderWordListPickerLevels(){
+    if (!elWLAddLevels) return;
+    elWLAddLevels.innerHTML = "";
+    const levels = ["N5","N4","N3"];
+    levels.forEach(async (lvl) => {
+      const box = document.createElement("div");
+      box.className = "mix-level";
+      box.innerHTML = `
+        <div class="mix-level-head">
+          <label><input type="checkbox" class="mix-level-check" data-level="${lvl}"> <b>${lvl}</b></label>
+          <div class="mix-level-actions">
+            <button type="button" data-level="${lvl}" class="mix-sel-all">All</button>
+            <button type="button" data-level="${lvl}" class="mix-clear">Clear</button>
+          </div>
+        </div>
+        <div class="mix-lessons">
+          <div class="muted">Loading…</div>
+        </div>
+      `;
+      elWLAddLevels.appendChild(box);
+      const manifest = await loadLevelManifest(lvl);
+      const lessons = manifest?.allLessons || [];
+      const wrap = box.querySelector(".mix-lessons");
+      if (!wrap) return;
+      if (!lessons.length){
+        wrap.innerHTML = `<div class="muted">No lessons found.</div>`;
+        return;
+      }
+      wrap.innerHTML = lessons.map(ls => `
+        <label><input type="checkbox" class="mix-lesson-check" data-level="${lvl}" data-lesson="${ls}"> ${escapeHTML(ls.replace(/-/g," "))}</label>
+      `).join("");
+      const levelCheck = box.querySelector(".mix-level-check");
+      levelCheck?.addEventListener("change", (ev) => {
+        const on = ev.target.checked;
+        box.querySelectorAll(".mix-lesson-check").forEach(ch => ch.checked = on);
+      });
+      box.querySelector(".mix-sel-all")?.addEventListener("click", () => {
+        box.querySelectorAll(".mix-lesson-check").forEach(ch => ch.checked = true);
+        if (levelCheck) levelCheck.checked = true;
+      });
+      box.querySelector(".mix-clear")?.addEventListener("click", () => {
+        box.querySelectorAll(".mix-lesson-check").forEach(ch => ch.checked = false);
+        if (levelCheck) levelCheck.checked = false;
+      });
+    });
+  }
+
+  function gatherWordListLessonSelections(){
+    return Array.from(elWLAddLevels?.querySelectorAll(".mix-lesson-check:checked") || [])
+      .map(ch => ({ level: ch.dataset.level, lesson: ch.dataset.lesson }));
+  }
+
+  async function buildWordListCandidateDeck(picks){
+    let combined = [];
+    for (const p of picks){
+      const d = await loadDeckFor(p.level, p.lesson);
+      combined = combined.concat(d);
+    }
+    const seen = new Set();
+    const deck = [];
+    combined.forEach(word => {
+      const norm = normalizeListWord(word);
+      const key = keyForWord(norm);
+      if (!seen.has(key)){
+        seen.add(key);
+        deck.push(norm);
+      }
+    });
+    return deck;
+  }
+
+  function renderWordListAddTable(){
+    const wlState = ensureWordListState();
+    const addState = wlState.add;
+    if (!elWLAddTableBody) return;
+    const q = (elWLAddFilter?.value || "").trim().toLowerCase();
+    const rows = (addState.deck || []).filter(w => {
+      if (!q) return true;
+      return [w.kanji || "", w.hira || "", w.en || ""].join(" ").toLowerCase().includes(q);
+    });
+    elWLAddTableBody.innerHTML = "";
+    rows.forEach(word => {
+      const key = keyForWord(word);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="sel"><input type="checkbox" data-key="${escapeHTML(key)}"></td>
+        <td>${escapeHTML(word.kanji || "—")}</td>
+        <td>${escapeHTML(word.hira || "")}</td>
+        <td>${escapeHTML(word.en || "")}</td>
+      `;
+      const cb = tr.querySelector("input[type='checkbox']");
+      if (cb){
+        cb.checked = addState.selected.has(key);
+        cb.addEventListener("change", () => {
+          if (cb.checked) addState.selected.add(key); else addState.selected.delete(key);
+          updateWordListAddCounts();
+        });
+      }
+      elWLAddTableBody.appendChild(tr);
+    });
+    if (elWLAddCount){
+      const total = addState.deck.length;
+      elWLAddCount.textContent = `${rows.length} of ${total} word${total === 1 ? "" : "s"} shown`;
+    }
+    if (elWLAddSelectVisible){
+      const allSelected = rows.length > 0 && rows.every(word => addState.selected.has(keyForWord(word)));
+      elWLAddSelectVisible.checked = allSelected;
+    }
+    updateWordListAddCounts();
+  }
+
+  function updateWordListAddCounts(){
+    const wlState = ensureWordListState();
+    const addState = wlState.add;
+    const selectedCount = addState.selected.size;
+    if (elWLAddAddSelected){
+      elWLAddAddSelected.textContent = selectedCount ? `Add selected (${selectedCount})` : "Add selected";
+      elWLAddAddSelected.disabled = selectedCount === 0;
+    }
+  }
+
+  async function startWordListAddFlow(){
+    const id = App.wordLists?.activeId;
+    if (!id){ toast("Open a list first."); return; }
+    resetWordListAddState();
+    renderWordListPickerLevels();
+    elWLAddStepPicker?.classList.remove("hidden");
+    elWLAddStepTable?.classList.add("hidden");
+    elWLAddStatus && (elWLAddStatus.textContent = "Select lessons, then click Build Deck.");
+    showModal(elWordListAddModal);
+  }
+
+  async function confirmWordListAddBuild(){
+    const id = App.wordLists?.activeId;
+    if (!id){ toast("Open a list first."); return; }
+    const picks = gatherWordListLessonSelections();
+    if (!picks.length){
+      elWLAddStatus && (elWLAddStatus.textContent = "Pick at least one lesson.");
+      return;
+    }
+    elWLAddStatus && (elWLAddStatus.textContent = "Building deck…");
+    try{
+      const deck = await buildWordListCandidateDeck(picks);
+      const wlState = ensureWordListState();
+      wlState.add.picks = picks;
+      wlState.add.deck = deck;
+      wlState.add.selected = new Set(deck.map(keyForWord));
+      elWLAddStepPicker?.classList.add("hidden");
+      elWLAddStepTable?.classList.remove("hidden");
+      elWLAddStatus && (elWLAddStatus.textContent = "");
+      renderWordListAddTable();
+      if (elWLAddHint){
+        elWLAddHint.textContent = deck.length
+          ? "Use the checkboxes to fine-tune, or Add all to import everything at once."
+          : "No words found in the selected lessons.";
+      }
+    } catch (err){
+      console.error(err);
+      elWLAddStatus && (elWLAddStatus.textContent = "Failed to build deck. Try again.");
+    }
+  }
+
+  function backToWordListPicker(){
+    elWLAddStepTable?.classList.add("hidden");
+    elWLAddStepPicker?.classList.remove("hidden");
+    updateWordListAddCounts();
+  }
+
+  async function addWordsToList(selectedOnly){
+    const id = App.wordLists?.activeId;
+    const list = getWordList(id);
+    if (!list){ toast("Open a list first."); return; }
+    const wlState = ensureWordListState();
+    const addState = wlState.add;
+    const deck = addState.deck || [];
+    const keys = selectedOnly ? Array.from(addState.selected) : deck.map(keyForWord);
+    if (!keys.length){
+      toast("Nothing selected.");
+      return;
+    }
+    const map = new Map(deck.map(w => [keyForWord(w), w]));
+    const words = keys.map(k => map.get(k)).filter(Boolean);
+    if (!words.length){
+      toast("Nothing to add.");
+      return;
+    }
+    try{
+      const fb = await whenFBReady();
+      const updated = await fb.wordLists.updateWords(id, { add: words });
+      const entry = storeWordList(Object.assign({}, list, updated));
+      ensureWordListState().loaded = true;
+      renderWordListOverview();
+      if (entry && App.wordLists.activeId === entry.id){
+        App.deck = (entry.words || []).slice();
+        App.deckFiltered = App.deck.slice();
+        App.stats = { right:0, wrong:0, skipped:0 };
+        updateScorePanel();
+        updateWordListDeckStatus(entry);
+      }
+      toast(`Added ${words.length} word${words.length === 1 ? "" : "s"} ✓`);
+      hideModal(elWordListAddModal);
+    } catch (err){
+      console.error(err);
+      toast("Failed to add words.");
+    }
+  }
+
+  function openWordListManageModal(){
+    const id = App.wordLists?.activeId;
+    const list = getWordList(id);
+    if (!list){
+      toast("Open a list first.");
+      return;
+    }
+    const wlState = ensureWordListState();
+    wlState.manage = {
+      selected: new Set(),
+      filter: ""
+    };
+    if (elWLManageFilter) elWLManageFilter.value = "";
+    if (elWLManageSelectVisible) elWLManageSelectVisible.checked = false;
+    renderWordListManageTable();
+    showModal(elWordListManageModal);
+  }
+
+  function renderWordListManageTable(){
+    const wlState = ensureWordListState();
+    const list = getWordList(App.wordLists?.activeId);
+    if (!list || !elWLManageTableBody) return;
+    const q = (elWLManageFilter?.value || "").trim().toLowerCase();
+    const rows = (list.words || []).filter(word => {
+      if (!q) return true;
+      return [word.kanji || "", word.hira || "", word.en || ""].join(" ").toLowerCase().includes(q);
+    });
+    elWLManageTableBody.innerHTML = "";
+    rows.forEach(word => {
+      const key = keyForWord(word);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="sel"><input type="checkbox" data-key="${escapeHTML(key)}"></td>
+        <td>${escapeHTML(word.kanji || "—")}</td>
+        <td>${escapeHTML(word.hira || "")}</td>
+        <td>${escapeHTML(word.en || "")}</td>
+      `;
+      const cb = tr.querySelector("input[type='checkbox']");
+      if (cb){
+        cb.checked = wlState.manage.selected.has(key);
+        cb.addEventListener("change", () => {
+          if (cb.checked) wlState.manage.selected.add(key); else wlState.manage.selected.delete(key);
+          updateWordListManageStatus();
+        });
+      }
+      elWLManageTableBody.appendChild(tr);
+    });
+    if (elWLManageSelectVisible){
+      const allSelected = rows.length > 0 && rows.every(word => wlState.manage.selected.has(keyForWord(word)));
+      elWLManageSelectVisible.checked = allSelected;
+    }
+    updateWordListManageStatus();
+  }
+
+  function updateWordListManageStatus(){
+    const wlState = ensureWordListState();
+    if (elWLManageStatus){
+      const list = getWordList(App.wordLists?.activeId);
+      const total = list ? (list.words || []).length : 0;
+      elWLManageStatus.textContent = `${wlState.manage.selected.size} selected · ${total} total`;
+    }
+    if (elWLManageRemoveSelected){
+      elWLManageRemoveSelected.disabled = wlState.manage.selected.size === 0;
+    }
+  }
+
+  async function removeSelectedWords(){
+    const id = App.wordLists?.activeId;
+    const list = getWordList(id);
+    if (!list){
+      toast("Open a list first.");
+      return;
+    }
+    const wlState = ensureWordListState();
+    const keys = Array.from(wlState.manage.selected);
+    if (!keys.length){
+      toast("Nothing selected.");
+      return;
+    }
+    const words = (list.words || []).filter(w => keys.includes(keyForWord(w)));
+    if (!words.length){
+      toast("Nothing selected.");
+      return;
+    }
+    try{
+      const fb = await whenFBReady();
+      const updated = await fb.wordLists.updateWords(id, { remove: keys });
+      const entry = storeWordList(Object.assign({}, list, updated));
+      ensureWordListState().loaded = true;
+      renderWordListOverview();
+      if (entry && App.wordLists.activeId === entry.id){
+        App.deck = (entry.words || []).slice();
+        App.deckFiltered = App.deck.slice();
+        App.stats = { right:0, wrong:0, skipped:0 };
+        updateScorePanel();
+        updateWordListDeckStatus(entry);
+      }
+      toast(`Removed ${words.length} word${words.length === 1 ? "" : "s"} ✓`);
+      hideModal(elWordListManageModal);
+    } catch (err){
+      console.error(err);
+      toast("Failed to remove words.");
+    }
+  }
+
+  function closeWordListManageModal(){
+    hideModal(elWordListManageModal);
+  }
+
+  function closeWordListAddModal(){
+    hideModal(elWordListAddModal);
+  }
+
+  window.openWordLists = async () => {
+    try { await flushSession?.(); } catch {}
+    closeVideoLightbox?.();
+    hideContentPanes();
+    elWordListSection?.classList.remove("hidden");
+    showWordListSettingsButton(false);
+    ensureWordListState();
+    App.level = "Word Lists";
+    App.lesson = "Overview";
+    App.mode = "—";
+    elCrumbLevel.textContent = "Word Lists";
+    elCrumbLesson.textContent = "Overview";
+    elCrumbMode.textContent = "—";
+    renderWordListOverview();
+    await refreshWordLists();
+    updateBackVisibility?.();
+  };
+
+  // Wire UI elements once
+  (function wireWordListUI(){
+    if (window.__wlWired) return;
+    window.__wlWired = true;
+    elWordListCreateBtn?.addEventListener("click", handleCreateWordList);
+    elWordListSettingsBtn?.addEventListener("click", () => openWordListSettings());
+
+    // settings modal buttons
+    elWLSettingsAdd?.addEventListener("click", () => { closeWordListSettings(); startWordListAddFlow(); });
+    elWLSettingsManage?.addEventListener("click", () => { closeWordListSettings(); openWordListManageModal(); });
+    elWLSettingsRename?.addEventListener("click", renameWordList);
+    elWLSettingsClear?.addEventListener("click", clearWordList);
+    elWLSettingsDelete?.addEventListener("click", deleteWordList);
+
+    // Modal close via data-close
+    document.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-close]");
+      if (!btn) return;
+      const id = btn.dataset.close;
+      if (!id) return;
+      const modal = document.getElementById(id);
+      hideModal(modal);
+    });
+
+    // Add modal controls
+    document.getElementById("wl-add-select-all")?.addEventListener("click", () => {
+      elWLAddLevels?.querySelectorAll(".mix-lesson-check").forEach(ch => ch.checked = true);
+      elWLAddLevels?.querySelectorAll(".mix-level-check").forEach(ch => ch.checked = true);
+    });
+    document.getElementById("wl-add-clear")?.addEventListener("click", () => {
+      elWLAddLevels?.querySelectorAll(".mix-lesson-check,.mix-level-check").forEach(ch => ch.checked = false);
+    });
+    document.getElementById("wl-add-build")?.addEventListener("click", confirmWordListAddBuild);
+    elWLAddFilter?.addEventListener("input", renderWordListAddTable);
+    elWLAddSelectVisible?.addEventListener("change", () => {
+      const checked = elWLAddSelectVisible.checked;
+      elWLAddTableBody?.querySelectorAll("input[type='checkbox']").forEach(cb => {
+        cb.checked = checked;
+        const key = cb.dataset.key;
+        if (checked) ensureWordListState().add.selected.add(key); else ensureWordListState().add.selected.delete(key);
+      });
+      updateWordListAddCounts();
+    });
+    elWLAddBack?.addEventListener("click", backToWordListPicker);
+    elWLAddAddSelected?.addEventListener("click", () => addWordsToList(true));
+    elWLAddAddAll?.addEventListener("click", () => addWordsToList(false));
+
+    // Manage modal controls
+    document.getElementById("wl-manage-select-all")?.addEventListener("click", () => {
+      const list = elWLManageTableBody?.querySelectorAll("input[type='checkbox']") || [];
+      list.forEach(cb => {
+        cb.checked = true;
+        ensureWordListState().manage.selected.add(cb.dataset.key);
+      });
+      updateWordListManageStatus();
+    });
+    document.getElementById("wl-manage-clear")?.addEventListener("click", () => {
+      const list = elWLManageTableBody?.querySelectorAll("input[type='checkbox']") || [];
+      list.forEach(cb => cb.checked = false);
+      ensureWordListState().manage.selected.clear();
+      updateWordListManageStatus();
+    });
+    elWLManageFilter?.addEventListener("input", renderWordListManageTable);
+    elWLManageSelectVisible?.addEventListener("change", () => {
+      const wlState = ensureWordListState();
+      const checked = elWLManageSelectVisible.checked;
+      elWLManageTableBody?.querySelectorAll("input[type='checkbox']").forEach(cb => {
+        cb.checked = checked;
+        if (checked) wlState.manage.selected.add(cb.dataset.key); else wlState.manage.selected.delete(cb.dataset.key);
+      });
+      updateWordListManageStatus();
+    });
+    elWLManageRemoveSelected?.addEventListener("click", removeSelectedWords);
+    elWordListAddModal?.querySelector(".lightbox-backdrop")?.addEventListener("click", closeWordListAddModal);
+    elWordListManageModal?.querySelector(".lightbox-backdrop")?.addEventListener("click", closeWordListManageModal);
+    elWordListSettingsModal?.querySelector(".lightbox-backdrop")?.addEventListener("click", closeWordListSettings);
+  })();
 
 
 
@@ -4029,7 +4858,7 @@ async function renderMixPicker(){
 }
 
 function inListVocabContext(){
-  return App.level === "Mistakes" || App.level === "Marked" || App.level === "Mix";
+  return App.level === "Mistakes" || App.level === "Marked" || App.level === "Mix" || App.level === "Word List";
 }
 
 // Global select/clear helpers (buttons below the picker)

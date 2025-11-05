@@ -36,7 +36,94 @@
     notes: new Map(),     // key -> {note, updatedAt}
     marked: new Map(),    // id  -> data
     signWords: new Map(), // id  -> data
+    wordLists: new Map(), // id  -> data
   };
+
+  const wordListLocalKey = NS("wordlists_v1");
+  let wordListsLoadedFromLocal = false;
+  let wordListsLastFetch = 0;
+
+  const WORDLIST_CACHE_WINDOW = 60_000; // 60s throttle between remote fetches
+
+  const normalizeWordEntry = (word) => ({
+    kanji: word?.kanji ? String(word.kanji).trim() : "—",
+    hira:  word?.hira ? String(word.hira).trim()  : "",
+    en:    word?.en ? String(word.en).trim()      : "",
+  });
+
+  const wordEntryKey = (word) => {
+    const w = normalizeWordEntry(word);
+    return `${w.kanji.toLowerCase()}|${w.hira.toLowerCase()}|${w.en.toLowerCase()}`;
+  };
+
+  function hydrateWordListsFromLocal(){
+    if (wordListsLoadedFromLocal) return;
+    wordListsLoadedFromLocal = true;
+    const cached = Local.get(wordListLocalKey, null);
+    if (!cached?.lists?.length) return;
+    try {
+      cached.lists.forEach(wl => {
+        const words = Array.isArray(wl.words) ? wl.words.map(normalizeWordEntry) : [];
+        _cache.wordLists.set(wl.id, {
+          id: wl.id,
+          name: wl.name || "Untitled List",
+          words,
+          wordCount: Number.isFinite(wl.wordCount) ? wl.wordCount : words.length,
+          createdAt: wl.createdAt || null,
+          updatedAt: wl.updatedAt || null,
+        });
+      });
+    } catch {}
+  }
+
+  function persistWordListsToLocal(){
+    try {
+      const lists = Array.from(_cache.wordLists.values()).map(wl => ({
+        id: wl.id,
+        name: wl.name,
+        words: (wl.words || []).map(normalizeWordEntry),
+        wordCount: Number.isFinite(wl.wordCount) ? wl.wordCount : (wl.words || []).length,
+        createdAt: wl.createdAt || null,
+        updatedAt: wl.updatedAt || null,
+      }));
+      Local.set(wordListLocalKey, { lists, ts: Date.now() });
+    } catch {}
+  }
+
+  function wordListFromDoc(snap){
+    const data = snap.data() || {};
+    const words = Array.isArray(data.words) ? data.words.map(normalizeWordEntry) : [];
+    return {
+      id: snap.id,
+      name: data.name || "Untitled List",
+      words,
+      wordCount: Number.isFinite(data.wordCount) ? data.wordCount : words.length,
+      createdAt: data.createdAt?.toMillis?.() || null,
+      updatedAt: data.updatedAt?.toMillis?.() || null,
+      localOnly: false,
+    };
+  }
+
+  function cloneWordList(list){
+    return {
+      id: list.id,
+      name: list.name,
+      words: (list.words || []).map(normalizeWordEntry),
+      wordCount: Number.isFinite(list.wordCount) ? list.wordCount : (list.words || []).length,
+      createdAt: list.createdAt || null,
+      updatedAt: list.updatedAt || null,
+    };
+  }
+
+  function sortWordListCache(){
+    const pairs = Array.from(_cache.wordLists.entries());
+    pairs.sort((a, b) => {
+      const ta = (a[1]?.updatedAt ?? a[1]?.createdAt ?? 0);
+      const tb = (b[1]?.updatedAt ?? b[1]?.createdAt ?? 0);
+      return tb - ta; // newest first
+    });
+    _cache.wordLists = new Map(pairs);
+  }
 
   const Local = {
     get(k, fallback=null) { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } },
@@ -53,6 +140,7 @@
     userSignCol:     (uid) => `users/${uid}/signwords`,
     userAttemptsCol: (uid) => `users/${uid}/attempts`,
     userWriteBestCol:(uid) => `users/${uid}/writeBest`,
+    userWordListsCol:(uid) => `users/${uid}/wordLists`,
     dailyScoresCol:  (date) => `daily/${date}/scores`,      // shared daily leaderboard
     overallLBCol:    ()    => `leaderboard_overall`,        // shared overall leaderboard
   };
@@ -310,6 +398,145 @@
         _cache.marked.delete(key1);
         _cache.marked.delete(key2);
         return true;
+      },
+
+      /* --------------- WORD LISTS (per-user) --------------- */
+      wordLists: {
+        async list({ force = false } = {}) {
+          if (!_user) throw new Error("Not signed in");
+          hydrateWordListsFromLocal();
+          const now = Date.now();
+          if (!force && _cache.wordLists.size && (now - wordListsLastFetch) < WORDLIST_CACHE_WINDOW) {
+            return Array.from(_cache.wordLists.values()).map(cloneWordList);
+          }
+          const snap = await getDocs(collection(db, Paths.userWordListsCol(_user.uid)));
+          snap.docs.forEach(docSnap => {
+            const wl = wordListFromDoc(docSnap);
+            _cache.wordLists.set(wl.id, wl);
+          });
+          sortWordListCache();
+          wordListsLastFetch = Date.now();
+          persistWordListsToLocal();
+          return Array.from(_cache.wordLists.values()).map(cloneWordList);
+        },
+        async ensure(id) {
+          if (!_user) throw new Error("Not signed in");
+          if (!id) throw new Error("Missing list id");
+          if (_cache.wordLists.has(id)) return _cache.wordLists.get(id);
+          hydrateWordListsFromLocal();
+          if (_cache.wordLists.has(id)) return _cache.wordLists.get(id);
+          const ref = doc(db, `${Paths.userWordListsCol(_user.uid)}/${id}`);
+          const snap = await getDoc(ref);
+          if (!snap.exists()) throw new Error("Word list not found");
+          const wl = wordListFromDoc(snap);
+          _cache.wordLists.set(id, wl);
+          sortWordListCache();
+          persistWordListsToLocal();
+          return wl;
+        },
+        async create({ name } = {}) {
+          if (!_user) throw new Error("Not signed in");
+          hydrateWordListsFromLocal();
+          const nm = String(name || "New List").trim() || "New List";
+          const safeName = nm.slice(0, 80);
+          const col = collection(db, Paths.userWordListsCol(_user.uid));
+          const stamp = serverTimestamp();
+          const payload = {
+            name: safeName,
+            words: [],
+            wordCount: 0,
+            createdAt: stamp,
+            updatedAt: stamp,
+          };
+          const docRef = await addDoc(col, payload);
+          const now = Date.now();
+          const list = { id: docRef.id, name: safeName, words: [], wordCount: 0, createdAt: now, updatedAt: now };
+          _cache.wordLists.set(list.id, list);
+          sortWordListCache();
+          wordListsLastFetch = now;
+          persistWordListsToLocal();
+          return cloneWordList(list);
+        },
+        async rename(id, name) {
+          if (!_user) throw new Error("Not signed in");
+          const nm = String(name || "Untitled List").trim() || "Untitled List";
+          const safeName = nm.slice(0, 80);
+          const ref = doc(db, `${Paths.userWordListsCol(_user.uid)}/${id}`);
+          await setDoc(ref, { name: safeName, updatedAt: serverTimestamp() }, { merge: true });
+          const list = _cache.wordLists.get(id);
+          const now = Date.now();
+          if (list) {
+            list.name = safeName;
+            list.updatedAt = now;
+            _cache.wordLists.set(id, list);
+            sortWordListCache();
+            wordListsLastFetch = now;
+            persistWordListsToLocal();
+            return cloneWordList(list);
+          }
+          sortWordListCache();
+          wordListsLastFetch = now;
+          return { id, name: safeName };
+        },
+        async updateWords(id, { add = [], remove = [] } = {}) {
+          if (!_user) throw new Error("Not signed in");
+          const list = await this.ensure(id);
+          const map = new Map();
+          (list.words || []).forEach(word => map.set(wordEntryKey(word), normalizeWordEntry(word)));
+          add.forEach(word => {
+            const normalized = normalizeWordEntry(word);
+            if (!normalized.hira && !normalized.en) return;
+            map.set(wordEntryKey(normalized), normalized);
+          });
+          remove.forEach(item => {
+            const key = typeof item === "string" ? item : wordEntryKey(item);
+            map.delete(key);
+          });
+          const words = Array.from(map.values()).sort((a, b) => String(a.hira || "").localeCompare(String(b.hira || ""), "ja"));
+          const ref = doc(db, `${Paths.userWordListsCol(_user.uid)}/${id}`);
+          await setDoc(ref, {
+            words,
+            wordCount: words.length,
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+          list.words = words;
+          list.wordCount = words.length;
+          list.updatedAt = Date.now();
+          _cache.wordLists.set(id, list);
+          sortWordListCache();
+          wordListsLastFetch = Date.now();
+          persistWordListsToLocal();
+          return cloneWordList(list);
+        },
+        async clear(id) {
+          if (!_user) throw new Error("Not signed in");
+          const ref = doc(db, `${Paths.userWordListsCol(_user.uid)}/${id}`);
+          await setDoc(ref, { words: [], wordCount: 0, updatedAt: serverTimestamp() }, { merge: true });
+          const list = _cache.wordLists.get(id);
+          if (list) {
+            list.words = [];
+            list.wordCount = 0;
+            list.updatedAt = Date.now();
+            _cache.wordLists.set(id, list);
+            sortWordListCache();
+            wordListsLastFetch = Date.now();
+            persistWordListsToLocal();
+            return cloneWordList(list);
+          }
+          sortWordListCache();
+          wordListsLastFetch = Date.now();
+          return true;
+        },
+        async delete(id) {
+          if (!_user) throw new Error("Not signed in");
+          const ref = doc(db, `${Paths.userWordListsCol(_user.uid)}/${id}`);
+          await deleteDoc(ref);
+          _cache.wordLists.delete(id);
+          sortWordListCache();
+          wordListsLastFetch = Date.now();
+          persistWordListsToLocal();
+          return true;
+        }
       },
 
       /* --------------- SIGN WORDS (per-user) --------------- */

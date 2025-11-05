@@ -108,6 +108,7 @@
       <button onclick="navigateLevel('N4')">Learn N4</button>
       <button onclick="navigateLevel('N3')">Learn N3</button>
       <button id="nav-mix" onclick="openMixPractice()">Mix Practice</button>
+      <button id="nav-wordlists" onclick="openWordLists()">📚 Word List</button>
       <!-- <button id="nav-speaking" class="chip speaking-chip" type="button">🗣️ Speaking Practice</button> -->
       <hr style="opacity:.2;border:none;border-top:1px solid #ffffff30;margin:8px 0 12px">
       <button onclick="openSection('progress')">📈 Progress</button>
@@ -206,6 +207,7 @@
                   <button onclick="openVocabMCQMenu()">❓ MCQ</button>
                   <button onclick="openVocabWriteMenu()">✍️ Write Words</button>
                   <button onclick="startMakeSentence()">📝 Make Sentence</button>
+                  <button id="wordlist-settings-btn" type="button" class="hidden">⚙️ Settings</button>
                 </div>
                 <p id="vocab-status" class="muted" style="margin-top:6px;">Pick an option.</p>
               </div>
@@ -512,6 +514,21 @@
             <div id="signword-list"></div>
           </div>
         </section>
+        <!-- ========= Word List ========= -->
+        <section id="wordlist-section" class="hidden">
+          <div class="card">
+            <div class="wl-head">
+              <div>
+                <h2>📚 Word List</h2>
+                <p id="wordlist-subhead" class="muted">Collect favourite words into personal decks.</p>
+              </div>
+              <button id="wordlist-create-btn" type="button">＋ New List</button>
+            </div>
+            <p id="wordlist-status" class="muted"></p>
+            <div id="wordlist-list" class="wl-list"></div>
+            <div id="wordlist-empty" class="muted">No lists yet — create one to get started.</div>
+          </div>
+        </section>
          <!-- ========= Mix Section ========= -->
         <section id="mix-section" class="hidden">
           <div class="card">
@@ -530,6 +547,110 @@
         </section>
 
         <section id="speaking-section" class="hidden"></section>
+
+        <!-- Word List settings modal -->
+        <div id="wordlist-settings-modal" class="lightbox hidden" aria-hidden="true">
+          <div class="lightbox-backdrop" data-close="wordlist-settings-modal"></div>
+          <div class="lightbox-inner card wl-settings-card">
+            <div class="lightbox-head">
+              <h4 id="wordlist-settings-title" style="margin:0;">List Settings</h4>
+              <button class="lightbox-close" data-close="wordlist-settings-modal" aria-label="Close">✕</button>
+            </div>
+            <div class="wl-settings-body">
+              <button id="wl-settings-add" type="button" class="primary">Add words</button>
+              <button id="wl-settings-manage" type="button">Manage words</button>
+              <button id="wl-settings-rename" type="button">Rename list</button>
+              <button id="wl-settings-clear" type="button">Clear all words</button>
+              <button id="wl-settings-delete" type="button" class="danger">Delete list</button>
+            </div>
+            <p id="wl-settings-hint" class="muted"></p>
+          </div>
+        </div>
+
+        <!-- Word List add words modal -->
+        <div id="wordlist-add-modal" class="lightbox hidden" aria-hidden="true">
+          <div class="lightbox-backdrop" data-close="wordlist-add-modal"></div>
+          <div class="lightbox-inner card wl-add-card">
+            <div class="lightbox-head">
+              <h4 style="margin:0;">Add Words</h4>
+              <button class="lightbox-close" data-close="wordlist-add-modal" aria-label="Close">✕</button>
+            </div>
+            <div class="wl-add-body">
+              <div id="wl-add-step-picker">
+                <p class="muted">Select lessons to pull words from. Works just like Mix Practice.</p>
+                <div id="wl-add-levels" class="mix-levels-wrap wl-add-levels"></div>
+                <div class="wl-add-controls">
+                  <button type="button" id="wl-add-select-all">Select all</button>
+                  <button type="button" id="wl-add-clear">Clear</button>
+                  <button type="button" id="wl-add-build" class="primary">Build Deck</button>
+                  <span id="wl-add-status" class="muted"></span>
+                </div>
+              </div>
+              <div id="wl-add-step-table" class="hidden">
+                <div class="wl-add-toolbar">
+                  <input id="wl-add-filter" class="pg-input" type="search" placeholder="Search words…" />
+                  <div class="wl-add-count" id="wl-add-count"></div>
+                </div>
+                <div class="table-wrap wl-table-wrap">
+                  <table id="wl-add-table" class="wl-table">
+                    <thead>
+                      <tr>
+                        <th class="sel"><input type="checkbox" id="wl-add-select-visible" /></th>
+                        <th>Kanji</th>
+                        <th>Hiragana</th>
+                        <th>English</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <div class="wl-add-actions">
+                  <button type="button" id="wl-add-back" class="chip">← Change selection</button>
+                  <div class="wl-add-spacer"></div>
+                  <button type="button" id="wl-add-add-selected" class="primary">Add selected</button>
+                  <button type="button" id="wl-add-add-all">Add all</button>
+                </div>
+                <p id="wl-add-hint" class="muted">Tip: filter the table, then add selected or add all matching words.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Word List manage words modal -->
+        <div id="wordlist-manage-modal" class="lightbox hidden" aria-hidden="true">
+          <div class="lightbox-backdrop" data-close="wordlist-manage-modal"></div>
+          <div class="lightbox-inner card wl-manage-card">
+            <div class="lightbox-head">
+              <h4 style="margin:0;">Manage List Words</h4>
+              <button class="lightbox-close" data-close="wordlist-manage-modal" aria-label="Close">✕</button>
+            </div>
+            <div class="wl-manage-body">
+              <div class="wl-manage-toolbar">
+                <input id="wl-manage-filter" class="pg-input" type="search" placeholder="Search words…" />
+                <div class="wl-manage-spacer"></div>
+                <button type="button" id="wl-manage-select-all" class="chip">Select all</button>
+                <button type="button" id="wl-manage-clear" class="chip">Clear</button>
+              </div>
+              <p id="wl-manage-status" class="muted"></p>
+              <div class="table-wrap wl-table-wrap">
+                <table id="wl-manage-table" class="wl-table">
+                  <thead>
+                    <tr>
+                      <th class="sel"><input type="checkbox" id="wl-manage-select-visible" /></th>
+                      <th>Kanji</th>
+                      <th>Hiragana</th>
+                      <th>English</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="wl-manage-actions">
+                <button type="button" id="wl-manage-remove-selected" class="danger">Remove selected words</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Unmark modal -->
         <div id="unmark-modal" class="lightbox hidden" aria-hidden="true">
