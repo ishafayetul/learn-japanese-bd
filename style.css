@@ -1222,6 +1222,9 @@ button.danger:disabled{
   display:flex;
   flex-direction:column;
   gap:12px;
+  flex:1;
+  overflow:auto;
+  padding-right:6px;
 }
 
 .wl-add-controls{
@@ -1235,6 +1238,20 @@ button.danger:disabled{
   margin-left:auto;
   font-size:13px;
   color:var(--muted);
+}
+
+.wl-add-step-picker,
+.wl-add-step-table{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  flex:1;
+}
+
+.wl-add-levels{
+  max-height:40vh;
+  overflow:auto;
+  padding-right:4px;
 }
 
 .wl-add-toolbar,
@@ -1260,6 +1277,8 @@ button.danger:disabled{
   border-radius:12px;
   overflow:auto;
   max-height:50vh;
+  flex:1;
+  min-height:0;
 }
 
 .wl-table{
