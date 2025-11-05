@@ -2326,9 +2326,18 @@ window.closeVideoLightbox = closeVideoLightbox;
       }
       if (App.level === "Marked"){
         if (!App.deck?.length) App.deck = await getMarkedAsDeck(); // merged sources below
+      if (elVocabStatus) elVocabStatus.textContent = App.deck.length
+        ? `Loaded ${App.deck.length} words.`
+        : "No words found.";
+      return;
+    }
+      if (App.level === "Word List"){
+        const list = getWordList(App.wordLists?.activeId);
+        App.deck = list ? (list.words || []).map(normalizeListWord) : [];
+        App.deckFiltered = App.deck.slice();
         if (elVocabStatus) elVocabStatus.textContent = App.deck.length
-          ? `Loaded ${App.deck.length} words.`
-          : "No words found.";
+          ? `Loaded ${App.deck.length} words from this list.`
+          : "This list is empty.";
         return;
       }
 
