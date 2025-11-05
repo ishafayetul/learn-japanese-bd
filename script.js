@@ -474,15 +474,39 @@ function setupDeployToast(){
     }
     return new Date(ts).toLocaleString();
   }
+  const FOCUSABLE_SEL = [
+    "button:not([disabled])",
+    "[href]",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]:not([tabindex='-1'])"
+  ].join(",");
   function showModal(el){
     if (!el) return;
+    el.__prevFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     el.classList.remove("hidden");
     el.setAttribute("aria-hidden","false");
+    requestAnimationFrame(() => {
+      const first = el.querySelector(FOCUSABLE_SEL);
+      if (first instanceof HTMLElement) first.focus({ preventScroll:true });
+    });
   }
   function hideModal(el){
     if (!el) return;
+    const active = document.activeElement;
+    if (active && el.contains(active)) {
+      active.blur();
+    }
     el.classList.add("hidden");
     el.setAttribute("aria-hidden","true");
+    const prev = el.__prevFocus;
+    if (prev && typeof prev.focus === "function") {
+      requestAnimationFrame(() => {
+        try { prev.focus({ preventScroll:true }); } catch {}
+      });
+    }
+    el.__prevFocus = null;
   }
   function ensureWordListState(){
     if (!App.wordLists) {
@@ -833,6 +857,19 @@ function unbindAudioHotkey(){
       // root → lesson tabs (or Mix picker if Mix is active)
       if (rootCardVisible) {
         document.querySelector("#tab-vocab")?.classList.add("hidden");
+        if (App.level === "Word List") {
+          document.querySelector("#level-shell")?.classList.add("hidden");
+          document.querySelector("#lesson-area")?.classList.add("hidden");
+          elWordListSection?.classList.remove("hidden");
+          App.level = "Word Lists";
+          App.lesson = "Overview";
+          App.mode = "—";
+          showWordListSettingsButton(false);
+          renderWordListOverview();
+          setCrumbs();
+          updateBackVisibility();
+          return;
+        }
         if (App.mix?.active){
           // Go back to the Mix picker
           document.querySelector("#mix-section")?.classList.remove("hidden");
@@ -863,7 +900,8 @@ function unbindAudioHotkey(){
 
     // 4) If in any non-level section (Progress, etc.) → return to lesson list
     if (isVisible("#progress-section") || isVisible("#leaderboard-section") ||
-        isVisible("#mistakes-section") || isVisible("#marked-section") || isVisible("#signword-section")) {
+        isVisible("#mistakes-section") || isVisible("#marked-section") || isVisible("#signword-section") ||
+        isVisible("#wordlist-section")) {
       hideContentPanes();
       showLessonListOnly();
       return;
@@ -957,7 +995,8 @@ function unbindAudioHotkey(){
                         "#mistakes-section",
                         "#marked-section",
                         "#signword-section",
-                        "#mix-section"
+                        "#mix-section",
+                        "#wordlist-section"
                       ]
                           .every(sel => document.querySelector(sel)?.classList.contains("hidden"));
   if (elBack) elBack.classList.toggle("hidden", onLessonList && !window.__videoLightboxOpen && !window.__kanjiPreviewOpen);
