@@ -39,6 +39,14 @@
     wordLists: new Map(), // id  -> data
   };
 
+  const Local = {
+    get(k, fallback=null) { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    del(k)    { try { localStorage.removeItem(k); } catch {} },
+  };
+
+  const NS = (suffix) => `lj_${suffix}`;
+
   const wordListLocalKey = NS("wordlists_v1");
   let wordListsLoadedFromLocal = false;
   let wordListsLastFetch = 0;
@@ -124,14 +132,6 @@
     });
     _cache.wordLists = new Map(pairs);
   }
-
-  const Local = {
-    get(k, fallback=null) { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-    del(k)    { try { localStorage.removeItem(k); } catch {} },
-  };
-
-  const NS = (suffix) => `lj_${suffix}`;
 
   const Paths = {
     users: (uid) => `users/${uid}`,
