@@ -1,7 +1,7 @@
-見る,みる,to see/to look at
-見せる,みせる,to show
-見つかる,みつかる,to be found
-見つける,みつける,to find
+見ます,みます,to see/to look at
+見せます,みせます,to show
+見つかります,みつかります,to be found
+見つけます,みつけます,to find
 元気,げんき,healthy/energetic
 元日,がんじつ,New Year's Day
 先に,さきに,ahead/before
@@ -21,10 +21,9 @@
 母,はは,mother (my mother)
 母国,ぼこく,motherland/home country
 母語,ぼご,mother tongue
-行く,いく,to go
-行う,おこなう,to do/to perform
-旅行する,りょこうする,to travel
-飛行機,ひこうき,airplane
+行きます,いきます,to go
+行います,おこないます,to do/to perform
+旅行します,りょこうします,to travel
 毎朝,まいあさ,every morning
 毎晩,まいばん,every night
 毎週,まいしゅう,every week
@@ -52,11 +51,88 @@
 門,もん,gate
 正門,せいもん,main gate
 専門,せんもん,specialty/area of expertise
-聞く,きく,to hear/to listen/to ask
-聞こえる,きこえる,to be audible
+聞きます,ききます,to hear/to listen/to ask
+聞こえます,きこえます,to be audible
 新聞,しんぶん,newspaper
 間,あいだ,between/interval
 昼間,ひるま,daytime
-間に合う,まにあう,to be on time
+間に合います,まにあいます,to be on time
 時間,じかん,time/hours
 四時間,よじかん,four hours
+牛,うし,cow
+牛肉,ぎゅうにく,beef
+牛乳,ぎゅうにゅう,milk
+午前,ごぜん,morning/a.m.
+午後,ごご,afternoon/p.m.
+年,とし,year/age
+今年,ことし,this year
+年上,としうえ,older/senior
+年下,としした,younger/junior
+去年,きょねん,last year
+来年,らいねん,next year
+再来年,さらいねん,year after next
+生年月日,せいねんがっぴ,date of birth
+前,まえ,before/front
+名前,なまえ,name
+三年前,さんねんまえ,three years ago
+前半,ぜんはん,first half
+後ろ,うしろ,behind/back
+後で,あとで,later
+五年後,ごねんご,five years later
+最後,さいご,last/final
+後半,こうはん,second half
+高い,たかい,high/expensive
+円高,えんだか,strong yen
+高校,こうこう,high school
+高校生,こうこうせい,high school student
+高速,こうそく,high speed
+最高,さいこう,best/highest
+銀,ぎん,silver
+銀行,ぎんこう,bank
+銀座,ぎんざ,Ginza (place name)
+食べます,たべます,to eat
+食べ物,たべもの,food
+食堂,しょくどう,cafeteria/dining hall
+食事します,しょくじします,to have a meal
+食料品,しょくりょうひん,groceries/foodstuffs
+ご飯,ごはん,meal/cooked rice
+朝ご飯,あさごはん,breakfast
+昼ご飯,ひるごはん,lunch
+晩ご飯,ばんごはん,dinner
+夕飯,ゆうはん,dinner
+飲みます,のみます,to drink
+飲み物,のみもの,drink/beverage
+飲み水,のみみず,drinking water
+飲料水,いんりょうすい,drinking water
+飲酒運転,いんしゅうんてん,drunk driving
+白,しろ,white (noun/color)
+白い,しろい,white (adjective)
+白馬,はくば,white horse
+赤い,あかい,red (adjective)
+赤ん坊,あかんぼう,baby/infant
+赤ちゃん,あかちゃん,baby/infant
+赤字,あかじ,deficit/in the red
+赤十字,せきじゅうじ,Red Cross
+青い,あおい,blue (adjective)
+青信号,あおしんごう,green light
+青年,せいねん,youth/young man
+言います,いいます,to say/to tell
+言葉,ことば,word/language
+言語,げんご,language
+伝言します,でんごんします,to leave a message
+話,はなし,talk/story
+話します,はなします,to speak/to talk
+電話,でんわ,telephone
+会話,かいわ,conversation
+世話します,せわします,to take care of/to look after
+英語,えいご,English language
+(中国)語,ちゅうごくご,Chinese language
+母語,ぼご,mother tongue
+売ります,うります,to sell
+売(り)場,うりば,selling floor/sales counter
+売(り)切(れ),うりきれ,sold out
+読みます,よみます,to read
+読書,どくしょ,reading (as a hobby)
+読者,どくしゃ,reader
+書きます,かきます,to write
+和書,わしょ,Japanese book
