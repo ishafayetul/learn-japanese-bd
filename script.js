@@ -118,6 +118,8 @@ async function whenFBReady(timeout = 15000) {
   const elWordListStatus = D("#wordlist-status");
   const elWordListEmpty = D("#wordlist-empty");
   const elWordListCreateBtn = D("#wordlist-create-btn");
+  const elWordListImportBtn = D("#wordlist-import-btn");
+  const elWordListImportInput = D("#wordlist-import-input");
   const elWordListSettingsBtn = D("#wordlist-settings-btn");
   const elWordListSettingsModal = D("#wordlist-settings-modal");
   const elWordListAddModal = D("#wordlist-add-modal");
@@ -125,10 +127,12 @@ async function whenFBReady(timeout = 15000) {
   const elWordListSettingsTitle = D("#wordlist-settings-title");
   const elWordListSettingsHint = D("#wl-settings-hint");
   const elWLSettingsAdd = D("#wl-settings-add");
+  const elWLSettingsImport = D("#wl-settings-import");
   const elWLSettingsManage = D("#wl-settings-manage");
   const elWLSettingsRename = D("#wl-settings-rename");
   const elWLSettingsClear = D("#wl-settings-clear");
   const elWLSettingsDelete = D("#wl-settings-delete");
+  const elWLSettingsImportInput = D("#wl-settings-import-input");
   const elWLAddLevels = D("#wl-add-levels");
   const elWLAddStatus = D("#wl-add-status");
   const elWLAddStepPicker = D("#wl-add-step-picker");
@@ -455,6 +459,75 @@ function setupDeployToast(){
       hira: sanitizeString(word?.hira),
       en: sanitizeString(word?.en),
     };
+  }
+  const CSV_HEADER_HINTS = ["kanji","漢字","kana","hiragana","ひらがな","english","meaning","translation","romaji","type","lesson","word","vocab","vocabulary"];
+  const hasJapaneseChars = (text = "") => /[\u3040-\u30ff\u3400-\u9fff]/.test(text);
+  function csvRowLooksLikeHeader(row){
+    if (!Array.isArray(row) || !row.length) return false;
+    const normalized = row.map(cell => sanitizeString(cell).toLowerCase());
+    let matches = 0;
+    normalized.forEach(cell => {
+      if (!cell) return;
+      if (CSV_HEADER_HINTS.some(hint => cell.includes(hint))) matches++;
+    });
+    return matches >= 2;
+  }
+  function normalizeCsvRowToWord(row){
+    if (!Array.isArray(row) || !row.length) return null;
+    const cells = row.map(sanitizeString);
+    if (!cells.some(Boolean)) return null;
+    let kanji = cells[0] || "";
+    let hira = cells[1] || "";
+    let en = cells[2] || "";
+    if (!en){
+      const trailing = cells.slice(2).filter(Boolean).join(" ").trim();
+      if (trailing) en = trailing;
+    }
+    if (!hira && hasJapaneseChars(kanji)){
+      hira = kanji;
+    }
+    if (!en && cells.length === 2){
+      const [first, second] = cells;
+      if (hasJapaneseChars(first) && !hasJapaneseChars(second)){
+        en = second;
+      } else if (!hasJapaneseChars(first) && hasJapaneseChars(second)){
+        en = first;
+        if (!hira) hira = second;
+        if (!kanji) kanji = "—";
+      } else if (!hasJapaneseChars(second)){
+        en = second || first;
+      }
+    }
+    const word = normalizeListWord({ kanji, hira, en });
+    if (!word.hira && !word.en) return null;
+    return word;
+  }
+  function parseWordListCsvText(text){
+    let rows = [];
+    try {
+      rows = parseCSV(text || "");
+    } catch {
+      return [];
+    }
+    if (!rows.length) return [];
+    const start = csvRowLooksLikeHeader(rows[0]) ? 1 : 0;
+    const words = [];
+    const seen = new Set();
+    for (let i = start; i < rows.length; i++){
+      const word = normalizeCsvRowToWord(rows[i]);
+      if (!word) continue;
+      const key = keyForWord(word);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      words.push(word);
+    }
+    return words;
+  }
+  function defaultWordListNameFromFile(fileName){
+    if (!fileName) return "Imported List";
+    const base = fileName.replace(/\.[^/.]+$/, "");
+    const cleaned = sanitizeString(base.replace(/[_-]+/g, " "));
+    return cleaned || "Imported List";
   }
   function relativeTimeLabel(ts){
     if (!Number.isFinite(ts)) return "just now";
@@ -1360,6 +1433,110 @@ window.openSection = async (name) => {
     }
   }
 
+  async function importWordListCsv(file, { targetId = null } = {}){
+    if (!file){
+      toast("Select a CSV file.");
+      return;
+    }
+    let words = [];
+    try{
+      const text = await file.text();
+      words = parseWordListCsvText(text);
+    } catch (err){
+      console.error(err);
+      toast("Failed to read CSV file.");
+      return;
+    }
+    if (!words.length){
+      toast("No usable words found in that CSV.");
+      return;
+    }
+    if (targetId){
+      await appendCsvWordsToList(targetId, words);
+    } else {
+      await createWordListFromCsv(words, file.name || "");
+    }
+  }
+
+  async function createWordListFromCsv(words, fileName){
+    const wlState = ensureWordListState();
+    const defaultName = defaultWordListNameFromFile(fileName);
+    const nameInput = prompt("Name your new list:", defaultName);
+    if (nameInput === null) return;
+    const name = sanitizeString(nameInput) || defaultName;
+    if (!name) return;
+    if (elWordListImportBtn){
+      elWordListImportBtn.disabled = true;
+    }
+    setWordListStatus(`Importing ${words.length} word${words.length === 1 ? "" : "s"}…`);
+    try{
+      const fb = await whenFBReady();
+      if (!fb?.wordLists?.create || !fb?.wordLists?.updateWords) throw new Error("Word list API unavailable");
+      const created = await fb.wordLists.create({ name });
+      let entry = storeWordList(created) || created;
+      wlState.loaded = true;
+      const updated = await fb.wordLists.updateWords(entry.id, { add: words });
+      entry = storeWordList(Object.assign({}, entry, updated));
+      renderWordListOverview();
+      if (entry){
+        toast(`Imported ${words.length} word${words.length === 1 ? "" : "s"} into "${entry.name}" ✓`);
+        await openWordListDeck(entry.id);
+        setWordListStatus(`Imported ${formatWordCount(entry.wordCount || entry.words?.length || words.length)} from CSV.`);
+      }
+    } catch (err){
+      console.error(err);
+      toast("Failed to import CSV.");
+      setWordListStatus("Import failed.");
+    } finally {
+      if (elWordListImportBtn){
+        elWordListImportBtn.disabled = false;
+      }
+    }
+  }
+
+  async function appendCsvWordsToList(listId, words){
+    const list = getWordList(listId);
+    if (!list){
+      toast("Open a list first.");
+      return;
+    }
+    if (elWLSettingsImport){
+      elWLSettingsImport.disabled = true;
+    }
+    const totalLabel = `Adding ${words.length} word${words.length === 1 ? "" : "s"}…`;
+    setWordListStatus(totalLabel);
+    try{
+      const fb = await whenFBReady();
+      if (!fb?.wordLists?.updateWords) throw new Error("Word list API unavailable");
+      const prevCount = list.wordCount || (list.words || []).length || 0;
+      const updated = await fb.wordLists.updateWords(listId, { add: words });
+      const entry = storeWordList(Object.assign({}, list, updated));
+      ensureWordListState().loaded = true;
+      renderWordListOverview();
+      if (entry && App.wordLists.activeId === entry.id){
+        App.deck = (entry.words || []).slice();
+        App.deckFiltered = App.deck.slice();
+        App.stats = { right:0, wrong:0, skipped:0 };
+        updateScorePanel();
+        updateWordListDeckStatus(entry);
+      }
+      const newCount = entry ? (entry.wordCount || (entry.words || []).length || 0) : prevCount;
+      const delta = Math.max(0, newCount - prevCount);
+      const reported = delta || words.length;
+      toast(`Imported ${reported} CSV word${reported === 1 ? "" : "s"} ✓`);
+      setWordListStatus(`List updated — ${formatWordCount(newCount)} total.`);
+      closeWordListSettings();
+    } catch (err){
+      console.error(err);
+      toast("Failed to import CSV.");
+      setWordListStatus("Import failed.");
+    } finally {
+      if (elWLSettingsImport){
+        elWLSettingsImport.disabled = false;
+      }
+    }
+  }
+
   function showWordListSettingsButton(show, listId){
     if (!elWordListSettingsBtn) return;
     if (show){
@@ -1892,10 +2069,38 @@ window.openSection = async (name) => {
     if (window.__wlWired) return;
     window.__wlWired = true;
     elWordListCreateBtn?.addEventListener("click", handleCreateWordList);
+    elWordListImportBtn?.addEventListener("click", () => {
+      if (elWordListImportBtn.disabled) return;
+      elWordListImportInput?.click();
+    });
+    elWordListImportInput?.addEventListener("change", (ev) => {
+      const file = ev.target.files?.[0];
+      if (file) importWordListCsv(file);
+      ev.target.value = "";
+    });
     elWordListSettingsBtn?.addEventListener("click", () => openWordListSettings());
 
     // settings modal buttons
     elWLSettingsAdd?.addEventListener("click", () => { closeWordListSettings(); startWordListAddFlow(); });
+    elWLSettingsImport?.addEventListener("click", () => {
+      const id = App.wordLists?.activeId;
+      if (!id){
+        toast("Open a list first.");
+        return;
+      }
+      if (!elWLSettingsImportInput) return;
+      elWLSettingsImportInput.dataset.targetId = id;
+      elWLSettingsImportInput.click();
+    });
+    elWLSettingsImportInput?.addEventListener("change", (ev) => {
+      const file = ev.target.files?.[0];
+      const targetId = ev.target.dataset.targetId || App.wordLists?.activeId;
+      if (file && targetId){
+        importWordListCsv(file, { targetId });
+      }
+      ev.target.value = "";
+      if (ev.target.dataset.targetId) delete ev.target.dataset.targetId;
+    });
     elWLSettingsManage?.addEventListener("click", () => { closeWordListSettings(); openWordListManageModal(); });
     elWLSettingsRename?.addEventListener("click", renameWordList);
     elWLSettingsClear?.addEventListener("click", clearWordList);

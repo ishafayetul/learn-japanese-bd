@@ -521,8 +521,12 @@
                 <h2>📚 Word List</h2>
                 <p id="wordlist-subhead" class="muted">Collect favourite words into personal decks.</p>
               </div>
-              <button id="wordlist-create-btn" type="button">＋ New List</button>
+              <div class="wl-head-actions">
+                <button id="wordlist-create-btn" type="button">＋ New List</button>
+                <button id="wordlist-import-btn" type="button" class="chip">⬆ Import CSV</button>
+              </div>
             </div>
+            <input id="wordlist-import-input" type="file" accept=".csv,text/csv" style="display:none;">
             <p id="wordlist-status" class="muted"></p>
             <div id="wordlist-list" class="wl-list"></div>
             <div id="wordlist-empty" class="muted">No lists yet — create one to get started.</div>
@@ -557,6 +561,7 @@
             </div>
             <div class="wl-settings-body">
               <button id="wl-settings-add" type="button" class="primary">Add words</button>
+              <button id="wl-settings-import" type="button">Import CSV to this list</button>
               <button id="wl-settings-manage" type="button">Manage words</button>
               <button id="wl-settings-rename" type="button">Rename list</button>
               <button id="wl-settings-clear" type="button">Clear all words</button>
@@ -565,6 +570,7 @@
             <p id="wl-settings-hint" class="muted"></p>
           </div>
         </div>
+        <input id="wl-settings-import-input" type="file" accept=".csv,text/csv" style="display:none;">
 
         <!-- Word List add words modal -->
         <div id="wordlist-add-modal" class="lightbox hidden" aria-hidden="true">

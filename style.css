@@ -1131,6 +1131,12 @@ body.nav-open .scrim{ display:block; }
   gap:12px;
   flex-wrap:wrap;
 }
+.wl-head-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
 .wl-head h2{
   margin:0;
 }
