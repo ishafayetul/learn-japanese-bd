@@ -10,10 +10,15 @@
     "Lesson-21","Lesson-22","Lesson-23","Lesson-24","Lesson-25",
     "Form-NaKatta","Form-Ta","Form-Jisho","Form-Nai","Form-Te",
     "Kanji-01","Kanji-01-Words","Kanji-02","Kanji-02-Words",
-    "Kanji-03","Kanji-03-Words","Kanji-04",
+    "Kanji-03","Kanji-03-Words","Kanji-04","Kanji-04-Words",
     "Confusing Words","Lesson-Counters","Lesson-Time","Lesson-Phrases"
   ],
   "lessons": {
+    "Kanji-04-Words": {
+      "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
+      "videoCsv": "Video Lecture/video.csv",
+      "grammar": ["Grammar/Grammar-Lesson.pdf"]
+    },
     "Kanji-03-Words": {
       "vocab": ["Vocabulary/Vocab-Lesson-kanji.csv"],
       "videoCsv": "Video Lecture/video.csv",
