@@ -7,10 +7,10 @@
 案内します,あんないします,"show around, show the way"
 説明します,せつめいします,explain
 ?,コーヒーをいれます,make coffee
-?,おじいさん,"grandfather, old man"
-?,おじいちゃん,"grandfather, old man"
-?,おばあさん,"grandmother, old woman"
-?,おばあちゃん,"grandmother, old woman"
+?,おじいさん,"grandfather \ old man - someone else"
+?,おじいちゃん,"grandfather \ old man - own"
+?,おばあさん,"grandmother \ old woman - someone else"
+?,おばあちゃん,"grandmother, old woman - own"
 準備,じゅんび,preparation
 ?,じゅんびします,prepare
 ?,いみ,meaning
