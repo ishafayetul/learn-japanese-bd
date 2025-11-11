@@ -16,6 +16,7 @@ window.App = window.App || {};
 window.__kanjiPreviewOpen = false;
 // Relative base for all lesson assets
 const LEVEL_BASE = window.APP_LEVEL_BASE || "level";
+const MASTERY_PREF_KEY = "n5-mastery-mode";
 
 async function whenFBReady(timeout = 15000) {
   const start = Date.now();
@@ -69,6 +70,7 @@ async function whenFBReady(timeout = 15000) {
   const elDeckBar = D("#deck-progress-bar");
   const elDeckText = D("#deck-progress-text");
   const elDeckCount = D("#deck-word-count");
+  const elPracticeMasteryToggle = D("#practice-mastery-toggle");
 
   // Learn
   const elLearn = D("#learn");
@@ -82,6 +84,7 @@ async function whenFBReady(timeout = 15000) {
   const elWriteBar = D("#write-progress-bar");
   const elWriteText = D("#write-progress-text");
   const elWriteCount = D("#write-word-count");
+  const elWriteMasteryToggle = D("#write-mastery-toggle");
 
   // Make sentence
   const elMake = D("#make");
@@ -174,6 +177,11 @@ async function whenFBReady(timeout = 15000) {
 
   // Toast
   const elToast = D("#toast");
+  App.masteryMode = loadMasteryPreference();
+  [elPracticeMasteryToggle, elWriteMasteryToggle].forEach(btn => {
+    btn?.addEventListener("click", toggleMasteryMode);
+  });
+  updateMasteryToggleUI();
 // Mobile nav controls
 const elSidebar   = D("#sidebar");
 const elNavToggle = D("#nav-toggle");
@@ -3296,6 +3304,64 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     toast("PDF ready — use Save as PDF in the print dialog.");
   }
 
+  function loadMasteryPreference(){
+    try{
+      const raw = localStorage.getItem(MASTERY_PREF_KEY);
+      if (raw === "off") return false;
+      if (raw === "on") return true;
+    } catch {}
+    return true;
+  }
+
+  function persistMasteryPreference(on){
+    try{
+      localStorage.setItem(MASTERY_PREF_KEY, on ? "on" : "off");
+    } catch {}
+  }
+
+  function isMasteryEnabled(){
+    return App.masteryMode !== false;
+  }
+
+  function updateMasteryToggleUI(){
+    const on = isMasteryEnabled();
+    const label = on ? "Mastery: ON" : "Mastery: OFF";
+    const hint = on
+      ? "Wrong answers repeat until each word is mastered."
+      : "Single-pass — each word appears only once per session.";
+    [elPracticeMasteryToggle, elWriteMasteryToggle].forEach(btn => {
+      if (!btn) return;
+      btn.textContent = label;
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.title = hint;
+      btn.classList.toggle("is-off", !on);
+    });
+  }
+
+  function setMasteryMode(on){
+    const next = !!on;
+    App.masteryMode = next;
+    persistMasteryPreference(next);
+    updateMasteryToggleUI();
+  }
+
+  function toggleMasteryMode(){
+    const next = !isMasteryEnabled();
+    setMasteryMode(next);
+    const msg = next
+      ? "🎯 Mastery Mode ON — wrong answers repeat until mastered."
+      : "✨ Single-pass Mode ON — each word will show only once.";
+    toast(msg);
+    updateDeckProgress();
+    updateWriteProgress();
+  }
+
+  function announceMasteryMode(){
+    toast(isMasteryEnabled()
+      ? "🎯 Mastery Mode — wrong/skipped items repeat until all are correct!"
+      : "🚀 Single-pass Mode — each word will appear only once this session.");
+  }
+
   // --- MCQ Modes ---
   function createMastery(unique){
     const pending = shuffle(unique.slice());
@@ -3350,6 +3416,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
   }
 
   function ensurePendingCopies(w, list, fromIdx, minCopies){
+    if (!isMasteryEnabled()) return;
     const key = keyForWord(w);
     let existing = 0;
     for (const item of list) {
@@ -3398,7 +3465,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     renderQuestion();
     updateBackVisibility();
 
-    toast("🎯 Mastery Mode — you’ll see wrong/skipped items again until all are correct!");
+    announceMasteryMode();
   };
 
   function updateDeckProgress(){
@@ -3492,6 +3559,7 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     const key = keyForWord(w);
     let delayMs = 450; // default fast advance
     let removedCurrent = false;
+    const masteryOn = isMasteryEnabled();
 
     if (ok){
       btn.classList.add("is-correct");
@@ -3511,11 +3579,18 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
       const correctBtn = buttons.find(b => b.dataset.correct === "1");
       if (correctBtn) correctBtn.classList.add("is-correct");
 
-      // Ensure wrong item will come back at least twice more
-      ensurePendingCopies(w, App.mastery.pending, App.qIndex, 3);
-
-      // Wait 5 seconds so the learner can see both markings
-      delayMs = 3000;
+      if (masteryOn){
+        // Ensure wrong item will come back at least twice more
+        ensurePendingCopies(w, App.mastery.pending, App.qIndex, 3);
+        delayMs = 3000; // Wait so the learner can see both markings
+      } else {
+        App.mastery.pending.splice(App.qIndex,1);
+        removedCurrent = true;
+        if (!wordStillPending(App.mastery.pending, key)) {
+          registerMasteredWord(w);
+        }
+        delayMs = 1500;
+      }
     }
 
     updateScorePanel();
@@ -3569,9 +3644,18 @@ document.addEventListener("DOMContentLoaded", wireLearnTableBtn);
     if (!w) return;
     recordMistake(w);
     App.stats.skipped++; updateScorePanel();
-    ensurePendingCopies(w, App.mastery.pending, App.qIndex, 3);
-    const len = App.mastery.pending.length;
-    if (len) App.qIndex = (App.qIndex + 1) % len;
+    if (isMasteryEnabled()){
+      ensurePendingCopies(w, App.mastery.pending, App.qIndex, 3);
+      const len = App.mastery.pending.length;
+      if (len) App.qIndex = (App.qIndex + 1) % len;
+    } else {
+      App.mastery.pending.splice(App.qIndex,1);
+      if (!wordStillPending(App.mastery.pending, keyForWord(w))) {
+        registerMasteredWord(w);
+      }
+      const len = App.mastery.pending.length;
+      App.qIndex = len ? (App.qIndex % len) : 0;
+    }
     updateDeckProgress(); renderQuestion();
   };
 
@@ -3929,6 +4013,7 @@ window.addEventListener("keydown", (e) => {
       const ok = (pickedLeft === correctLeft) && (pickedRight === correctRight);
       const key = keyForWord(w);
       let removedCurrent = false;
+      const masteryOn = isMasteryEnabled();
 
       if (ok) {
         App.stats.right++; incrementPoints(1);
@@ -3939,10 +4024,18 @@ window.addEventListener("keydown", (e) => {
         }
       } else {
         App.stats.wrong++; recordMistake(w);
-        ensurePendingCopies(w, App.mastery.pending, App.qIndex, 3);
+        if (masteryOn){
+          ensurePendingCopies(w, App.mastery.pending, App.qIndex, 3);
+        } else {
+          App.mastery.pending.splice(App.qIndex, 1);
+          removedCurrent = true;
+          if (!wordStillPending(App.mastery.pending, key)) {
+            registerMasteredWord(w);
+          }
+        }
       }
       updateScorePanel();
-      const delay = ok ? 350 : 600;
+      const delay = ok ? 350 : (masteryOn ? 600 : 450);
       setTimeout(()=>{
         const len = App.mastery.pending.length;
         if (!len) App.qIndex = 0;
@@ -4047,6 +4140,7 @@ window.addEventListener("keydown", (e) => {
     App.write.variant = variant;
     App.stats = { right:0, wrong:0, skipped:0 };
     updateScorePanel();
+    announceMasteryMode();
   }
 
   function showWriteView(){
@@ -4198,11 +4292,23 @@ window.addEventListener("keydown", (e) => {
     if (!w) return;
     recordMistake(w);
     App.stats.skipped++; updateScorePanel();
-    ensurePendingCopies(w, App.mastery.pending, App.write.idx, 3);
-    if (App.mastery.pending.length) {
-      App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
+    if (isMasteryEnabled()){
+      ensurePendingCopies(w, App.mastery.pending, App.write.idx, 3);
+      if (App.mastery.pending.length) {
+        App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
+      } else {
+        App.write.idx = 0;
+      }
     } else {
-      App.write.idx = 0;
+      App.mastery.pending.splice(App.write.idx, 1);
+      if (!wordStillPending(App.mastery.pending, keyForWord(w))) {
+        registerMasteredWord(w);
+      }
+      if (!App.mastery.pending.length) {
+        App.write.idx = 0;
+      } else {
+        App.write.idx = App.write.idx % App.mastery.pending.length;
+      }
     }
     renderWriteCard();
   };
@@ -4220,7 +4326,22 @@ window.addEventListener("keydown", (e) => {
       renderWriteCard();
       return;
     }
-    App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
+    if (isMasteryEnabled()){
+      App.write.idx = (App.write.idx + 1) % App.mastery.pending.length;
+    } else {
+      const w = getCurrentWriteWord();
+      if (w) {
+        App.mastery.pending.splice(App.write.idx, 1);
+        if (!wordStillPending(App.mastery.pending, keyForWord(w))) {
+          registerMasteredWord(w);
+        }
+      }
+      if (!App.mastery.pending.length) {
+        App.write.idx = 0;
+      } else {
+        App.write.idx = App.write.idx % App.mastery.pending.length;
+      }
+    }
     renderWriteCard();
   };
 
