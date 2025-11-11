@@ -177,11 +177,6 @@ async function whenFBReady(timeout = 15000) {
 
   // Toast
   const elToast = D("#toast");
-  App.masteryMode = loadMasteryPreference();
-  [elPracticeMasteryToggle, elWriteMasteryToggle].forEach(btn => {
-    btn?.addEventListener("click", toggleMasteryMode);
-  });
-  updateMasteryToggleUI();
 // Mobile nav controls
 const elSidebar   = D("#sidebar");
 const elNavToggle = D("#nav-toggle");
@@ -369,6 +364,12 @@ const App = Object.assign(window.App, {
 });
 // keep a stable global reference
 window.App = App;
+
+  App.masteryMode = loadMasteryPreference();
+  [elPracticeMasteryToggle, elWriteMasteryToggle].forEach(btn => {
+    btn?.addEventListener("click", toggleMasteryMode);
+  });
+  updateMasteryToggleUI();
 
 function attemptSig(){
   return JSON.stringify({
