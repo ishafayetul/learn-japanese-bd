@@ -1,138 +1,91 @@
-見ます,みます,to see/to look at
-見せます,みせます,to show
-見つかります,みつかります,to be found
-見つけます,みつけます,to find
-元気,げんき,healthy/energetic
-元日,がんじつ,New Year's Day
-先に,さきに,ahead/before
-先生,せんせい,teacher
-先週,せんしゅう,last week
-先月,せんげつ,last month
-天気,てんき,weather
-天国,てんごく,heaven
-作文,さくぶん,essay/composition
-文章,ぶんしょう,sentence/writing
-文化,ぶんか,culture
-文学,ぶんがく,literature
-お父さん,おとうさん,father (polite)
-父,ちち,father (my father)
-父母,ふぼ,father and mother/parents
-お母さん,おかあさん,mother (polite)
-母,はは,mother (my mother)
-母国,ぼこく,motherland/home country
-母語,ぼご,mother tongue
-行きます,いきます,to go
-行います,おこないます,to do/to perform
-旅行します,りょこうします,to travel
-毎朝,まいあさ,every morning
-毎晩,まいばん,every night
-毎週,まいしゅう,every week
-毎月,まいつき/まいげつ,every month
-毎年,まいとし/まいねん,every year
-海,うみ,sea/ocean
-海水,かいすい,seawater
-海外,かいがい,overseas/abroad
-東,ひがし,east
-東口,ひがしぐち,east exit
-東京,とうきょう,Tokyo
-関東,かんとう,Kanto region
-西,にし,west
-西口,にしぐち,west exit
-西洋,せいよう,the West/Western countries
-関西,かんさい,Kansai region
-南,みなみ,south
-南口,みなみぐち,south exit
-北,きた,north
-北口,きたぐち,north exit
-北米,ほくべい,North America
-北海道,ほっかいどう,Hokkaido
-耳,みみ,ear
-右耳,みぎみみ,right ear
-門,もん,gate
-正門,せいもん,main gate
-専門,せんもん,specialty/area of expertise
-聞きます,ききます,to hear/to listen/to ask
-聞こえます,きこえます,to be audible
-新聞,しんぶん,newspaper
-間,あいだ,between/interval
-昼間,ひるま,daytime
-間に合います,まにあいます,to be on time
-時間,じかん,time/hours
-四時間,よじかん,four hours
-牛,うし,cow
-牛肉,ぎゅうにく,beef
-牛乳,ぎゅうにゅう,milk
-午前,ごぜん,morning/a.m.
-午後,ごご,afternoon/p.m.
-年,とし,year/age
-今年,ことし,this year
-年上,としうえ,older/senior
-年下,としした,younger/junior
-去年,きょねん,last year
-来年,らいねん,next year
-再来年,さらいねん,year after next
-生年月日,せいねんがっぴ,date of birth
-前,まえ,before/front
-名前,なまえ,name
-三年前,さんねんまえ,three years ago
-前半,ぜんはん,first half
-後ろ,うしろ,behind/back
-後で,あとで,later
-五年後,ごねんご,five years later
-最後,さいご,last/final
-後半,こうはん,second half
-高い,たかい,high/expensive
+百,ひゃく,hundred
+三百,さんびゃく,three hundred
+六百,ろっぴゃく,six hundred
+八百,はっぴゃく,eight hundred
+八百屋,やおや,greengrocer/vegetable store
+千,せん,thousand
+千円,せんえん,one thousand yen
+三千,さんぜん,three thousand
+万,まん,ten thousand
+百万円,ひゃくまんえん,one million yen
+万年筆,まんねんひつ,fountain pen
+円い,まるい,round
+円,えん,yen/circle
+千円,せんえん,one thousand yen
+三千円,さんぜんえん,three thousand yen
+一万円,いちまんえん,ten thousand yen
 円高,えんだか,strong yen
-高校,こうこう,high school
-高校生,こうこうせい,high school student
-高速,こうそく,high speed
-最高,さいこう,best/highest
-銀,ぎん,silver
-銀行,ぎんこう,bank
-銀座,ぎんざ,Ginza (place name)
-食べます,たべます,to eat
-食べ物,たべもの,food
-食堂,しょくどう,cafeteria/dining hall
-食事します,しょくじします,to have a meal
-食料品,しょくりょうひん,groceries/foodstuffs
-ご飯,ごはん,meal/cooked rice
-朝ご飯,あさごはん,breakfast
-昼ご飯,ひるごはん,lunch
-晩ご飯,ばんごはん,dinner
-夕飯,ゆうはん,dinner
-飲みます,のみます,to drink
-飲み物,のみもの,drink/beverage
-飲み水,のみみず,drinking water
-飲料水,いんりょうすい,drinking water
-飲酒運転,いんしゅうんてん,drunk driving
-白,しろ,white (noun/color)
-白い,しろい,white (adjective)
-白馬,はくば,white horse
-赤い,あかい,red (adjective)
-赤ん坊,あかんぼう,baby/infant
-赤ちゃん,あかちゃん,baby/infant
-赤字,あかじ,deficit/in the red
-赤十字,せきじゅうじ,Red Cross
-青い,あおい,blue (adjective)
-青信号,あおしんごう,green light
-青年,せいねん,youth/young man
-言います,いいます,to say/to tell
-言葉,ことば,word/language
-言語,げんご,language
-伝言します,でんごんします,to leave a message
-話,はなし,talk/story
-話します,はなします,to speak/to talk
-電話,でんわ,telephone
-会話,かいわ,conversation
-世話します,せわします,to take care of/to look after
-英語,えいご,English language
-(中国)語,ちゅうごくご,Chinese language
-母語,ぼご,mother tongue
-売ります,うります,to sell
-売(り)場,うりば,selling floor/sales counter
-売(り)切(れ),うりきれ,sold out
-読みます,よみます,to read
-読書,どくしょ,reading (as a hobby)
-読者,どくしゃ,reader
-書きます,かきます,to write
-和書,わしょ,Japanese book
+日,ひ,day/sun
+木曜日,もくようび,Thursday
+二日,ふつか,the second day of the month/two days
+毎日,まいにち,every day
+日記,にっき,diary
+日本,にほん/にっぽん,Japan
+今日,きょう,today
+昨日,きのう,yesterday
+明日,あした/あす,tomorrow
+月,つき,moon/month
+一月,いちがつ,January
+月曜日,げつようび,Monday
+今月,こんげつ,this month
+先月,せんげつ,last month
+来月,らいげつ,next month
+再来月,さらいげつ,the month after next
+一ヶ月,いっかげつ,one month
+明るい,あかるい,bright
+明日,あした/あす,tomorrow
+説明する,せつめいする,to explain
+立つ,たつ,to stand
+立てる,たてる,to stand (something) up/to build
+国立の,こくりつの,national
+独立する,どくりつする,to become independent
+立派な,りっぱな,splendid/fine
+音,おと,sound
+音楽,おんがく,music
+発音,はつおん,pronunciation
+暗い,くらい,dark
+暗室,あんしつ,darkroom
+火,ひ,fire
+火曜日,かようび,Tuesday
+花火,はなび,fireworks
+火事,かじ,fire (conflagration)
+火山,かざん,volcano
+水,みず,water
+水曜日,すいようび,Wednesday
+水道,すいどう,water supply/waterworks
+水泳,すいえい,swimming
+土,つち,soil/earth
+土曜日,どようび,Saturday
+土地,とち,land/plot of land
+お土産,おみやげ,souvenir
+国,くに,country
+外国,がいこく,foreign country
+外国人,がいこくじん,foreigner
+国際的な,こくさいてきな,international
+国旗,こっき,national flag
+全部,ぜんぶ,all/entirety
+全然,ぜんぜん,not at all (with negative)
+全員,ぜんいん,all members/everyone
+お金,おかね,money
+お金持ち,おかねもち,rich person
+金,きん,gold
+金曜日,きんようび,Friday
+大工,だいく,carpenter
+工場,こうじょう,factory
+工業,こうぎょう,industry
+工学,こうがく,engineering
+人工の,じんこうの,artificial/man-made
+左,ひだり,left
+左手,ひだりて,left hand
+左側,ひだりがわ,left side
+左きき,ひだりきき,left-handedness
+左折する,させつする,to turn left
+右,みぎ,right
+右手,みぎて,right hand
+右側,みぎがわ,right side
+右折する,うせつする,to turn right
+左右,さゆう,left and right/influence
+友達,ともだち,friend
+友人,ゆうじん,friend
+親友,しんゆう,close friend/best friend
+友情,ゆうじょう,friendship
